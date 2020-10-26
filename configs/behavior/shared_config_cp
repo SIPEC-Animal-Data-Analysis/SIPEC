@@ -1,0 +1,12 @@
+dlc_model_batch_size = 64
+dlc_model_optimizer = adam
+dlc_model_lr = 0.0001
+dlc_model_recurrent_batch_size = 64
+dlc_model_recurrent_optimizer = sgd
+dlc_model_recurrent_lr = 0.0001
+recognition_model_batch_size = 32
+recognition_model_optimizer = adam
+recognition_model_lr = 0.00001
+sequential_model_batch_size = 32
+sequential_model_optimizer = adam
+sequential_model_lr = 0.0000025
