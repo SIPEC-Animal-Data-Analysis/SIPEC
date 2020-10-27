@@ -4,7 +4,10 @@
 
 SIPEC: the deep-learning Swiss knife for behavioral data analysis
 
-Cite
+## Cite:
+
+If you use any part of this code for your work, please cite the following:
+
   ```
   SIPEC: the deep-learning Swiss knife for behavioral data analysis
   Markus Marks, Jin Qiuhan, Oliver Sturman, Lukas von Ziegler, Sepp Kollmorgen, Wolfger von der Behrens, Valerio Mante, Johannes Bohacek, Mehmet Fatih Yanik
