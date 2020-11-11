@@ -9,7 +9,7 @@ This is the repository accompanying SIPEC, which is a pipeline that enables all-
 You can use SIPEC by either combining its many modules in your own workflow, or use template workflows, that have been used in the paper, which can be accessed via command line.
 We will be providing more detailed and illustrated instructions soon. Moreover, extensive documentation and more exemplary data will be made available.
 
-![](misc/Supplementary%20Video%201.gif)
+![](supp_files/Supplementary%20Video%201.gif)
 
 ## Installation
 
