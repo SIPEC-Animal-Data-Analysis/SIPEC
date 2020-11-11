@@ -1,39 +1,12 @@
-import pandas as pd
-from glob import glob
+# SIPEC
+# MARKUS MARKS
+# Extract cutout videos from multi animal videos
+
 import numpy as np
-import pandas as pd
-
-import matplotlib.pyplot as plt
-
-from sklearn import metrics
-from sklearn.metrics import confusion_matrix
-from scipy.stats import pearsonr
-from sklearn.metrics import r2_score
-from sklearn.metrics import precision_recall_fscore_support
-
-# different font size for matplotlib such that
-import matplotlib.pyplot as plt
-
-plt.rcParams.update({"font.size": 22})
-
-import seaborn as sns
-
-sns.set(style="ticks")
-fontscaling = 2.2
 
 from tqdm import tqdm
-
-from statannot import add_stat_annotation
-
-from scipy import stats
-import skvideo.io
-
-import seaborn as sns
 import os
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from SwissKnife.utils import load_dict
 
 from SwissKnife.poseestimation import dilate_mask
 from scipy.ndimage.measurements import center_of_mass
@@ -48,17 +21,9 @@ def detect_social(
 ):
     mask_1 = dilate_mask(mask_1, factor=dilation_factor)
     mask_2 = dilate_mask(mask_2, factor=dilation_factor)
-    #     plt.imshow(mask_1)
-    #     plt.show()
-    #     plt.imshow(mask_2)
-    #     plt.show()
 
     # event detection simply multiplication of dilated masks
-
     multi_event = np.logical_and(mask_1.astype(np.bool), mask_2.astype(np.bool))
-
-    #     plt.imshow(multi_event)
-    #     plt.show()
 
     if multi_event.sum() > threshold:
         return 1

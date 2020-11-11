@@ -315,13 +315,6 @@ class Metrics(keras.callbacks.Callback):
 def custom_binary_crossentropy(y_true, y_pred, from_logits=False, label_smoothing=0):
     y_pred = K.constant(y_pred) if not K.is_tensor(y_pred) else y_pred
     y_true = K.cast(y_true, y_pred.dtype)
-    #
-    # index = tf.where(tf.not_equal(labels, tf.constant(-1, dtype=tf.float32)))
-    # logits = tf.gather(logits, index)
-    # labels = tf.gather(labels, index)
-    # entropies = tf.nn.sigmoid_cross_entropy_with_logits(logits, labels)
-    # print("yo")
-    # actives = K.evy_pred
 
     return K.mean(
         K.binary_crossentropy(y_true, y_pred, from_logits=from_logits), axis=-1

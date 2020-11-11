@@ -177,9 +177,6 @@ def visualize_full_inference(networks, video, results, display_coms=False):
             overlaps = results[idx]["overalps"]
             corrected_ids = results[idx]["smoothed_ids"]
 
-            print(boxes)
-            print(overlaps)
-
             # corrected_ids = {}
             if len(masks.shape) < 3:
                 masks = np.expand_dims(masks, axis=-1)
@@ -297,7 +294,6 @@ def visualize_full_inference(networks, video, results, display_coms=False):
                     poses[:, 1] += int(coms[pose_id][1])
                     poses[:, 0] -= 64
                     poses[:, 1] -= 64
-                    print(poses[:-1])
                     for pose in poses[:-1]:
                         frame = displayScatter(frame, pose)
                 except KeyError:
@@ -324,9 +320,6 @@ def main():
         )
         videodata = loadVideo(videoname, greyscale=False, num_frames=700)[300:500]
         molded_video = mold_video(videodata, dimension=1024)
-        # results_path = (
-        #     "/media/nexus/storage4/swissknife_results/full_inference/mouse_test/"
-        # )
         results_path = (
             "/media/nexus/storage4/swissknife_results/full_inference/mouse_test/"
         )
@@ -343,8 +336,6 @@ def main():
         videoname = (
             "/media/nexus/storage5/swissknife_data/primate/raw_videos_sorted/2018_merge/"
             "20180115T150502-20180115T150902_%T1.mp4"
-            # "20180124T115800-20180124T122800b_%T1.mp4"
-            # "20180124T113800-20180124T115800_%T1.mp4"
         )
 
         # videoname = '../testovideo_short.mp4'
@@ -353,21 +344,11 @@ def main():
         molded_video = mold_video(videodata, dimension=2048, n_jobs=40)
         print("loaded_video")
 
-        # results_path = (
-        #     "/media/nexus/storage4/swissknife_results/full_inference/primate_test_low_thresh/"
-        #     "20180115T150502-20180115T150902_%T1/"
-        #     # "20180124T115800-20180124T122800b_%T1/"
-        # )
         results_path = (
             "/media/nexus/storage5/swissknife_results/full_inference/primate_july_test_large/"
             "/20180115T150502-20180115T150902_%T1/"
-            # "/20180124T115800-20180124T122800b_%T1/"
-            # "20180124T113800-20180124T115800_%T1/"
         )
 
-        # results_path = (
-        #     "./testing_short/"
-        # )
 
         results = np.load(results_path + "inference_results.npy", allow_pickle=True)
         # results_masks = load_dict(results_path + "inference_resulting_masks.pkl")

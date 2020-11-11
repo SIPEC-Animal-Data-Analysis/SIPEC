@@ -408,14 +408,6 @@ class Metrics(keras.callbacks.Callback):
         X_val, y_val = self.validation_data[0], self.validation_data[1]
         y_val = np.where(y_val == 1)[1].astype(int)
 
-        # predictions = []
-        # for dat in X_val:
-        # 	prediction = self.model.predict(np.expand_dims(dat, axis=0))
-        # 	predictions.append(prediction)
-        # predictions = np.asarray(predictions)
-        # y_predict = np.argmax(predictions, axis=-1)
-
-        # print(classification_report(y_val,y_predict))
 
         # old
         y_predict = self.model.predict(X_val)

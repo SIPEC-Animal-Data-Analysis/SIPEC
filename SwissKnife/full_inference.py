@@ -94,7 +94,6 @@ def full_inference(
 
             if not idx == 0:
                 if idx == 2001:
-                    print("yooo")
                 mapping = maskmatcher.match_masks(
                     boxes[: maskmatcher.max_ids], results[-1]["boxes"]
                 )
@@ -107,8 +106,6 @@ def full_inference(
                     for i in range(len(boxes) - len(overlaps)):
                         overlaps.append(0)
                 if max(new_ids) > 0:
-                    if idx == 242:
-                        print("yo")
                     print("boxes before: ", str(boxes))
                     boxes = maskmatcher.map(mapping, boxes)
                     print("boxes after: ", str(boxes))
@@ -175,14 +172,6 @@ def full_inference(
             results_per_frame["pose_coordinates"] = maps
 
         results.append(results_per_frame)
-
-        # if idx % 10000 == 0:
-        # if idx == 40000:
-        #     print("saving data")
-        #     np.save(results_sink + "/inference_results.npy", results, allow_pickle=True)
-        #     save_dict(
-        #         results_sink + "/inference_resulting_masks.pkl", resulting_masks,
-        #     )
 
     if id_matching:
         for idx, el in tqdm(enumerate(videodata)):

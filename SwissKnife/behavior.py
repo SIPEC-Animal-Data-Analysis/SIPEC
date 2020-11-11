@@ -8,6 +8,7 @@ from scipy.misc import imresize
 from tqdm import tqdm
 import pandas as pd
 import random
+import datetime
 
 from SwissKnife.architectures import classification_small
 
@@ -25,14 +26,14 @@ from SwissKnife.utils import (
     get_callbacks,
     load_vgg_labels,
     loadVideo,
-    load_config,
+    load_config, check_directory,
 )
 from SwissKnife.dataloader import Dataloader
 from SwissKnife.model import Model
 
 
 def train_behavior(
-    dataloader, config, num_classes, encode_labels=True, class_weights=None
+    dataloader, config, num_classes, encode_labels=True, class_weights=None, results_sink=results_sink,
 ):
 
     print("data prepared!")
@@ -105,31 +106,31 @@ def train_behavior(
     return [acc, f1, corr], report
 
 
-def train_primate():
+def train_primate(config, results_sink):
 
-    basepath = "../"
+    basepath = "/media/nexus/storage5/swissknife_data/primate/behavior/"
 
     vids = [
         basepath
-        + "final_vids_sipec_paper/fullvids_20180124T113800-20180124T115800_%T1_0.mp4",
+        + "fullvids_20180124T113800-20180124T115800_%T1_0.mp4",
         basepath
-        + "final_vids_sipec_paper/fullvids_20180124T113800-20180124T115800_%T1_1.mp4",
+        + "fullvids_20180124T113800-20180124T115800_%T1_1.mp4",
         basepath
-        + "final_vids_sipec_paper/20180116T135000-20180116T142000_social_complete.mp4",
+        + "20180116T135000-20180116T142000_social_complete.mp4",
         basepath
-        + "final_vids_sipec_paper/20180124T115800-20180124T122800b_0_complete.mp4",
+        + "20180124T115800-20180124T122800b_0_complete.mp4",
         basepath
-        + "final_vids_sipec_paper/20180124T115800-20180124T122800b_1_complete.mp4",
+        + "20180124T115800-20180124T122800b_1_complete.mp4",
     ]
     all_annotations = [
-        basepath + "final_vids_sipec_paper/20180124T113800-20180124T115800_0.csv",
-        basepath + "final_vids_sipec_paper/20180124T113800-20180124T115800_1.csv",
+        basepath + "20180124T113800-20180124T115800_0.csv",
+        basepath + "20180124T113800-20180124T115800_1.csv",
         basepath
-        + "final_vids_sipec_paper/20180116T135000-20180116T142000_social_complete.csv",
+        + "20180116T135000-20180116T142000_social_complete.csv",
         basepath
-        + "final_vids_sipec_paper/20180124T115800-20180124T122800b_0_complete.csv",
+        + "20180124T115800-20180124T122800b_0_complete.csv",
         basepath
-        + "final_vids_sipec_paper/20180124T115800-20180124T122800b_1_complete.csv",
+        + "20180124T115800-20180124T122800b_1_complete.csv",
     ]
 
     all_vids = []
@@ -181,14 +182,12 @@ def train_primate():
     vid = vid
     labels = labels
 
-    print("before: ", str(len(vid)), " ", str(len(labels)))
     groups = [groups[i] for i in idxs]
     labels = [labels[i] for i in idxs]
     vid = [vid[i] for i in idxs]
     groups = np.asarray(groups)
     labels = np.asarray(labels)
     vid = np.asarray(vid)
-    print("after: ", str(len(vid)), " ", str(len(labels)))
 
     num_splits = 5
     # TODO: prettify me!
@@ -307,25 +306,17 @@ def train_primate():
                 num_classes=config["num_classes"],
                 class_weights=class_weights,
             )
-        # results.append(res)
-        # reports.append(report)
 
         print(config)
         print("DONE")
         print(report)
         np.save(
-            "./final_results_primate_behavior/recog_results_5fold_FINAL_notAllvids_recurrent_shuffled/"
-            + str(split)
-            + "_"
-            + config_name
+            results_sink
             + "results.npy",
             res,
         )
         np.save(
-            "./final_results_primate_behavior/recog_results_5fold_FINAL_notAllvids_recurrent_shuffled/"
-            + str(split)
-            + "_"
-            + config_name
+            results_sink
             + "reports.npy",
             report,
         )
@@ -340,10 +331,24 @@ def main():
 
     setGPU(K, gpu_name)
 
+    results_sink = (
+            "./results/primate/behavior"
+            + "_"
+            + network
+            + "_"
+            + datetime.now().strftime("%Y-%m-%d-%H_%M")
+            + "/"
+    )
+
+    check_directory(results_sink)
+
     if operation("train_primate"):
         config_name = "primate_final"
         config = load_config("../configs/behavior/primate/" + config_name)
-        train_primate()
+        train_primate(config=config, results_sink=results_sink)
+    else:
+        config = load_config(config_name)
+        train_behavior(config=config, results_sink=results_sink)
 
 
 parser = ArgumentParser()

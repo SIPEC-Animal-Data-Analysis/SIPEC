@@ -10,7 +10,6 @@ import time
 import numpy as np
 
 import cv2
-from keras.engine.saving import load_model
 
 from shapely.geometry import Polygon
 

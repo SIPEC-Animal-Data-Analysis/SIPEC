@@ -8,14 +8,6 @@ import sys
 
 import skvideo
 from joblib import Parallel, delayed
-from skimage import color
-from tqdm import tqdm
-import numpy as np
-
-from SwissKnife.poseestimation import dilate_mask
-
-sys.path.append("../")
-sys.path.append("/media/nexus/storage2/Mask_RCNN")
 
 from argparse import ArgumentParser
 import imageio
@@ -37,7 +29,6 @@ from SwissKnife.utils import (
     loadVideo,
 )
 from SwissKnife.dataprep import (
-    get_individual_mouse_data,
     get_primate_identification_data,
     generate_individual_mouse_data,
 )
@@ -46,260 +37,6 @@ from SwissKnife.dataloader import Dataloader
 from SwissKnife.model import Model
 from sklearn import metrics
 
-
-def idresults_to_training_recurrent(
-    idresults, fnames_base, video, index, masking=True, mask_size=128, rescaling=False
-):
-    multi_imgs_x = []
-    multi_imgs_y = []
-
-    skipped = 0
-
-    batch_size = 10000
-
-    offset = index * batch_size
-
-    # for 1024 is 128
-
-    for el in idresults.keys():
-        print(str(el))
-        if el < 100:
-            continue
-        #     print(el)
-
-        # older 1024, 1024 version
-        #     fnames_base = '/media/nexus/storage1/swissknife_data/primate/inference/segmentation/20180115T150502-20180115T150902_%T1/frames/'
-
-        #         frame = fnames_base + 'frames/' + 'frame_' + str(el) + '.npy'
-
-        masks = idresults[el]["masks"]["masks"]
-        boxes = idresults[el]["masks"]["rois"]
-
-        for ids in range(0, min(masks.shape[-1], 4)):
-
-            #             # TODO FIX
-            #             try:
-            #                 image = np.load(frame)
-            #             except FileNotFoundError:
-            #                 continue
-            #             image = idresults[el]['frame']
-            # if rescaling:
-            if False:
-                com = [
-                    int(
-                        (
-                            idresults[el]["masks"]["rois"][ids][0]
-                            + idresults[el]["masks"]["rois"][ids][2]
-                        )
-                        / 2
-                    )
-                    * 2,
-                    int(
-                        (
-                            idresults[el]["masks"]["rois"][ids][1]
-                            + idresults[el]["masks"]["rois"][ids][3]
-                        )
-                        / 2
-                    )
-                    * 2,
-                ]
-                mask = rescale(masks[:, :, ids], 0.5)
-            #         mask = rescale(masks[:,:,ids], 1.0)
-
-            else:
-
-                # normal one
-                com = [
-                    int(
-                        (
-                            idresults[el]["masks"]["rois"][ids][0]
-                            + idresults[el]["masks"]["rois"][ids][2]
-                        )
-                        / 2
-                    ),
-                    int(
-                        (
-                            idresults[el]["masks"]["rois"][ids][1]
-                            + idresults[el]["masks"]["rois"][ids][3]
-                        )
-                        / 2
-                    ),
-                ]
-                mask = masks[:, :, ids]
-                mybox = boxes[ids, :]
-
-            #         multi_imgs_y.append(int(idresults[el]['results'][ids][0])-1)
-
-            # TODO: fixme
-            if el == 2220 or el == 2395 or el == 9601:
-                print(el)
-                skipped += 1
-                continue
-
-            try:
-
-                if (
-                    idresults[el]["results"][ids].split("_")[0] in classes
-                    and idresults[el]["results"][ids].split("_")[1] == "easy"
-                ):
-
-                    images = []
-
-                    spacing = 3
-
-                    dil_scaling = 5
-
-                    if rescaling:
-
-                        for j in range(-3, 4):
-                            print("jjjjjj", j)
-                            img = mold_image(video.get_data(offset + el + j * spacing))
-                            print("image shape", img.shape)
-                            rescaled_img = rescale_img(mybox, img)
-                            images.append(rescaled_img)
-
-                        res_images = images
-
-                    elif masking:
-
-                        for j in range(-3, 4):
-                            images.append(
-                                mask_image(
-                                    mold_image(
-                                        video.get_data(offset + el + j * spacing)
-                                    ),
-                                    mask,
-                                    dilation_factor=100 * dil_scaling,
-                                )
-                            )
-
-                        res_images = []
-
-                        for image in images:
-
-                            img = np.zeros((int(2 * mask_size), int(2 * mask_size), 3))
-                            img_help = image[
-                                max(com[0] - mask_size, 0) : min(
-                                    com[0] + mask_size, 2048
-                                ),
-                                max(com[1] - mask_size, 0) : min(
-                                    com[1] + mask_size, 2048
-                                ),
-                            ]
-
-                            le = int(img_help.shape[0] / 2)
-                            ri = img_help.shape[0] - le
-                            up = int(img_help.shape[1] / 2)
-                            do = img_help.shape[1] - up
-                            img[
-                                mask_size - le : mask_size + ri,
-                                mask_size - up : mask_size + do,
-                                :,
-                            ] = img_help
-                            img = img.astype("uint8")
-
-                            #             break
-                            if not img.shape == (
-                                int(2 * mask_size),
-                                int(2 * mask_size),
-                                3,
-                            ):
-                                skipped += 1
-                                print(el)
-                                continue
-
-                            res_images.append(img)
-
-                    else:
-                        for j in range(-3, 4):
-                            images.append(
-                                mold_image(video.get_data(offset + el + j * spacing))
-                            )
-
-                        res_images = []
-
-                        for image in images:
-
-                            img = np.zeros((int(2 * mask_size), int(2 * mask_size), 3))
-                            img_help = image[
-                                max(com[0] - mask_size, 0) : min(
-                                    com[0] + mask_size, 2048
-                                ),
-                                max(com[1] - mask_size, 0) : min(
-                                    com[1] + mask_size, 2048
-                                ),
-                            ]
-
-                            le = int(img_help.shape[0] / 2)
-                            ri = img_help.shape[0] - le
-                            up = int(img_help.shape[1] / 2)
-                            do = img_help.shape[1] - up
-                            img[
-                                mask_size - le : mask_size + ri,
-                                mask_size - up : mask_size + do,
-                                :,
-                            ] = img_help
-                            img = img.astype("uint8")
-
-                            #             break
-                            if not img.shape == (
-                                int(2 * mask_size),
-                                int(2 * mask_size),
-                                3,
-                            ):
-                                skipped += 1
-                                print(el)
-                                continue
-
-                            res_images.append(img)
-
-                    res_images = np.asarray(res_images)
-                    multi_imgs_y.append(
-                        classes[idresults[el]["results"][ids].split("_")[0]]
-                    )
-                    multi_imgs_x.append(res_images)
-            except KeyError:
-                continue
-
-    X = np.asarray(multi_imgs_x)
-    y = np.asarray(multi_imgs_y)
-
-    return X, y
-
-
-def load_vid(basepath, vid, idx, batch_size=10000):
-    videodata = skvideo.io.vread(basepath + vid + ".mp4", as_grey=False)
-    videodata = videodata[idx * batch_size : (idx + 1) * batch_size]
-    results_list = Parallel(
-        n_jobs=20, max_nbytes=None, backend="multiprocessing", verbose=40
-    )(delayed(mold_image)(image) for image in videodata)
-    results = {}
-    for idx, el in enumerate(results_list):
-        results[idx] = el
-
-    return results
-
-
-def vid_to_xy(video):
-    video = video.split("/")[-1].split("IDresults_")[-1].split(".np")[0]
-    vid = video.split(".npy")[0][:-2]
-    vidlist.append(vid)
-    idx = int(video.split(".npy")[0][-1:])
-    idx -= 1
-
-    idresults = np.load(
-        idresults_base + "IDresults_" + video + ".npy", allow_pickle=True
-    ).item()
-    pat = vid_basepath + vid + ".mp4"
-    print(pat)
-    vid = imageio.get_reader(pat, "ffmpeg")
-    #     vid = load_vid(vid_basepath,vid,idx)
-
-    _X, _y = idresults_to_training_recurrent(
-        idresults, fnames_base + video + "/", vid, idx, mask_size=mask_size
-    )
-
-    return [_X, _y]
 
 
 video_train = [
@@ -382,8 +119,6 @@ def evaluate_on_data(
             dataloader.y_test,
         )
         print("Result", str(metric))
-        # np.save('./identification_logs_crossday/' + 'identification_full_ours_1.0_fold_4__' + '_day_3.npy', metric)
-
 
     if species == "primate":
 
@@ -768,9 +503,260 @@ def train_on_data(
     )
 
 
-def idtracker_stop_loss():
 
-    return
+def idresults_to_training_recurrent(
+    idresults, fnames_base, video, index, masking=True, mask_size=128, rescaling=False
+):
+    multi_imgs_x = []
+    multi_imgs_y = []
+
+    skipped = 0
+
+    batch_size = 10000
+
+    offset = index * batch_size
+
+    # for 1024 is 128
+
+    for el in idresults.keys():
+        print(str(el))
+        if el < 100:
+            continue
+        #     print(el)
+
+        # older 1024, 1024 version
+        #     fnames_base = '/media/nexus/storage1/swissknife_data/primate/inference/segmentation/20180115T150502-20180115T150902_%T1/frames/'
+
+        #         frame = fnames_base + 'frames/' + 'frame_' + str(el) + '.npy'
+
+        masks = idresults[el]["masks"]["masks"]
+        boxes = idresults[el]["masks"]["rois"]
+
+        for ids in range(0, min(masks.shape[-1], 4)):
+
+            #             # TODO FIX
+            #             try:
+            #                 image = np.load(frame)
+            #             except FileNotFoundError:
+            #                 continue
+            #             image = idresults[el]['frame']
+            # if rescaling:
+            if False:
+                com = [
+                    int(
+                        (
+                            idresults[el]["masks"]["rois"][ids][0]
+                            + idresults[el]["masks"]["rois"][ids][2]
+                        )
+                        / 2
+                    )
+                    * 2,
+                    int(
+                        (
+                            idresults[el]["masks"]["rois"][ids][1]
+                            + idresults[el]["masks"]["rois"][ids][3]
+                        )
+                        / 2
+                    )
+                    * 2,
+                ]
+                mask = rescale(masks[:, :, ids], 0.5)
+            #         mask = rescale(masks[:,:,ids], 1.0)
+
+            else:
+
+                # normal one
+                com = [
+                    int(
+                        (
+                            idresults[el]["masks"]["rois"][ids][0]
+                            + idresults[el]["masks"]["rois"][ids][2]
+                        )
+                        / 2
+                    ),
+                    int(
+                        (
+                            idresults[el]["masks"]["rois"][ids][1]
+                            + idresults[el]["masks"]["rois"][ids][3]
+                        )
+                        / 2
+                    ),
+                ]
+                mask = masks[:, :, ids]
+                mybox = boxes[ids, :]
+
+            #         multi_imgs_y.append(int(idresults[el]['results'][ids][0])-1)
+
+            # TODO: fixme
+            if el == 2220 or el == 2395 or el == 9601:
+                print(el)
+                skipped += 1
+                continue
+
+            try:
+
+                if (
+                    idresults[el]["results"][ids].split("_")[0] in classes
+                    and idresults[el]["results"][ids].split("_")[1] == "easy"
+                ):
+
+                    images = []
+
+                    spacing = 3
+
+                    dil_scaling = 5
+
+                    if rescaling:
+
+                        for j in range(-3, 4):
+                            print("jjjjjj", j)
+                            img = mold_image(video.get_data(offset + el + j * spacing))
+                            print("image shape", img.shape)
+                            rescaled_img = rescale_img(mybox, img)
+                            images.append(rescaled_img)
+
+                        res_images = images
+
+                    elif masking:
+
+                        for j in range(-3, 4):
+                            images.append(
+                                mask_image(
+                                    mold_image(
+                                        video.get_data(offset + el + j * spacing)
+                                    ),
+                                    mask,
+                                    dilation_factor=100 * dil_scaling,
+                                )
+                            )
+
+                        res_images = []
+
+                        for image in images:
+
+                            img = np.zeros((int(2 * mask_size), int(2 * mask_size), 3))
+                            img_help = image[
+                                max(com[0] - mask_size, 0) : min(
+                                    com[0] + mask_size, 2048
+                                ),
+                                max(com[1] - mask_size, 0) : min(
+                                    com[1] + mask_size, 2048
+                                ),
+                            ]
+
+                            le = int(img_help.shape[0] / 2)
+                            ri = img_help.shape[0] - le
+                            up = int(img_help.shape[1] / 2)
+                            do = img_help.shape[1] - up
+                            img[
+                                mask_size - le : mask_size + ri,
+                                mask_size - up : mask_size + do,
+                                :,
+                            ] = img_help
+                            img = img.astype("uint8")
+
+                            #             break
+                            if not img.shape == (
+                                int(2 * mask_size),
+                                int(2 * mask_size),
+                                3,
+                            ):
+                                skipped += 1
+                                print(el)
+                                continue
+
+                            res_images.append(img)
+
+                    else:
+                        for j in range(-3, 4):
+                            images.append(
+                                mold_image(video.get_data(offset + el + j * spacing))
+                            )
+
+                        res_images = []
+
+                        for image in images:
+
+                            img = np.zeros((int(2 * mask_size), int(2 * mask_size), 3))
+                            img_help = image[
+                                max(com[0] - mask_size, 0) : min(
+                                    com[0] + mask_size, 2048
+                                ),
+                                max(com[1] - mask_size, 0) : min(
+                                    com[1] + mask_size, 2048
+                                ),
+                            ]
+
+                            le = int(img_help.shape[0] / 2)
+                            ri = img_help.shape[0] - le
+                            up = int(img_help.shape[1] / 2)
+                            do = img_help.shape[1] - up
+                            img[
+                                mask_size - le : mask_size + ri,
+                                mask_size - up : mask_size + do,
+                                :,
+                            ] = img_help
+                            img = img.astype("uint8")
+
+                            #             break
+                            if not img.shape == (
+                                int(2 * mask_size),
+                                int(2 * mask_size),
+                                3,
+                            ):
+                                skipped += 1
+                                print(el)
+                                continue
+
+                            res_images.append(img)
+
+                    res_images = np.asarray(res_images)
+                    multi_imgs_y.append(
+                        classes[idresults[el]["results"][ids].split("_")[0]]
+                    )
+                    multi_imgs_x.append(res_images)
+            except KeyError:
+                continue
+
+    X = np.asarray(multi_imgs_x)
+    y = np.asarray(multi_imgs_y)
+
+    return X, y
+
+
+def load_vid(basepath, vid, idx, batch_size=10000):
+    videodata = skvideo.io.vread(basepath + vid + ".mp4", as_grey=False)
+    videodata = videodata[idx * batch_size : (idx + 1) * batch_size]
+    results_list = Parallel(
+        n_jobs=20, max_nbytes=None, backend="multiprocessing", verbose=40
+    )(delayed(mold_image)(image) for image in videodata)
+    results = {}
+    for idx, el in enumerate(results_list):
+        results[idx] = el
+
+    return results
+
+
+def vid_to_xy(video):
+    video = video.split("/")[-1].split("IDresults_")[-1].split(".np")[0]
+    vid = video.split(".npy")[0][:-2]
+    vidlist.append(vid)
+    idx = int(video.split(".npy")[0][-1:])
+    idx -= 1
+
+    idresults = np.load(
+        idresults_base + "IDresults_" + video + ".npy", allow_pickle=True
+    ).item()
+    pat = vid_basepath + vid + ".mp4"
+    print(pat)
+    vid = imageio.get_reader(pat, "ffmpeg")
+    #     vid = load_vid(vid_basepath,vid,idx)
+
+    _X, _y = idresults_to_training_recurrent(
+        idresults, fnames_base + video + "/", vid, idx, mask_size=mask_size
+    )
+
+    return [_X, _y]
 
 
 def main():
@@ -991,9 +977,5 @@ parser.add_argument(
     help="network used for evaluation",
 )
 
-
-# example shell command
-
-# python identification.py --config identification_config --network ours --operation train_primate --gpu 1 --video 20180124T115800-20180124T122800b_%T1
 if __name__ == "__main__":
     main()
