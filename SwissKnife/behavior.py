@@ -112,7 +112,7 @@ def train_behavior(
     return [acc, f1, corr], report
 
 
-def train_primate(config, results_sink):
+def train_primate(config, results_sink, shuffle):
 
     basepath = "/media/nexus/storage5/swissknife_data/primate/behavior/"
 
@@ -248,7 +248,7 @@ def train_primate(config, results_sink):
             dataloader.encode_labels()
         print("labels encoded")
 
-        if network == "shuffle":
+        if shuffle:
 
             res = list(dataloader.y_test)
             random.shuffle(res)
@@ -322,6 +322,7 @@ def main():
     gpu_name = args.gpu
     config_name = args.config_name
     network = args.network
+    shuffle = args.shuffle
 
     setGPU(K, gpu_name)
 
@@ -339,7 +340,7 @@ def main():
     if operation("train_primate"):
         config_name = "primate_final"
         config = load_config("../configs/behavior/primate/" + config_name)
-        train_primate(config=config, results_sink=results_sink)
+        train_primate(config=config, results_sink=results_sink, shuffle=shuffle)
     else:
         config = load_config(config_name)
         train_behavior(config=config, results_sink=results_sink)
@@ -378,6 +379,13 @@ parser.add_argument(
     type=str,
     default="ours",
     help="which network used for training",
+)
+parser.add_argument(
+    "--shuffle",
+    action="store",
+    dest="shuffle",
+    type=bool,
+    default=False,
 )
 
 if __name__ == "__main__":
