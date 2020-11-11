@@ -38,7 +38,6 @@ from SwissKnife.model import Model
 from sklearn import metrics
 
 
-
 video_train = [
     "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_1.npy",
     "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_2.npy",
@@ -501,7 +500,6 @@ def train_on_data(
     np.save(
         results_sink + "results_df", results, allow_pickle=True,
     )
-
 
 
 def idresults_to_training_recurrent(

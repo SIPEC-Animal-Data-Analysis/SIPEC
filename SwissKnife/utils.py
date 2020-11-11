@@ -408,7 +408,6 @@ class Metrics(keras.callbacks.Callback):
         X_val, y_val = self.validation_data[0], self.validation_data[1]
         y_val = np.where(y_val == 1)[1].astype(int)
 
-
         # old
         y_predict = self.model.predict(X_val)
         y_predict = np.argmax(y_predict, axis=-1).astype(int)

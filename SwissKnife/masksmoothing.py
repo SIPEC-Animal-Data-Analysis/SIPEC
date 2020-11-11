@@ -200,9 +200,7 @@ def main():
     # Load test video and process each frame as it is loaded
     start_time = time.process_time()
 
-    cap = cv2.VideoCapture(
-        "test.avi"
-    )
+    cap = cv2.VideoCapture("test.avi")
 
     # Initiation
     smooth_ids_list = []

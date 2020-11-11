@@ -87,13 +87,8 @@ def full_inference(
             continue
 
         if mask_matching:
-            # todo fix hack
-            # boxes = boxes[: ]
-            # masks = masks[:maskmatcher.max_ids]
-            # molded_img = molded_img[:maskmatcher.max_ids]
 
             if not idx == 0:
-                if idx == 2001:
                 mapping = maskmatcher.match_masks(
                     boxes[: maskmatcher.max_ids], results[-1]["boxes"]
                 )

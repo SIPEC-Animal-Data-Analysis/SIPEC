@@ -349,7 +349,6 @@ def main():
             "/20180115T150502-20180115T150902_%T1/"
         )
 
-
         results = np.load(results_path + "inference_results.npy", allow_pickle=True)
         # results_masks = load_dict(results_path + "inference_resulting_masks.pkl")
         print("data loaded")

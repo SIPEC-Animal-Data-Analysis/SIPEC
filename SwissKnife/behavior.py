@@ -26,14 +26,20 @@ from SwissKnife.utils import (
     get_callbacks,
     load_vgg_labels,
     loadVideo,
-    load_config, check_directory,
+    load_config,
+    check_directory,
 )
 from SwissKnife.dataloader import Dataloader
 from SwissKnife.model import Model
 
 
 def train_behavior(
-    dataloader, config, num_classes, encode_labels=True, class_weights=None, results_sink=results_sink,
+    dataloader,
+    config,
+    num_classes,
+    encode_labels=True,
+    class_weights=None,
+    results_sink=results_sink,
 ):
 
     print("data prepared!")
@@ -111,26 +117,18 @@ def train_primate(config, results_sink):
     basepath = "/media/nexus/storage5/swissknife_data/primate/behavior/"
 
     vids = [
-        basepath
-        + "fullvids_20180124T113800-20180124T115800_%T1_0.mp4",
-        basepath
-        + "fullvids_20180124T113800-20180124T115800_%T1_1.mp4",
-        basepath
-        + "20180116T135000-20180116T142000_social_complete.mp4",
-        basepath
-        + "20180124T115800-20180124T122800b_0_complete.mp4",
-        basepath
-        + "20180124T115800-20180124T122800b_1_complete.mp4",
+        basepath + "fullvids_20180124T113800-20180124T115800_%T1_0.mp4",
+        basepath + "fullvids_20180124T113800-20180124T115800_%T1_1.mp4",
+        basepath + "20180116T135000-20180116T142000_social_complete.mp4",
+        basepath + "20180124T115800-20180124T122800b_0_complete.mp4",
+        basepath + "20180124T115800-20180124T122800b_1_complete.mp4",
     ]
     all_annotations = [
         basepath + "20180124T113800-20180124T115800_0.csv",
         basepath + "20180124T113800-20180124T115800_1.csv",
-        basepath
-        + "20180116T135000-20180116T142000_social_complete.csv",
-        basepath
-        + "20180124T115800-20180124T122800b_0_complete.csv",
-        basepath
-        + "20180124T115800-20180124T122800b_1_complete.csv",
+        basepath + "20180116T135000-20180116T142000_social_complete.csv",
+        basepath + "20180124T115800-20180124T122800b_0_complete.csv",
+        basepath + "20180124T115800-20180124T122800b_1_complete.csv",
     ]
 
     all_vids = []
@@ -311,14 +309,10 @@ def train_primate(config, results_sink):
         print("DONE")
         print(report)
         np.save(
-            results_sink
-            + "results.npy",
-            res,
+            results_sink + "results.npy", res,
         )
         np.save(
-            results_sink
-            + "reports.npy",
-            report,
+            results_sink + "reports.npy", report,
         )
 
 
@@ -332,12 +326,12 @@ def main():
     setGPU(K, gpu_name)
 
     results_sink = (
-            "./results/primate/behavior"
-            + "_"
-            + network
-            + "_"
-            + datetime.now().strftime("%Y-%m-%d-%H_%M")
-            + "/"
+        "./results/primate/behavior"
+        + "_"
+        + network
+        + "_"
+        + datetime.now().strftime("%Y-%m-%d-%H_%M")
+        + "/"
     )
 
     check_directory(results_sink)

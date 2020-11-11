@@ -484,7 +484,6 @@ class SegModel:
             return results
 
 
-
 def evaluate_network(model_path, species, filter_masks=False, cv_folds=0):
     # load training and val data
     mean_aps = []
@@ -627,9 +626,7 @@ def train_on_data(
         experiment_name = "cv"
         import os.path
 
-        results_path = (
-            "./segmentation_logs/" + species + "_" + experiment_name + "/"
-        )
+        results_path = "./segmentation_logs/" + species + "_" + experiment_name + "/"
         results_fname = (
             results_path
             + "./results_array"
