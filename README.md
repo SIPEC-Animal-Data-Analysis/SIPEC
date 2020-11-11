@@ -86,7 +86,7 @@ Depending on modules to be trained, and the GPUs available the training can take
 
 For the annotation of segmentation as well as behavioral data we recommend the use of the VGG annotator, that can be found here:
 http://www.robots.ox.ac.uk/~vgg/software/via/
-
+<br>
 For the annotation of identification data we provide a GUI:
 https://github.com/damaggu/idtracking_gui
 
