@@ -505,18 +505,29 @@ def evaluate_network(model_path, species, filter_masks=False, cv_folds=0):
     print("mAP: ", str(np.mean(np.array(mean_aps))))
 
 
-def train_on_data_once(model_path, species, cv_folds, fold=0, fraction=None, debug=0):
-    # load training and val data
-    # dataset_train, dataset_val = get_segmentation_data(
-    #     species, cv_folds=cv_folds, fold=fold, fraction=fraction
-    # )
+def train_on_data_once(
+    model_path,
+    cv_folds,
+    frames_path=None,
+    annotations_path=None,
+    species=None,
+    fold=0,
+    fraction=None,
+    debug=0,
+):
+
     dataset_train, dataset_val = get_segmentation_data(
-        "mouse", cv_folds=cv_folds, fold=fold, fraction=fraction
+        frames_path=frames_path,
+        annotations_path=annotations_path,
+        name=species,
+        cv_folds=cv_folds,
+        fold=fold,
+        fraction=fraction,
     )
     # initiate mouse model
     model = SegModel(species)
     # initiate training
-    model.init_training(model_path=model_path, init_with="last")
+    model.init_training(model_path=model_path, init_with="coco")
     model.init_augmentation()
     # start training
     print("training on #NUM images : ", str(len(dataset_train.image_ids)))
@@ -584,6 +595,7 @@ def do_ablation(species, cv_folds, random_seed, fraction):
     np.save(results_fname, results, allow_pickle=True)
 
 
+# TODO: shorten
 def train_on_data(
     species, cv_folds, fraction=None, to_file=True, experiment="", fold=None
 ):
@@ -642,12 +654,15 @@ def train_on_data(
             results = list(np.load(results_fname, allow_pickle=True))
         else:
             results = [["random_seed", "data_fraction", "MEAN_AP"]]
-
         results.append([0, fraction, mean_aps])
         check_folder(results_path)
         np.save(results_fname, results, allow_pickle=True)
 
     return mean_aps
+
+
+def train_on_data_path(annotations, frames):
+    pass
 
 
 def main():
@@ -659,52 +674,63 @@ def main():
     fraction = args.fraction
     model_path = args.model_path
     fold = args.fold
+    annotations = args.annotations
+    frames = args.frames
 
     from keras import backend as K
 
     if gpu_name is not None:
         setGPU(K, gpu_name)
 
-    if operation == "train_primate":
-        # TODO: fix having random seed here as global argument
-        # TODO: shorten everything
-        set_random_seed(random_seed)
-        random.seed(random_seed)
-        train_on_data(
-            species="primate",
-            cv_folds=cv_folds,
-            to_file=True,
-            fold=fold,
-            fraction=fraction,
-        )
-    if operation == "train_mouse":
-        set_random_seed(random_seed)
-        random.seed(random_seed)
-        train_on_data(
-            species="mouse",
-            cv_folds=cv_folds,
-            to_file=True,
-            fold=fold,
-            fraction=fraction,
-        )
-    if operation == "mouse_ablation":
-        do_ablation(
-            species="mouse",
-            cv_folds=cv_folds,
-            random_seed=random_seed,
-            fraction=fraction,
-        )
-    if operation == "ineichen":
-        train_on_data(species="ineichen")
-    if operation == "jin":
-        train_on_data(species="jin")
-    if operation == "inference_primate":
-        inference_on_multi_animal_videos(species="primate")
-    if operation == "evaluate_network":
-        evaluate_network(model_path, "primate", cv_folds=5)
-    # TODO: pass video
-    if operation == "inference_mouse":
-        inference_for_single_mouse_videos()
+    # TODO: remove operations/replace with annot/frames and paths
+    # if operation == "train_primate":
+    #     # TODO: fix having random seed here as global argument
+    #     # TODO: shorten everything
+    #     set_random_seed(random_seed)
+    #     random.seed(random_seed)
+    #     train_on_data(
+    #         species="primate",
+    #         cv_folds=cv_folds,
+    #         to_file=True,
+    #         fold=fold,
+    #         fraction=fraction,
+    #     )
+    # if operation == "train_mouse":
+    #     set_random_seed(random_seed)
+    #     random.seed(random_seed)
+    #     train_on_data(
+    #         species="mouse",
+    #         cv_folds=cv_folds,
+    #         to_file=True,
+    #         fold=fold,
+    #         fraction=fraction,
+    #     )
+    # if operation == "mouse_ablation":
+    #     do_ablation(
+    #         species="mouse",
+    #         cv_folds=cv_folds,
+    #         random_seed=random_seed,
+    #         fraction=fraction,
+    #     )
+    # if operation == "ineichen":
+    #     train_on_data(species="ineichen")
+    # if operation == "jin":
+    #     train_on_data(species="jin")
+    # if operation == "inference_primate":
+    #     inference_on_multi_animal_videos(species="primate")
+    # if operation == "evaluate_network":
+    #     evaluate_network(model_path, "primate", cv_folds=5)
+    # # TODO: pass video
+    # if operation == "inference_mouse":
+    #     inference_for_single_mouse_videos()
+
+    train_on_data_once(
+        species="mouse",
+        model_path=model_path,
+        annotations_path=annotations,
+        frames_path=frames,
+        cv_folds=cv_folds,
+    )
 
     print("done")
 
@@ -724,7 +750,7 @@ parser.add_argument(
     dest="operation",
     type=str,
     default="train_primate",
-    help="standard training options for SIPEC data",
+    help="deprecated - only for reproduction of SIPEC paper results",
 )
 parser.add_argument(
     "--gpu",
@@ -734,7 +760,6 @@ parser.add_argument(
     default=None,
     help="filename of the video to be processed (has to be a segmented one)",
 )
-
 parser.add_argument(
     "--random_seed",
     action="store",
@@ -743,7 +768,6 @@ parser.add_argument(
     default=None,
     help="random seed for this experiment",
 )
-
 parser.add_argument(
     "--fraction",
     action="store",
@@ -752,7 +776,6 @@ parser.add_argument(
     default=None,
     help="fraction to use for training",
 )
-
 parser.add_argument(
     "--model_path",
     action="store",
@@ -761,7 +784,6 @@ parser.add_argument(
     default=None,
     help="model path for evaluation",
 )
-
 parser.add_argument(
     "--fold",
     action="store",
@@ -769,6 +791,22 @@ parser.add_argument(
     type=int,
     default=None,
     help="fold for crossvalidation",
+)
+parser.add_argument(
+    "--annotations",
+    action="store",
+    dest="annotations",
+    type=str,
+    default=None,
+    help="path for annotations from VGG annotator",
+)
+parser.add_argument(
+    "--frames",
+    action="store",
+    dest="frames",
+    type=str,
+    default=None,
+    help="path to folder with annotated frames",
 )
 
 if __name__ == "__main__":

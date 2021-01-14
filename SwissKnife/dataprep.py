@@ -186,9 +186,8 @@ def prepareData(
     return dataset_train, dataset_val
 
 
-def get_segmentation_data(name, fold=None, cv_folds=None, fraction=None):
-    print("load data")
-    # prepare path, such that roughly 0.2 of frames are in "val" folder, rest in "train" folder
+def get_SIPEC_reproduction_data(name):
+
     if name == "primate":
         # prepare path, such that roughly 0.2 of frames are in "val" folder, rest in "train" folder
         if cv_folds == 0:
@@ -222,6 +221,24 @@ def get_segmentation_data(name, fold=None, cv_folds=None, fraction=None):
     else:
         raise NotImplementedError("Dataset not implemented")
 
+    return frames_path, annotations_path
+
+
+# TODO: cleanup
+def get_segmentation_data(
+    frames_path=None,
+    annotations_path=None,
+    name=None,
+    fold=None,
+    cv_folds=None,
+    fraction=None,
+):
+    #TODO: fix here for existing paths
+    print("load data")
+    # if name:
+    #     frames_path, annotations_path = get_SIPEC_reproduction_data(name)
+
+    # prepare path, such that roughly 0.2 of frames are in "val" folder, rest in "train" folder
     dataset_train, dataset_val = prepareData(
         frames_path,
         annotations_path,
