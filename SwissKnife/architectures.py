@@ -42,6 +42,11 @@ from keras.models import Sequential
 
 
 def posenet_mouse(input_shape, num_classes):
+    """Mouse pose estimation architecture.
+    Args:
+        input_shape:Input shape for the network.
+        num_classes:Number of classes for recognition or number of landmarks.
+    """
     recognition_model = Xception(
         include_top=False, input_shape=input_shape, pooling="avg", weights="imagenet",
     )
@@ -154,10 +159,12 @@ def posenet_mouse(input_shape, num_classes):
     return model
 
 
-def posenet_primate(input_shape, num_classes):
-    # recognition_model = DenseNet201(
-    #     include_top=False, input_shape=input_shape, pooling="avg", weights="imagenet",
-    # )
+def posenet_primate(input_shape, num_classes):    # recognition_model = DenseNet201(
+    """Primate pose estimation architecture.
+    Args:
+        input_shape:Input shape for the network.
+        num_classes:Number of classes for recognition or number of landmarks.
+    """
     recognition_model = ResNet101(
         include_top=False, input_shape=input_shape, pooling="avg", weights="imagenet",
     )
@@ -312,6 +319,10 @@ def posenet_primate(input_shape, num_classes):
 
 
 def classification_scratch(input_shape):
+    """
+    Args:
+        input_shape:
+    """
     activation = "tanh"
     dropout = 0.3
     # conv model
@@ -376,6 +387,10 @@ def classification_scratch(input_shape):
 
 
 def classification_large(input_shape):
+    """
+    Args:
+        input_shape:
+    """
     activation = "tanh"
     dropout = 0.1
     # conv model
@@ -445,6 +460,11 @@ def classification_large(input_shape):
 
 
 def classification_small(input_shape, num_classes):
+    """
+    Args:
+        input_shape:
+        num_classes:
+    """
     dropout = 0.33
     # conv model
 
@@ -503,6 +523,11 @@ def classification_small(input_shape, num_classes):
 
 
 def dlc_model_sturman(input_shape, num_classes):
+    """Model that implements behavioral classification based on Deeplabcut generated features as in Sturman et al.
+    Args:
+        input_shape:
+        num_classes:Number of behaviors to classify.
+    """
     model = Sequential()
 
     model.add(
@@ -525,6 +550,11 @@ def dlc_model_sturman(input_shape, num_classes):
 
 
 def dlc_model(input_shape, num_classes):
+    """
+    Args:
+        input_shape:
+        num_classes:
+    """
     dropout = 0.3
 
     model = Sequential()
@@ -554,6 +584,13 @@ def dlc_model(input_shape, num_classes):
 def recurrent_model_old(
     recognition_model, recurrent_input_shape, classes=4, recurrent_dropout=None
 ):
+    """
+    Args:
+        recognition_model:
+        recurrent_input_shape:
+        classes:
+        recurrent_dropout:
+    """
     input_sequences = Input(shape=recurrent_input_shape)
     sequential_model_helper = TimeDistributed(recognition_model)(input_sequences)
 
@@ -600,6 +637,12 @@ def recurrent_model_old(
 def recurrent_model_tcn(
     recognition_model, recurrent_input_shape, classes=4,
 ):
+    """BehaviorNet architecture for behavioral classification based on temporal convolution architecture (TCN).
+    Args:
+        recognition_model:Pretrained recognition model that extracts features for individual frames.
+        recurrent_input_shape:
+        classes:Number of behaviors to recognise.
+    """
     input_sequences = Input(shape=recurrent_input_shape)
     sequential_model_helper = TimeDistributed(recognition_model)(input_sequences)
     k = BatchNormalization()(sequential_model_helper)
@@ -681,6 +724,13 @@ def recurrent_model_tcn(
 def recurrent_model_lstm(
     recognition_model, recurrent_input_shape, classes=4, recurrent_dropout=None
 ):
+    """
+    Args:
+        recognition_model:
+        recurrent_input_shape:
+        classes:
+        recurrent_dropout:
+    """
     input_sequences = Input(shape=recurrent_input_shape)
     sequential_model_helper = TimeDistributed(recognition_model)(input_sequences)
     k = BatchNormalization()(sequential_model_helper)
@@ -727,6 +777,13 @@ def recurrent_model_lstm(
 
 def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True):
     # TODO: adaptiv size
+    """
+    Args:
+        model_name:
+        input_shape:
+        num_classes:
+        fix_layers:
+    """
     if model_name == "xception":
         recognition_model = Xception(
             include_top=False,
@@ -835,6 +892,11 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
 
 
 def idtracker_ai(input_shape, classes):
+    """
+    Args:
+        input_shape:
+        classes:
+    """
     activation = "tanh"
     dropout = 0.2
     # conv model
@@ -890,6 +952,11 @@ def idtracker_ai(input_shape, classes):
 
 
 def SkipConNet(x_train, dropout):
+    """
+    Args:
+        x_train:
+        dropout:
+    """
     inputs = Input(shape=(x_train.shape[1], 1))
 
     dout = dropout
