@@ -35,6 +35,12 @@ from SwissKnife.dataprep import get_segmentation_data
 
 # TODO: include validation image that network detects new Ground truth!!
 def mold_image(img, config=None, dimension=None):
+    """
+    Args:
+        img:
+        config:
+        dimension:
+    """
     if config:
         image, window, scale, padding, crop = utils.resize_image(
             img[:, :, :],
@@ -53,6 +59,12 @@ def mold_image(img, config=None, dimension=None):
 
 
 def mold_video(video, dimension, n_jobs=40):
+    """
+    Args:
+        video:
+        dimension:
+        n_jobs:
+    """
     results = Parallel(
         n_jobs=n_jobs, max_nbytes=None, backend="multiprocessing", verbose=40
     )(delayed(mold_image)(image, dimension=dimension) for image in video)
@@ -167,6 +179,10 @@ class MaskFilter:
 
 class SegModel:
     def __init__(self, species):
+        """Main class for a segmentation model used for training and inference.
+        Args:
+            species:Species to initialize parameters with. "mouse" and "primate" are available.
+        """
         self.species = species
         if self.species == "mouse":
             self.config = MouseConfig()
@@ -193,6 +209,11 @@ class SegModel:
         pass
 
     def train(self, dataset_train, dataset_val):
+        """Train the segmentation network.
+        Args:
+            dataset_train:
+            dataset_val:
+        """
         if self.species == "primate":
             self.model.train(
                 dataset_train,
@@ -306,7 +327,11 @@ class SegModel:
             )
 
     def init_augmentation(self):
-
+        """Initializes the augmentation for segmentation network training, different default levels are available.
+        Args:
+            dataset_train:
+            dataset_val:
+        """
         if self.species == "mouse" or self.species == "ineichen":
             sometimes = lambda aug: iaa.Sometimes(0.5, aug)
             self.augmentation = iaa.Sequential(
@@ -359,6 +384,11 @@ class SegModel:
             )
 
     def init_training(self, model_path, init_with="coco"):
+        """Initialized training of a new or existing segmentation network.
+        Args:
+            model_path:Path to segmentation network, either existing or desired path for new model.
+            init_with:The initializations "imagenet" or "coco" are available for new segmentation models and "last" if retraining existing network.
+        """
         self.model_path = model_path
         # Create model in training mode
         self.model = modellib.MaskRCNN(
@@ -394,12 +424,14 @@ class SegModel:
                 by_name=True,
             )
 
+    # FIXME: remove hardcoing
+    # functioning primate model
+    # path = '/home/nexus/mask_rcnn_primate_0119.h5'
     def set_inference(self, model_path=None):
-        # FIXME: remove hardcoing
-
-        # functioning primate model
-        # path = '/home/nexus/mask_rcnn_primate_0119.h5'
-
+        """Set segmentation model to inference.
+        Args:
+            model_path:
+        """
         if "mask_rcnn" in model_path:
             helper_path = model_path.split("mask_rcnn")[0]
             self.model = modellib.MaskRCNN(
@@ -418,7 +450,11 @@ class SegModel:
         return model_path
 
     def evaluate(self, dataset_val, maskfilter=None):
-
+        """Evaluate segmentation model on a given validation set.
+        Args:
+            dataset_val:Validation dataset.
+            maskfilter:
+        """
         image_ids = dataset_val.image_ids
 
         APs = []
@@ -449,6 +485,12 @@ class SegModel:
         return mean_ap
 
     def detect_image(self, img, mold=True, verbose=1):
+        """
+        Args:
+            img:
+            mold:
+            verbose:
+        """
         if mold:
             # img = mold_image(img, self.inference_config, dimension=2048)
             img = mold_image(img, self.inference_config, dimension=1024)
@@ -456,6 +498,12 @@ class SegModel:
         return img, result[0]["masks"], result[0]["rois"], result[0]["scores"]
 
     def detect_image_original(self, img, mold=True, verbose=1):
+        """
+        Args:
+            img:
+            mold:
+            verbose:
+        """
         if mold:
             img = mold_image(img, self.inference_config)
         result = self.model.detect([img], verbose=verbose)
@@ -463,6 +511,11 @@ class SegModel:
 
     def detect_video(self, video, results_sink=None):
 
+        """
+        Args:
+            video:
+            results_sink:
+        """
         videodata = mold_video(video, self.inference_config)
 
         results = []
@@ -486,6 +539,13 @@ class SegModel:
 
 def evaluate_network(model_path, species, filter_masks=False, cv_folds=0):
     # load training and val data
+    """
+    Args:
+        model_path:
+        species:
+        filter_masks:
+        cv_folds:
+    """
     mean_aps = []
     for fold in range(cv_folds + 1):
         dataset_train, dataset_val = get_segmentation_data(
@@ -516,6 +576,17 @@ def train_on_data_once(
     debug=0,
 ):
 
+    """
+    Args:
+        model_path:
+        cv_folds:
+        frames_path:
+        annotations_path:
+        species:
+        fold:
+        fraction:
+        debug:
+    """
     dataset_train, dataset_val = get_segmentation_data(
         frames_path=frames_path,
         annotations_path=annotations_path,
@@ -561,6 +632,13 @@ def train_on_data_once(
 
 
 def do_ablation(species, cv_folds, random_seed, fraction):
+    """
+    Args:
+        species:
+        cv_folds:
+        random_seed:
+        fraction:
+    """
     experiment_name = "ablation"
 
     import os.path
@@ -600,6 +678,15 @@ def train_on_data(
     species, cv_folds, fraction=None, to_file=True, experiment="", fold=None
 ):
     # path, where to save trained model
+    """
+    Args:
+        species:
+        cv_folds:
+        fraction:
+        to_file:
+        experiment:
+        fold:
+    """
     model_path = (
         "/media/nexus/storage5/swissknife_results/segmentation/"
         + species
@@ -662,6 +749,11 @@ def train_on_data(
 
 
 def train_on_data_path(annotations, frames):
+    """
+    Args:
+        annotations:
+        frames:
+    """
     pass
 
 
