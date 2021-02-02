@@ -15,9 +15,16 @@ from SwissKnife.utils import get_optimizer
 # TODO: import these DL utils into this class
 from SwissKnife.utils import train_model
 
-
+# TODO: presets for parameters
+# TODO: make sure modulization is correct -> rather have for each task one inheretance model
 class Model:
     def __init__(self, config=None):
+        """Initialize model with default parameters, which can be updated
+        through config.
+
+        Args:
+            config: Config for updated hyperparameters.
+        """
         self.architecture = ""
         self.callbacks = []
         self.scheduler_factor = 1.1
@@ -39,9 +46,20 @@ class Model:
             self.update_params(config)
 
     def load_recognition_model(self, path):
+        """Loads recognition model.
+
+        Args:
+            path: Path to existing recognition model.
+        """
         self.recognition_model = load_model(path)
 
     def set_recognition_model(self, architecture, input_shape, num_classes):
+        """
+        Args:
+            architecture:
+            input_shape:
+            num_classes:
+        """
         if architecture in [
             "densenet",
             "resnet",
@@ -61,6 +79,12 @@ class Model:
             raise NotImplementedError
 
     def set_sequential_model(self, architecture, input_shape, num_classes):
+        """
+        Args:
+            architecture:
+            input_shape:
+            num_classes:
+        """
         if architecture == "tcn":
             self.sequential_model = recurrent_model_tcn(
                 self.recognition_model, input_shape, classes=num_classes,
@@ -75,6 +99,10 @@ class Model:
         self.augmentation = None
 
     def train_recognition_network(self, dataloader):
+        """
+        Args:
+            dataloader:
+        """
         self.recognition_model, self.recognition_model_history = train_model(
             self.recognition_model,
             self.optim,
@@ -90,6 +118,10 @@ class Model:
         )
 
     def train_sequential_network(self, dataloader):
+        """
+        Args:
+            dataloader:
+        """
         self.sequential_model, self.sequential_model_history = train_model(
             self.sequential_model,
             self.optim,
@@ -105,6 +137,12 @@ class Model:
         )
 
     def predict(self, data, model="recognition", threshold=None):
+        """
+        Args:
+            data:
+            model:
+            threshold:
+        """
         if model == "recognition":
             # TODO: implement recognition vs sequential
             if len(data.shape) == 3:
@@ -127,6 +165,10 @@ class Model:
 
     def predict_sequential(self, data):
         # TODO: implement recognition vs sequential
+        """
+        Args:
+            data:
+        """
         if len(data.shape) == 3:
             prediction = self.sequential_model.predict(np.expand_dims(data, axis=0))
             return np.argmax(prediction)
@@ -146,6 +188,10 @@ class Model:
         raise NotImplementedError
 
     def fix_recognition_layers(self, num=None):
+        """
+        Args:
+            num:
+        """
         if num is not None:
             for layer in self.recognition_model.layers[:num]:
                 layer.trainable = False
@@ -158,9 +204,18 @@ class Model:
         self.recognition_model.layers.pop()
 
     def set_optimizer(self, name, lr=0.00035):
+        """
+        Args:
+            name:
+            lr:
+        """
         self.optim = get_optimizer(name, lr)
 
     def scheduler(self, epoch):
+        """
+        Args:
+            epoch:
+        """
         lr = self.scheduler_lr
         factor = self.scheduler_factor
         new_lr = lr / np.power(factor, epoch)
@@ -177,15 +232,33 @@ class Model:
         self.callbacks.append(lr_callback)
 
     def add_callbacks(self, callbacks):
+        """
+        Args:
+            callbacks:
+        """
         for callback in callbacks:
             self.callbacks.append(callback)
 
     def set_augmentation(self, augmentation):
+        """
+        Args:
+            augmentation:
+        """
         self.augmentation = augmentation
 
     def set_class_weight(self, class_weight):
+        """
+        Args:
+            class_weight:
+        """
         self.class_weight = class_weight
 
+    def update_params(self, config):
+        """
+        Args:
+            config:
+        """
+        pass
 
 # TODO: finish IdNet here
 # class IdNet(Model):

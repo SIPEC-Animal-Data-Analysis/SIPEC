@@ -2329,7 +2329,7 @@ class MaskRCNN():
 			# All layers
 			"all": ".*",
 		}
-		if layers in layer_regex.keys():
+		if layers in layer_regex:
 			layers = layer_regex[layers]
 
 		# Data generators

@@ -773,9 +773,6 @@ def main():
         print("setting gpu")
         setGPU(K, gpu_name)
 
-    config_name = config_name
-    print(config_name)
-
     config = load_config("../configs/identification/" + config_name)
 
     random_seed = config["random_seed"]

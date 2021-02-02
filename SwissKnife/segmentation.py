@@ -29,6 +29,8 @@ from SwissKnife.utils import (
     clearMemory,
 )
 
+from keras import backend as K
+
 # TODO: fix this import bug here
 from SwissKnife.dataprep import get_segmentation_data
 
@@ -214,106 +216,41 @@ class SegModel:
             dataset_train:
             dataset_val:
         """
-        if self.species == "primate":
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                learning_rate=self.config.LEARNING_RATE,
-                epochs=3,
-                layers="heads",
-                augmentation=self.augmentation,
-            )
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                learning_rate=self.config.LEARNING_RATE,
-                epochs=5,
-                layers="5+",
-                augmentation=self.augmentation,
-            )
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                learning_rate=self.config.LEARNING_RATE,
-                epochs=8,
-                layers="4+",
-                augmentation=self.augmentation,
-            )
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                learning_rate=self.config.LEARNING_RATE,
-                epochs=10,
-                layers="3+",
-                augmentation=self.augmentation,
-            )
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                # learning_rate=self.config.LEARNING_RATE / 25,
-                learning_rate=self.config.LEARNING_RATE / 5,
-                # epochs=10,
-                epochs=60,
-                layers="all",
-                augmentation=self.augmentation,
-            )
 
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                # learning_rate=self.config.LEARNING_RATE / 25,
-                learning_rate=self.config.LEARNING_RATE / 10,
-                # epochs=10,
-                epochs=100,
-                layers="all",
-                augmentation=self.augmentation,
-            )
-        ###
+        # TODO:modulefy me
+        training_params_dict_primate = [[3, 'heads', 1.0], [5, '5+', 1.0], [8, '4+', 1.0], [10, '3+', 1.0],
+                                        [60, 'all', 5.0], [100, 'all', 10.0]]
+
+        training_params_dict_mouse = [[3, 'heads', 1.0], [5, '5+', 1.0], [8, '4+', 1.0], [10, '3+', 1.0],
+                                        [100, 'all', 5.0]]
+
+        if self.species == "primate":
+            for training_params in training_params_dict_primate:
+                epochs, layers, lr_modifier = training_params
+
+                self.model.train(
+                    dataset_train,
+                    dataset_val,
+                    learning_rate=self.config.LEARNING_RATE/lr_modifier,
+                    epochs=epochs,
+                    layers=layers,
+                    augmentation=self.augmentation,
+                )
+            ###
 
         #  mouse
         if self.species == "mouse" or self.species == "ineichen":
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                learning_rate=self.config.LEARNING_RATE,
-                # epochs=1,
-                epochs=3,
-                layers="heads",
-                augmentation=self.augmentation,
-            )
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                learning_rate=self.config.LEARNING_RATE,
-                epochs=5,
-                layers="5+",
-                augmentation=self.augmentation,
-            )
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                learning_rate=self.config.LEARNING_RATE,
-                epochs=8,
-                layers="4+",
-                augmentation=self.augmentation,
-            )
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                learning_rate=self.config.LEARNING_RATE,
-                epochs=10,
-                layers="3+",
-                augmentation=self.augmentation,
-            )
-            self.model.train(
-                dataset_train,
-                dataset_val,
-                learning_rate=self.config.LEARNING_RATE / 5,
-                # epochs=1,
-                epochs=100,
-                layers="all",
-                augmentation=self.augmentation,
-            )
+            for training_params in training_params_dict_mouse:
+                epochs, layers, lr_modifier = training_params
+
+                self.model.train(
+                    dataset_train,
+                    dataset_val,
+                    learning_rate=self.config.LEARNING_RATE/lr_modifier,
+                    epochs=epochs,
+                    layers=layers,
+                    augmentation=self.augmentation,
+                )
 
         if self.species == "test":
             self.model.train(
@@ -564,15 +501,16 @@ def evaluate_network(model_path, species, filter_masks=False, cv_folds=0):
     print("overall aps", mean_aps)
     print("mAP: ", str(np.mean(np.array(mean_aps))))
 
-
+#TODO: change cv folds to None default
 def train_on_data_once(
     model_path,
-    cv_folds,
+    cv_folds=0,
     frames_path=None,
     annotations_path=None,
     species=None,
     fold=0,
     fraction=None,
+    perform_evaluation=False,
     debug=0,
 ):
 
@@ -604,9 +542,10 @@ def train_on_data_once(
     print("training on #NUM images : ", str(len(dataset_train.image_ids)))
     model.train(dataset_train, dataset_val)
     # evaluate model
-    model = SegModel(species)
-    model_path = model.set_inference(model_path=model_path)
-    mean_ap = model.evaluate(dataset_val)
+    if perform_evaluation:
+        model = SegModel(species)
+        model_path = model.set_inference(model_path=model_path)
+        mean_ap = model.evaluate(dataset_val)
 
     # if species == "primate" or species == "mouse":
     #     debug = 1
@@ -759,17 +698,16 @@ def train_on_data_path(annotations, frames):
 
 def main():
     args = parser.parse_args()
-    operation = args.operation
     gpu_name = args.gpu
     cv_folds = args.cv_folds
-    random_seed = args.random_seed
-    fraction = args.fraction
     model_path = args.model_path
-    fold = args.fold
     annotations = args.annotations
     frames = args.frames
+    operation = args.operation
+    fraction = args.fraction
+    fold = args.fold
 
-    from keras import backend as K
+    set_random_seed(42)
 
     if gpu_name is not None:
         setGPU(K, gpu_name)
@@ -851,14 +789,6 @@ parser.add_argument(
     type=str,
     default=None,
     help="filename of the video to be processed (has to be a segmented one)",
-)
-parser.add_argument(
-    "--random_seed",
-    action="store",
-    dest="random_seed",
-    type=int,
-    default=None,
-    help="random seed for this experiment",
 )
 parser.add_argument(
     "--fraction",
