@@ -16,11 +16,11 @@ import numpy as np
 import imgaug.augmenters as iaa
 
 ## adapted from matterport Mask_RCNN implementation
-from SwissKnife.mrcnn.config import Config
-import SwissKnife.mrcnn.model as modellib
-from SwissKnife.mrcnn import utils
+from sipec.mrcnn.config import Config
+import sipec.mrcnn.model as modellib
+from sipec.mrcnn import utils
 
-from SwissKnife.utils import (
+from sipec.utils import (
     setGPU,
     check_folder,
     save_dict,
@@ -32,7 +32,7 @@ from SwissKnife.utils import (
 from keras import backend as K
 
 # TODO: fix this import bug here
-from SwissKnife.dataprep import get_segmentation_data
+from sipec.dataprep import get_segmentation_data
 
 
 # TODO: include validation image that network detects new Ground truth!!

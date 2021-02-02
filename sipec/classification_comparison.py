@@ -18,15 +18,15 @@ from imgaug import augmenters as iaa
 import tensorflow as tf
 from keras import backend as K
 
-from SwissKnife.datasets.mouse import MouseDataset
-from SwissKnife.architectures import (
+from sipec.datasets.mouse import MouseDataset
+from sipec.architectures import (
     dlc_model,
     classification_small,
     recurrent_model_tcn,
     pretrained_recognition,
     dlc_model_sturman,
 )
-from SwissKnife.utils import (
+from sipec.utils import (
     Metrics,
     train_model,
     eval_model,
@@ -40,7 +40,7 @@ from SwissKnife.utils import (
     save_dict,
     load_dict,
 )
-from SwissKnife.dataloader import Dataloader
+from sipec.dataloader import Dataloader
 
 
 def run_experiment(

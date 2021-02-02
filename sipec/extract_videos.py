@@ -8,10 +8,10 @@ from tqdm import tqdm
 import os
 
 
-from SwissKnife.poseestimation import dilate_mask
+from sipec.poseestimation import dilate_mask
 from scipy.ndimage.measurements import center_of_mass
-from SwissKnife.utils import apply_to_mask
-from SwissKnife.segmentation import SegModel, mold_video
+from sipec.utils import apply_to_mask
+from sipec.segmentation import SegModel, mold_video
 
 from joblib import Parallel, delayed
 
@@ -80,7 +80,7 @@ for video in videos:
 
     results = results[40000:]
 
-    from SwissKnife.utils import coords_to_masks, loadVideo
+    from sipec.utils import coords_to_masks, loadVideo
 
     results_masks = []
 

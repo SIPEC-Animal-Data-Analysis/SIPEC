@@ -5,15 +5,15 @@ import numpy as np
 import tensorflow as tf
 from keras.engine.saving import load_model
 
-from SwissKnife.architectures import (
+from sipec.architectures import (
     pretrained_recognition,
     recurrent_model_tcn,
     recurrent_model_lstm,
 )
-from SwissKnife.utils import get_optimizer
+from sipec.utils import get_optimizer
 
 # TODO: import these DL utils into this class
-from SwissKnife.utils import train_model
+from sipec.utils import train_model
 
 # TODO: presets for parameters
 # TODO: make sure modulization is correct -> rather have for each task one inheretance model

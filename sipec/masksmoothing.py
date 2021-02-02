@@ -13,8 +13,8 @@ import cv2
 
 from shapely.geometry import Polygon
 
-from SwissKnife.segmentation import InferenceConfigPrimate, SegModel
-from SwissKnife.utils import setGPU, rescale_img, detect_primate, masks_to_coms
+from sipec.segmentation import InferenceConfigPrimate, SegModel
+from sipec.utils import setGPU, rescale_img, detect_primate, masks_to_coms
 
 
 class MaskMatcher:

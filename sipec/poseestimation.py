@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 
 ## adapted from matterport Mask_RCNN implementation
-from SwissKnife.mrcnn import utils
+from sipec.mrcnn import utils
 
 import numpy as np
 from tqdm import tqdm
@@ -21,16 +21,16 @@ import tensorflow as tf
 
 import imgaug.augmenters as iaa
 
-from SwissKnife.architectures import posenet_primate, posenet_mouse
+from sipec.architectures import posenet_primate, posenet_mouse
 
-from SwissKnife.utils import (
+from sipec.utils import (
     setGPU,
     load_config,
     set_random_seed,
     check_directory,
     get_tensorbaord_callback,
 )
-from SwissKnife.augmentations import primate_identification
+from sipec.augmentations import primate_identification
 
 import numpy as np
 import keras

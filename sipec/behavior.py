@@ -10,7 +10,7 @@ import pandas as pd
 import random
 import datetime
 
-from SwissKnife.architectures import classification_small
+from sipec.architectures import classification_small
 
 from argparse import ArgumentParser
 import keras.backend as K
@@ -20,7 +20,7 @@ from sklearn import metrics
 from scipy.stats import pearsonr
 from sklearn.model_selection import StratifiedKFold
 
-from SwissKnife.utils import (
+from sipec.utils import (
     setGPU,
     Metrics,
     get_callbacks,
@@ -29,8 +29,8 @@ from SwissKnife.utils import (
     load_config,
     check_directory,
 )
-from SwissKnife.dataloader import Dataloader
-from SwissKnife.model import Model
+from sipec.dataloader import Dataloader
+from sipec.model import Model
 
 
 def train_behavior(
