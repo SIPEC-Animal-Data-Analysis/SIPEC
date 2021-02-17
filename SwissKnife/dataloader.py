@@ -9,6 +9,28 @@ from tqdm import tqdm
 
 
 def create_dataset(dataset, look_back=5, oneD=False):
+    # """Create a recurrent dataset from array.
+    # Args:
+    #     dataset: Numpy/List of dataset.
+    #     look_back: Number of future/past timepoints to add to current timepoint.
+    #     oneD: Boolean flag whether data is one dimensional or not.
+    # """
+    """Summary line.
+
+    Extended description of function.
+
+    Parameters
+    ----------
+    arg1 : int
+        Description of arg1
+    arg2 : str
+        Description of arg2
+
+    Returns
+    -------
+    bool
+        dataset
+    """
     dataX = []
     print("creating recurrency")
     for i in tqdm(range(look_back, len(dataset) - look_back)):
@@ -35,6 +57,17 @@ class Dataloader:
         dlc_test=None,
     ):
 
+        """
+        Args:
+            x_train:
+            y_train:
+            x_test:
+            y_test:
+            look_back:
+            with_dlc:
+            dlc_train:
+            dlc_test:
+        """
         self.with_dlc = with_dlc
         self.dlc_train = dlc_train
         self.dlc_test = dlc_test
@@ -59,13 +92,26 @@ class Dataloader:
 
     # FIXME: nicer all
     def encode_label(self, label):
+        """
+        Args:
+            label:
+        """
         return self.label_encoder.transform(label)
 
     def decode_labels(self, labels):
+        """
+        Args:
+            labels:
+        """
         decoded = self.label_encoder.inverse_transform(labels)
         return decoded
 
     def categorize_data(self, num_classes, recurrent=False):
+        """
+        Args:
+            num_classes:
+            recurrent:
+        """
         self.y_train = self.y_train.astype(int)
         # TODO: parametrize num behaviors
         self.y_train = keras.utils.to_categorical(
@@ -109,6 +155,11 @@ class Dataloader:
             self.dlc_test /= self.std_dlc
 
     def create_dataset(dataset, oneD, look_back=5):
+        """
+        Args:
+            oneD:
+            look_back:
+        """
         dataX = []
         for i in range(look_back, len(dataset) - look_back):
             if oneD:
@@ -119,6 +170,10 @@ class Dataloader:
         return np.array(dataX)
 
     def create_recurrent_data(self, oneD=False):
+        """
+        Args:
+            oneD:
+        """
         self.x_train_recurrent = create_dataset(self.x_train, self.look_back, oneD=oneD)
         self.x_test_recurrent = create_dataset(self.x_test, self.look_back, oneD=oneD)
 
@@ -173,11 +228,12 @@ class Dataloader:
             )
 
     def decimate_labels(self, percentage, balanced=False):
+        """decimate labels to a given percentate percentage in [0,1] :return:
+
+        Args:
+            percentage:
+            balanced:
         """
-		decimate labels to a given percentate
-		percentage in [0,1]
-		:return:
-		"""
         if balanced:
             # TODO: do w class weights and probability in choice fcn
             raise NotImplementedError
@@ -199,6 +255,11 @@ class Dataloader:
     # old
     def reduce_labels(self, behavior, num_labels):
 
+        """
+        Args:
+            behavior:
+            num_labels:
+        """
         idx_behavior = self.y_train == behavior
         idx_behavior = np.asarray(idx_behavior)
         idx_behavior_true = np.where(idx_behavior == 1)[0]
@@ -218,6 +279,10 @@ class Dataloader:
         self.y_test[idx_behavior_true] = behavior
 
     def remove_behavior(self, behavior):
+        """
+        Args:
+            behavior:
+        """
         idx_behavior = self.y_test == behavior
         idx_behavior = np.asarray(idx_behavior)
         self.y_test[idx_behavior] = "none"
@@ -266,6 +331,10 @@ class Dataloader:
         self.x_test = np.asarray(self.x_test, dtype="uint8")
 
     def get_input_shape(self, recurrent=False):
+        """
+        Args:
+            recurrent:
+        """
         if recurrent:
             img_rows, img_cols = (
                 self.x_train_recurrent.shape[2],

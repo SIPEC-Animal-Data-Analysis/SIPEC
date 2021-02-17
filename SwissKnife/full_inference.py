@@ -7,8 +7,8 @@ import operator
 
 import cv2
 
-from sipec.masksmoothing import MaskMatcher
-from sipec.poseestimation import heatmap_to_scatter, custom_binary_crossentropy
+from SwissKnife.masksmoothing import MaskMatcher
+from SwissKnife.poseestimation import heatmap_to_scatter, custom_binary_crossentropy
 
 sys.path.append("../")
 
@@ -19,9 +19,9 @@ from keras.engine.saving import load_model
 import keras.backend as K
 import keras.losses
 
-# from sipec.poseestimation import heatmap_to_scatter
-from sipec.segmentation import SegModel, mold_video
-from sipec.utils import (
+# from SwissKnife.poseestimation import heatmap_to_scatter
+from SwissKnife.segmentation import SegModel, mold_video
+from SwissKnife.utils import (
     setGPU,
     loadVideo,
     masks_to_coms,

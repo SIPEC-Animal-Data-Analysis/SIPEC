@@ -13,11 +13,16 @@ import cv2
 
 from shapely.geometry import Polygon
 
-from sipec.segmentation import InferenceConfigPrimate, SegModel
-from sipec.utils import setGPU, rescale_img, detect_primate, masks_to_coms
+# from SwissKnife.segmentation import InferenceConfigPrimate, SegModel
+from SwissKnife.utils import setGPU, rescale_img, detect_primate, masks_to_coms
 
 
 class MaskMatcher:
+    """MaskMatcher class to match segmentation masks of temporally adjacent frames.
+
+    This class implements extensions of greedy masks matching algorithms.
+    """
+
     def __init__(self, max_ids=4):
         self.ids = None
         self.max_ids = max_ids
@@ -28,7 +33,20 @@ class MaskMatcher:
         return Polygon([(y1, x1), (y1, x2), (y2, x2), (y2, x1)])
 
     def iou(self, bbox1, bbox2):
-        """ Calculate intersection over union between two bboxes.
+        """Calculate the intersection over union (IoU) for two bounding boxes.
+
+        Parameters
+        ----------
+        bbox1 : bounding box
+            First bounding box for IoU calculation.
+
+        bbox2 : bounding box
+            Second bounding box for IoU calculation.
+
+        Returns
+        -------
+        float
+            IoU value.
         """
         p1 = self.bbox_to_polygon(bbox1)
         p2 = self.bbox_to_polygon(bbox2)
@@ -40,9 +58,23 @@ class MaskMatcher:
             return a / c
 
     def bbox_match(self, bboxes_cur, bboxes_pre):
-        """ Find all current bboxes which are identical to any in the previous frame.
-        Condition: a bbox_cur intersects with one and only bbox_pre
-            && it doesn't intersect with any other bbox_cur.
+        """Bounding box greedy matching algorithm.
+
+        Find all current bboxes which are identical to any in the previous frame.
+        Condition: a bbox_cur intersects with one and only bbox_pre && it doesn't intersect with any other bbox_cur.
+
+        Parameters
+        ----------
+        bboxes_cur : bounding boxes
+            Bounding boxes from current frame.
+
+        bboxes_pre : bounding boxes
+            Bounding boxes from previous frame.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the mapping of indices from matching bounding boxes of current frame to previous frame.
         """
         mapping_dict = {}
         for idx_cur, bbox_cur in enumerate(bboxes_cur):

@@ -4,13 +4,13 @@
 import sys
 import os
 
-from scipy.misc import imresize
+# from scipy.misc import imresize
 from tqdm import tqdm
 import pandas as pd
 import random
 import datetime
 
-from sipec.architectures import classification_small
+from SwissKnife.architectures import classification_small
 
 from argparse import ArgumentParser
 import keras.backend as K
@@ -20,7 +20,7 @@ from sklearn import metrics
 from scipy.stats import pearsonr
 from sklearn.model_selection import StratifiedKFold
 
-from sipec.utils import (
+from SwissKnife.utils import (
     setGPU,
     Metrics,
     get_callbacks,
@@ -29,8 +29,8 @@ from sipec.utils import (
     load_config,
     check_directory,
 )
-from sipec.dataloader import Dataloader
-from sipec.model import Model
+from SwissKnife.dataloader import Dataloader
+from SwissKnife.model import Model
 
 
 def train_behavior(
@@ -39,7 +39,7 @@ def train_behavior(
     num_classes,
     encode_labels=True,
     class_weights=None,
-    results_sink=results_sink,
+    # results_sink=results_sink,
 ):
 
     print("data prepared!")
@@ -381,11 +381,7 @@ parser.add_argument(
     help="which network used for training",
 )
 parser.add_argument(
-    "--shuffle",
-    action="store",
-    dest="shuffle",
-    type=bool,
-    default=False,
+    "--shuffle", action="store", dest="shuffle", type=bool, default=False,
 )
 
 if __name__ == "__main__":

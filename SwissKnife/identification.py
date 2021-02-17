@@ -17,9 +17,9 @@ from skimage.transform import rescale
 import tensorflow as tf
 from datetime import datetime
 
-from sipec.augmentations import primate_identification, mouse_identification
-from sipec.architectures import idtracker_ai
-from sipec.utils import (
+from SwissKnife.augmentations import primate_identification, mouse_identification
+from SwissKnife.architectures import idtracker_ai
+from SwissKnife.utils import (
     Metrics,
     setGPU,
     get_callbacks,
@@ -28,13 +28,13 @@ from sipec.utils import (
     load_config,
     loadVideo,
 )
-from sipec.dataprep import (
+from SwissKnife.dataprep import (
     get_primate_identification_data,
     generate_individual_mouse_data,
 )
-from sipec.segmentation import mold_image
-from sipec.dataloader import Dataloader
-from sipec.model import Model
+from SwissKnife.segmentation import mold_image
+from SwissKnife.dataloader import Dataloader
+from SwissKnife.model import Model
 from sklearn import metrics
 
 

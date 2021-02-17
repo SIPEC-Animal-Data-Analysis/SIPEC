@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 
 ## adapted from matterport Mask_RCNN implementation
-from sipec.mrcnn import utils
+from SwissKnife.mrcnn import utils
 
 import numpy as np
 from tqdm import tqdm
@@ -21,16 +21,16 @@ import tensorflow as tf
 
 import imgaug.augmenters as iaa
 
-from sipec.architectures import posenet_primate, posenet_mouse
+from SwissKnife.architectures import posenet_primate, posenet_mouse
 
-from sipec.utils import (
+from SwissKnife.utils import (
     setGPU,
     load_config,
     set_random_seed,
     check_directory,
     get_tensorbaord_callback,
 )
-from sipec.augmentations import primate_identification
+from SwissKnife.augmentations import primate_identification
 
 import numpy as np
 import keras
@@ -147,6 +147,22 @@ def heatmap_to_scatter(heatmaps, threshold=0.6e-9):
 
 
 def calculate_rmse(pred, true):
+    """Calculate Root Mean Squared Error (RMSE)
+
+    Calculate RMSE between predicted and ground truth landmarks for pose estimation.
+
+    Parameters
+    ----------
+    pred : np.ndarray
+        Coordinates of predicted landmarks of pose estimation network.
+    true : np.ndarray
+        Coordinates of ground truth landmarks of pose estimation network.
+
+    Returns
+    -------
+    keras.model
+        model
+    """
     rmses = []
 
     for idx, el in enumerate(pred):

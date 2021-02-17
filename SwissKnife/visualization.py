@@ -11,8 +11,8 @@ import sys
 
 sys.path.append("../")
 
-from sipec.segmentation import mold_video
-from sipec.utils import loadVideo, load_vgg_labels, load_dict, coords_to_masks
+from SwissKnife.segmentation import mold_video
+from SwissKnife.utils import loadVideo, load_vgg_labels, load_dict, coords_to_masks
 
 
 def visualize_labels_on_video_cv(video, labels, framerate_video, out_path):
@@ -57,11 +57,11 @@ def visualize_labels_on_video_cv(video, labels, framerate_video, out_path):
 
 
 def visualize_labels_on_video():
-    base_path = "/home/nexus/github/DeepLab-sipec/ineichen_data/data/"
+    base_path = "/home/nexus/github/DeepLab-SwissKnife/ineichen_data/data/"
     video_path = base_path + "BMA1_PE2_2018_12_19_084143.576.mp4"
     labels_path = base_path + "video_freezing_tempseg_only_BMA1_PE2.csv"
     outpath = (
-        "/home/nexus/github/DeepLab-sipec/ineichen_data/results/testowatz.avi"
+        "/home/nexus/github/DeepLab-SwissKnife/ineichen_data/results/testowatz.avi"
     )
 
     vid = loadVideo(video_path, greyscale=False)

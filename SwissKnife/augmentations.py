@@ -7,6 +7,20 @@ from imgaug import augmenters as iaa
 
 
 def primate_identification(level=2):
+    """Augmentation for primate identification.
+
+    This functions returns an imgaug augmentation object according, where the strength can be controlled by some integers values called level. This augmentaiton object is directly usable with one of SIPEC's networks during training.
+
+    Parameters
+    ----------
+    level : int
+        Level of augmentation, higher value indicates stronger image manipulations.
+
+    Returns
+    -------
+    imgaug.augmenters
+        augmenter
+    """
     if level == 0:
         sometimes = lambda aug: iaa.Sometimes(0.33, aug)
         augmentation = iaa.Sequential(
@@ -169,6 +183,20 @@ def primate_identification(level=2):
 
 
 def mouse_identification(level=2):
+    """Augmentation for mouse identification.
+
+    This functions returns an imgaug augmentation object according, where the strength can be controlled by some integers values called level. This augmentaiton object is directly usable with one of SIPEC's networks during training.
+
+    Parameters
+    ----------
+    level : int
+        Level of augmentation, higher value indicates stronger image manipulations.
+
+    Returns
+    -------
+    imgaug.augmenters
+        augmenter
+    """
     if level == 2:
         sometimes = lambda aug: iaa.Sometimes(0.5, aug)
         augmentation = iaa.Sequential(

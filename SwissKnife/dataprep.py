@@ -22,20 +22,20 @@ from scipy import misc
 
 from keras import backend as K
 
-# from sipec.segmentation import mold_image, MouseConfig, SegModel
-from sipec.dataloader import create_dataset
-from sipec.poseestimation import (
+# from SwissKnife.segmentation import mold_image, MouseConfig, SegModel
+from SwissKnife.dataloader import create_dataset
+from SwissKnife.poseestimation import (
     heatmaps_for_image_whole,
     bbox_mask,
     heatmap_mask,
     dilate_mask,
 )
 
-# from sipec.segmentation import SegModel, mold_image
-from sipec.utils import setGPU, loadVideo
+# from SwissKnife.segmentation import SegModel, mold_image
+from SwissKnife.utils import setGPU, loadVideo
 
 ## adapted from matterport Mask_RCNN implementation
-from sipec.mrcnn import utils
+from SwissKnife.mrcnn import utils
 
 
 # adapted from mrcnn (Waleed Abdulla, (c) 2017 Matterport, Inc.)
@@ -205,15 +205,15 @@ def get_SIPEC_reproduction_data(name):
             annotations_path = "/media/nexus/storage5/swissknife_data/mouse/segmentation_inputs/mouse_top_segmentation.json"
     elif name == "ineichen":
         frames_path = (
-            "/media/nexus/storage5/DeepLab-sipec/ineichen_data/frames_test/"
+            "/media/nexus/storage5/DeepLab-SwissKnife/ineichen_data/frames_test/"
         )
         annotations_path = (
-            "/media/nexus/storage5/DeepLab-sipec/ineichen_data/new_anno_image.json"
+            "/media/nexus/storage5/DeepLab-SwissKnife/ineichen_data/new_anno_image.json"
         )
     elif name == "jin":
-        frames_path = "/home/nexus/github/DeepLab-sipec/jin_data/merged/frames/"
+        frames_path = "/home/nexus/github/DeepLab-SwissKnife/jin_data/merged/frames/"
         annotations_path = (
-            "/home/nexus/github/DeepLab-sipec/jin_data/merged/annotations.json"
+            "/home/nexus/github/DeepLab-SwissKnife/jin_data/merged/annotations.json"
         )
     elif name == "jin_markus":
         frames_path = "/media/nexus/storage5/swissknife_data/primate/segmentation_inputs/markus_jin_merged/annotated_frames"
@@ -233,7 +233,7 @@ def get_segmentation_data(
     cv_folds=None,
     fraction=None,
 ):
-    #TODO: fix here for existing paths
+    # TODO: fix here for existing paths
     print("load data")
     # if name:
     #     frames_path, annotations_path = get_SIPEC_reproduction_data(name)

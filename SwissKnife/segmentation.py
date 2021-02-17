@@ -1,8 +1,19 @@
+"""
+segmentation.py
+====================================
+The core module of my example project
+"""
+
 # SIPEC
 # MARKUS MARKS
 # SEGMENTATION PART
 # This code is optimized from the Mask RCNN (Waleed Abdulla, (c) 2017 Matterport, Inc.) repository
 
+import sys
+import os
+
+sys.path.append(os.path.abspath("./"))
+sys.path.append(os.path.abspath("../"))
 
 import gc
 import random
@@ -16,11 +27,11 @@ import numpy as np
 import imgaug.augmenters as iaa
 
 ## adapted from matterport Mask_RCNN implementation
-from sipec.mrcnn.config import Config
-import sipec.mrcnn.model as modellib
-from sipec.mrcnn import utils
+from SwissKnife.mrcnn.config import Config
+import SwissKnife.mrcnn.model as modellib
+from SwissKnife.mrcnn import utils
 
-from sipec.utils import (
+from SwissKnife.utils import (
     setGPU,
     check_folder,
     save_dict,
@@ -32,7 +43,7 @@ from sipec.utils import (
 from keras import backend as K
 
 # TODO: fix this import bug here
-from sipec.dataprep import get_segmentation_data
+from SwissKnife.dataprep import get_segmentation_data
 
 
 # TODO: include validation image that network detects new Ground truth!!
@@ -122,7 +133,7 @@ class MouseConfig(Config):
     BATCH_SIZE = 1
     NUM_CLASSES = 2
     STEPS_PER_EPOCH = 100
-    DETECTION_MIN_CONFIDENCE = 0.9
+    DETECTION_MIN_CONFIDENCE = 0.5
     GPU_COUNT = 1
 
     LEARNING_RATE = 0.001
@@ -169,6 +180,14 @@ class InferencIneichenConfig(IneichenConfig):
 
 
 class MaskFilter:
+    """
+    Return the most important thing about a person.
+    Parameters
+    ----------
+    your_name
+        A string indicating the name of the person.
+    """
+
     def __init__(self):
         pass
 
@@ -180,6 +199,7 @@ class MaskFilter:
 
 
 class SegModel:
+    # TODO: give confidence as argument
     def __init__(self, species):
         """Main class for a segmentation model used for training and inference.
         Args:
@@ -218,11 +238,22 @@ class SegModel:
         """
 
         # TODO:modulefy me
-        training_params_dict_primate = [[3, 'heads', 1.0], [5, '5+', 1.0], [8, '4+', 1.0], [10, '3+', 1.0],
-                                        [60, 'all', 5.0], [100, 'all', 10.0]]
+        training_params_dict_primate = [
+            [3, "heads", 1.0],
+            [5, "5+", 1.0],
+            [8, "4+", 1.0],
+            [10, "3+", 1.0],
+            [60, "all", 5.0],
+            [100, "all", 10.0],
+        ]
 
-        training_params_dict_mouse = [[3, 'heads', 1.0], [5, '5+', 1.0], [8, '4+', 1.0], [10, '3+', 1.0],
-                                        [100, 'all', 5.0]]
+        training_params_dict_mouse = [
+            [3, "heads", 1.0],
+            [5, "5+", 1.0],
+            [8, "4+", 1.0],
+            [10, "3+", 1.0],
+            [100, "all", 5.0],
+        ]
 
         if self.species == "primate":
             for training_params in training_params_dict_primate:
@@ -231,7 +262,7 @@ class SegModel:
                 self.model.train(
                     dataset_train,
                     dataset_val,
-                    learning_rate=self.config.LEARNING_RATE/lr_modifier,
+                    learning_rate=self.config.LEARNING_RATE / lr_modifier,
                     epochs=epochs,
                     layers=layers,
                     augmentation=self.augmentation,
@@ -246,7 +277,7 @@ class SegModel:
                 self.model.train(
                     dataset_train,
                     dataset_val,
-                    learning_rate=self.config.LEARNING_RATE/lr_modifier,
+                    learning_rate=self.config.LEARNING_RATE / lr_modifier,
                     epochs=epochs,
                     layers=layers,
                     augmentation=self.augmentation,
@@ -501,7 +532,8 @@ def evaluate_network(model_path, species, filter_masks=False, cv_folds=0):
     print("overall aps", mean_aps)
     print("mAP: ", str(np.mean(np.array(mean_aps))))
 
-#TODO: change cv folds to None default
+
+# TODO: change cv folds to None default
 def train_on_data_once(
     model_path,
     cv_folds=0,

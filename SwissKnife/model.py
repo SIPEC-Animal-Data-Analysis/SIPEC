@@ -5,15 +5,16 @@ import numpy as np
 import tensorflow as tf
 from keras.engine.saving import load_model
 
-from sipec.architectures import (
+from SwissKnife.architectures import (
     pretrained_recognition,
     recurrent_model_tcn,
     recurrent_model_lstm,
 )
-from sipec.utils import get_optimizer
+from SwissKnife.utils import get_optimizer
 
 # TODO: import these DL utils into this class
-from sipec.utils import train_model
+from SwissKnife.utils import train_model
+
 
 # TODO: presets for parameters
 # TODO: make sure modulization is correct -> rather have for each task one inheretance model
@@ -47,14 +48,13 @@ class Model:
 
     def load_recognition_model(self, path):
         """Loads recognition model.
-
         Args:
             path: Path to existing recognition model.
         """
         self.recognition_model = load_model(path)
 
     def set_recognition_model(self, architecture, input_shape, num_classes):
-        """
+        """Sets recognitions model.
         Args:
             architecture:
             input_shape:
@@ -259,6 +259,10 @@ class Model:
             config:
         """
         pass
+
+
+if __name__ == "__main__":
+    pass
 
 # TODO: finish IdNet here
 # class IdNet(Model):

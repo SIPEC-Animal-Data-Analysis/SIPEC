@@ -43,9 +43,20 @@ from keras.models import Sequential
 
 def posenet_mouse(input_shape, num_classes):
     """Mouse pose estimation architecture.
-    Args:
-        input_shape:Input shape for the network.
-        num_classes:Number of classes for recognition or number of landmarks.
+
+    Extended description of function.
+
+    Parameters
+    ----------
+    arg1 : np.ndarray
+        Input shape for mouse pose estimation network.
+    arg2 : int
+        Number of classes/landmarks.
+
+    Returns
+    -------
+    keras.model
+        model
     """
     recognition_model = Xception(
         include_top=False, input_shape=input_shape, pooling="avg", weights="imagenet",
@@ -159,7 +170,7 @@ def posenet_mouse(input_shape, num_classes):
     return model
 
 
-def posenet_primate(input_shape, num_classes):    # recognition_model = DenseNet201(
+def posenet_primate(input_shape, num_classes):  # recognition_model = DenseNet201(
     """Primate pose estimation architecture.
     Args:
         input_shape:Input shape for the network.
@@ -638,10 +649,20 @@ def recurrent_model_tcn(
     recognition_model, recurrent_input_shape, classes=4,
 ):
     """BehaviorNet architecture for behavioral classification based on temporal convolution architecture (TCN).
-    Args:
-        recognition_model:Pretrained recognition model that extracts features for individual frames.
-        recurrent_input_shape:
-        classes:Number of behaviors to recognise.
+
+    Parameters
+    ----------
+    recognition_model : keras.model
+        Pretrained recognition model that extracts features for individual frames.
+    recurrent_input_shape : np.ndarray
+        Number of classes/landmarks.
+    classes : int
+        Number of behaviors to recognise.
+
+    Returns
+    -------
+    keras.model
+        BehaviorNet
     """
     input_sequences = Input(shape=recurrent_input_shape)
     sequential_model_helper = TimeDistributed(recognition_model)(input_sequences)
