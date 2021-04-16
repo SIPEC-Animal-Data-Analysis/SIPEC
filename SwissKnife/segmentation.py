@@ -43,7 +43,7 @@ from SwissKnife.utils import (
 from keras import backend as K
 
 # TODO: fix this import bug here
-from SwissKnife.dataprep import get_segmentation_data
+from dataprep import get_segmentation_data
 
 
 # TODO: include validation image that network detects new Ground truth!!
@@ -865,3 +865,6 @@ parser.add_argument(
 
 if __name__ == "__main__":
     main()
+
+# example usage
+# python segmentation.py --random_seed 42 --cv_folds 0 --gpu 3 --frames ./published_data_zenodo/mouse/segmentation_single/annotated_frames --annotations ./published_data_zenodo/mouse/segmentation_single/mouse_top_segmentation.json --model_path ./test_models
