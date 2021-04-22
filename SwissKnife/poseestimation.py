@@ -337,7 +337,7 @@ def custom_binary_crossentropy(y_true, y_pred, from_logits=False, label_smoothin
     )
 
 
-def train_on_data(species, config, results_sink, percentage):
+def train_on_data(species, config, results_sink, percentage, save=False):
     global posenet
     if species == "primate":
         X = np.load(
@@ -483,8 +483,6 @@ def train_on_data(species, config, results_sink, percentage):
         workers=40,
     )
 
-    posenet.save(results_sink + "posenetNet" + ".h5")
-
     # skip tail for now
     rmses = []
     for idx, test_img in tqdm(enumerate(x_test)):
@@ -502,7 +500,9 @@ def train_on_data(species, config, results_sink, percentage):
     print("\n")
     print(str(np.mean(rmses)))
     res = np.mean(rmses)
-    np.save(results_sink + "results" + ".npy", res)
+    if save:
+        posenet.save(results_sink + "posenetNet" + ".h5")
+        np.save(results_sink + "results" + ".npy", res)
 
 
 parser = ArgumentParser()
@@ -527,7 +527,7 @@ parser.add_argument(
     action="store",
     dest="fraction",
     type=float,
-    default=None,
+    default=1.0,
     help="fraction to use for training",
 )
 
@@ -554,9 +554,9 @@ def main():
         + "/"
     )
     check_directory(results_sink)
-    with open(results_sink + "config.json", "w") as f:
-        json.dump(config, f)
-    f.close()
+    # with open(results_sink + "config.json", "w") as f:
+    #     json.dump(config, f)
+    # f.close()
 
     if operation == "train_primate":
         train_on_data(species="primate", config=config, results_sink=results_sink)
@@ -567,3 +567,6 @@ def main():
             results_sink=results_sink,
             percentage=fraction,
         )
+
+if __name__ == "__main__":
+    main()
