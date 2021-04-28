@@ -785,7 +785,7 @@ def generate_individual_mouse_data(
                 el = color.rgb2gray(el)
 
                 #el = imresize(el, 0.5)
-                el = np.array(Image.fromarray(el).resize(0.5)).
+                el = np.array(Image.fromarray(el).resize(0.5))
 
                 vid_new.append(el)
 
