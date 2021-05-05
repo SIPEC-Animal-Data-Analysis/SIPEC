@@ -5,6 +5,8 @@ import keras
 import numpy as np
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn import preprocessing
+from sklearn.externals._pilutil import imresize
+from sklearn.utils import class_weight
 from tqdm import tqdm
 
 
@@ -51,7 +53,7 @@ class Dataloader:
         y_train,
         x_test,
         y_test,
-        look_back=5,
+        config,
         with_dlc=False,
         dlc_train=None,
         dlc_test=None,
@@ -76,7 +78,9 @@ class Dataloader:
         self.x_test = x_test
         self.y_test = y_test
 
-        self.look_back = look_back
+        self.config = config
+
+        self.look_back = self.config["look_back"]
 
         self.label_encoder = None
 
@@ -169,7 +173,15 @@ class Dataloader:
             dataX.append(a)
         return np.array(dataX)
 
-    def create_recurrent_data(self, oneD=False):
+    def create_recurrent_labels(self):
+
+        self.y_train_recurrent = self.y_train[self.look_back : -self.look_back]
+        self.y_test_recurrent = self.y_test[self.look_back : -self.look_back]
+
+        self.y_train = self.y_train[self.look_back : -self.look_back]
+        self.y_test = self.y_test[self.look_back : -self.look_back]
+
+    def create_recurrent_data(self, oneD=False, recurrent_labels=True):
         """
         Args:
             oneD:
@@ -177,18 +189,15 @@ class Dataloader:
         self.x_train_recurrent = create_dataset(self.x_train, self.look_back, oneD=oneD)
         self.x_test_recurrent = create_dataset(self.x_test, self.look_back, oneD=oneD)
 
-        self.y_train_recurrent = self.y_train[self.look_back : -self.look_back]
-        self.y_test_recurrent = self.y_test[self.look_back : -self.look_back]
-
         # also shorten normal data so all same length
         self.x_train = self.x_train[self.look_back : -self.look_back]
         self.x_test = self.x_test[self.look_back : -self.look_back]
-        self.y_train = self.y_train[self.look_back : -self.look_back]
-        self.y_test = self.y_test[self.look_back : -self.look_back]
 
-    def create_recurrent_data_dlc(self):
-        self.y_train_recurrent = self.y_train[self.look_back : -self.look_back]
-        self.y_test_recurrent = self.y_test[self.look_back : -self.look_back]
+        if recurrent_labels:
+            self.create_recurrent_labels()
+
+
+    def create_recurrent_data_dlc(self, recurrent_labels=True):
 
         self.dlc_train_recurrent = create_dataset(self.dlc_train, self.look_back)
         self.dlc_test_recurrent = create_dataset(self.dlc_test, self.look_back)
@@ -196,8 +205,10 @@ class Dataloader:
         # also shorten normal data so all same length
         self.dlc_train = self.dlc_train[self.look_back : -self.look_back]
         self.dlc_test = self.dlc_test[self.look_back : -self.look_back]
-        self.y_train = self.y_train[self.look_back : -self.look_back]
-        self.y_test = self.y_test[self.look_back : -self.look_back]
+
+        if recurrent_labels:
+            self.create_recurrent_labels()
+
 
     # TODO: redo all like this, i.e. gettters instead of changing data
     def expand_dims(self):
@@ -239,12 +250,15 @@ class Dataloader:
             raise NotImplementedError
         if self.x_train_recurrent is not None:
             num_labels = int(len(self.x_train_recurrent) * percentage)
-            indices = np.arange(0, len(self.x_train_recurrent))
+            indices = np.arange(0, len(self.x_train_recurrent)-1)
             random_idxs = np.random.choice(indices, size=num_labels, replace=False)
             self.x_train = self.x_train[random_idxs]
             self.y_train = self.y_train[random_idxs]
             self.x_train_recurrent = self.x_train_recurrent[random_idxs]
             self.y_train_recurrent = self.y_train_recurrent[random_idxs]
+            if self.dlc_train_recurrent is not None:
+                self.dlc_train_recurrent = self.dlc_train_recurrent[random_idxs]
+                self.dlc_train_recurrent_flat = self.dlc_train_recurrent_flat[random_idxs]
         else:
             num_labels = int(len(self.x_train) * percentage)
             indices = np.arange(0, len(self.x_train))
@@ -358,3 +372,49 @@ class Dataloader:
                 return input_shape
             else:
                 raise NotImplementedError
+
+    def downscale_frames(self, factor=0.5):
+        im_re = []
+        for el in tqdm(self.x_train):
+            im_re.append(imresize(el, factor))
+        self.x_train = np.asarray(im_re)
+        im_re = []
+        for el in tqdm(self.x_test):
+            im_re.append(imresize(el, factor))
+        self.x_test = np.asarray(im_re)
+
+
+    def prepare_data(self, downscale=0.5, remove_behaviors=[], flatten=False):
+        print("preparing data")
+        self.change_dtype()
+
+        for behavior in remove_behaviors:
+            self.remove_behavior(behavior=behavior)
+
+        if downscale:
+            self.downscale_frames(factor=downscale)
+        if self.config["normalize_data"]:
+            self.normalize_data()
+        if self.config["encode_labels"]:
+            self.encode_labels()
+        print("labels encoded")
+        if self.config["use_class_weights"]:
+            print("calc class weights")
+            self.class_weights = class_weight.compute_class_weight(
+                "balanced", np.unique(self.y_train), self.y_train
+            )
+
+        if self.config["undersample_data"]:
+            print("undersampling data")
+            self.undersample_data()
+
+        print("preparing recurrent data")
+        self.create_recurrent_data()
+        print("preparing flattened data")
+        if flatten:
+            self.create_flattened_data()
+
+        print("categorize data")
+        self.categorize_data(self.config["num_classes"], recurrent=True)
+
+        print("data ready")
