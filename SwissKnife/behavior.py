@@ -437,5 +437,7 @@ parser.add_argument(
     "--shuffle", action="store", dest="shuffle", type=bool, default=False,
 )
 
+# example usage
+# python behavior.py --annotations "/media/nexus/storage5/swissknife_data/primate/behavior/20180124T113800-20180124T115800_0.csv" --video "/media/nexus/storage5/swissknife_data/primate/behavior/fullvids_20180124T113800-20180124T115800_%T1_0.mp4" --gpu 2
 if __name__ == "__main__":
     main()
