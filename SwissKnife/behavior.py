@@ -5,6 +5,7 @@ import sys
 import os
 
 # from scipy.misc import imresize
+from sklearn.externals._pilutil import imresize
 from tqdm import tqdm
 import pandas as pd
 import random
@@ -229,9 +230,9 @@ def train_primate(config, results_sink, shuffle):
         # config = load_config("../configs/behavior/primate/" + config_name)
         config["recognition_model_batch_size"] = 128
         config["backbone"] = "imagenet"
+        config["encode_labels"]= True
         print(config)
 
-        encode_labels = True
         num_classes = config["num_classes"]
 
         print("preparing data")
@@ -323,6 +324,8 @@ def main():
     config_name = args.config_name
     network = args.network
     shuffle = args.shuffle
+    annotations = args.annotations
+    video = args.video
 
     setGPU(K, gpu_name)
 
@@ -334,10 +337,44 @@ def main():
         + datetime.now().strftime("%Y-%m-%d-%H_%M")
         + "/"
     )
-
     check_directory(results_sink)
 
-    if operation("train_primate"):
+    if annotations:
+        myvid = loadVideo(video, greyscale=False)
+        annotation = pd.read_csv(annotations, error_bad_lines=False, header=9)
+        annotation = load_vgg_labels(
+            annotation, video_length=len(myvid), framerate_video=25
+        )
+
+        # Train test split
+        split = int(len(myvid) * 0.8)
+        x_train, x_test, y_train, y_test = (
+            myvid[:split],
+            myvid[split:],
+            annotation[:split],
+            annotation[split:],
+        )
+
+        # load cfg
+        config = load_config("../configs/behavior/shared_config")
+        beh_config = load_config(
+            "../configs/behavior/primate/primate_final"
+        )
+        config.update(beh_config)
+
+        print(config)
+
+        config["encode_labels"]= True
+        num_classes = len(np.unique(annotation))
+
+        dataloader = Dataloader(
+            x_train, y_train, x_test, y_test, config
+        )
+
+        dataloader.prepare_data()
+
+        train_behavior(dataloader=dataloader, num_classes=num_classes, config=config)
+    elif operation("train_primate"):
         config_name = "primate_final"
         config = load_config("../configs/behavior/primate/" + config_name)
         train_primate(config=config, results_sink=results_sink, shuffle=shuffle)
@@ -379,6 +416,22 @@ parser.add_argument(
     type=str,
     default="ours",
     help="which network used for training",
+)
+parser.add_argument(
+    "--annotations",
+    action="store",
+    dest="annotations",
+    type=str,
+    default=None,
+    help="path for annotations from VGG annotator",
+)
+parser.add_argument(
+    "--video",
+    action="store",
+    dest="video",
+    type=str,
+    default=None,
+    help="path to folder with annotated video",
 )
 parser.add_argument(
     "--shuffle", action="store", dest="shuffle", type=bool, default=False,
