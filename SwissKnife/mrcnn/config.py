@@ -1,7 +1,9 @@
-# SIPEC
-# MARKUS MARKS
-# MRCNN PART
-# This code is optimized from the Mask RCNN (Waleed Abdulla, (c) 2017 Matterport, Inc.) repository
+# SIPEC: the deep-learning Swiss knife for behavioral data analysis
+# https://github.com/damaggu/SIPEC
+# Contact: Dr. Markus Marks, marksm@ethz.ch
+# Mask RCNN
+# The code in this file is taken from the Mask RCNN repository, 
+# https://github.com/matterport/Mask_RCNN, by Waleed Abdulla, (c) 2017 Matterport, Inc.
 
 import numpy as np
 
