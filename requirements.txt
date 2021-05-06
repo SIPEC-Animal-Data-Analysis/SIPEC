@@ -10,7 +10,7 @@ cycler==0.10.0
 decorator==4.4.2
 defusedxml==0.7.1
 entrypoints==0.3
-gast==0.4.0
+#gast==0.4.0
 google-pasta==0.2.0
 grpcio==1.37.0
 h5py==3.2.1
