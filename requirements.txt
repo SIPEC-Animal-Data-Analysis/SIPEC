@@ -12,7 +12,8 @@ defusedxml==0.7.1
 entrypoints==0.3
 #gast==0.4.0
 google-pasta==0.2.0
-grpcio==1.37.0
+#grpcio==1.37.0
+grpcio==1.32.0
 #h5py==3.2.1
 h5py==2.10.0
 imageio==2.9.0
