@@ -75,8 +75,8 @@ Send2Trash==1.5.0
 Shapely==1.6.4.post2
 six==1.12.0
 scikit-video
-tensorboard==2.4.1
-tensorflow-estimator==2.4.1
+#tensorboard==2.4.1
+#tensorflow-estimator==2.4.1
 tensorflow-gpu==2.4.1
 termcolor==1.1.0
 terminado==0.9.4
