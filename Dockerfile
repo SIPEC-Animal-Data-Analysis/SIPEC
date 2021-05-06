@@ -42,7 +42,7 @@ RUN git clone https://github.com/damaggu/SIPEC.git
 
 WORKDIR /home/user/SIPEC
 
-RUN git checkout env_update
+RUN git checkout mrcnn_to_tf2
 
 ENV VIRTUAL_ENV=/home/user/SIPEC/env
 
