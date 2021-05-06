@@ -197,8 +197,9 @@ def set_random_seed(random_seed):
     os.environ["PYTHONHASHSEED"] = str(random_seed)
     random.seed(random_seed)
     my_rnd_seed = np.random.seed(random_seed)
-    tf.set_random_seed(random_seed)
-    tf.random.set_random_seed(random_seed)
+    tf.random.set_seed(random_seed)
+    #tf.set_random_seed(random_seed)
+    #tf.random.set_random_seed(random_seed)
 
 
 def detect_primate(_img, _model, classes, threshold):
