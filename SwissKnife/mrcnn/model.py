@@ -2420,7 +2420,7 @@ class MaskRCNN():
 		else:
 			# In newer tensorflow multiprocessing causes deadlock
 			# workers = multiprocessing.cpu_count()
-			workers = 1
+			workers = 0
 		# In the newer tf/keras versions it is recommended to use fit as fit_generator is deprecated and will be removed
 		#self.keras_model.fit_generator(
 		self.keras_model.fit(

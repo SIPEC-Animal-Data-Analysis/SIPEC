@@ -9,6 +9,10 @@ The core module of my example project
 # SEGMENTATION PART
 # This code is optimized from the Mask RCNN (Waleed Abdulla, (c) 2017 Matterport, Inc.) repository
 
+#TODO: Look at the warnings and resolve them
+import warnings
+warnings.filterwarnings("ignore")
+
 import sys
 import os
 
