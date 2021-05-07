@@ -647,7 +647,7 @@ def setGPU(backend, GPU):
     #https://www.tensorflow.org/guide/migrate
     physical_devices = tf.config.experimental.list_physical_devices('GPU')
     print(physical_devices)
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    tf.config.experimental.set_memory_growth(physical_devices[:], True)
     # session = tf.Session(config=config)
     # TODO: Replace the following by tf2 equivalent 
     ##backend.tensorflow_backend.set_session(tf.Session(config=config))
