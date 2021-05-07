@@ -1,5 +1,6 @@
-FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04
+#FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04
 #FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu18.04
+FROM nvidia/cuda:11.0.3-cudnn8-runtime-ubuntu20.04
 MAINTAINER tarun.chadha@id.ethz.com 
 
 RUN apt-get -y update && apt-get -y upgrade
