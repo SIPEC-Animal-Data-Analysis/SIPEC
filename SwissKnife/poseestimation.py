@@ -36,6 +36,7 @@ import numpy as np
 import keras
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 
+import matplotlib.pyplot as plt
 
 # adapted from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 class DataGenerator(keras.utils.Sequence):
@@ -303,8 +304,8 @@ class Metrics(keras.callbacks.Callback):
         for idx, test_img in tqdm(enumerate(X_val)):
             heatmaps = self.model.predict(np.expand_dims(test_img, axis=0))
             # set upper left to 0
-            heatmaps[:20, :20, :] = 0
             heatmaps = heatmaps[0, :, :, :]
+            heatmaps[:20, :20, :] = 0
             coords_gt = heatmap_to_scatter(y_val[idx])[:-1]
             coords_predict = heatmap_to_scatter(heatmaps)[:-1]
             rmses.append(calculate_rmse(coords_predict, coords_gt))
@@ -337,7 +338,36 @@ def custom_binary_crossentropy(y_true, y_pred, from_logits=False, label_smoothin
     )
 
 
-def train_on_data(species, config, results_sink, percentage):
+class VIZ(keras.callbacks.Callback):
+    def setModel(self, model):
+        self.model = model
+
+    def on_train_begin(self, logs={}):
+        self._data = []
+
+    def on_epoch_end(self, batch, logs={}):
+        X_val, y_val = self.validation_data[0], self.validation_data[1]
+
+        id = 5
+        y_true = y_val[id : id + 1]
+        y_predict = self.model.predict(X_val[id : id + 1])
+        y_predict[:20, :20, :] = 0
+        y_predict = y_predict[0, :, :, :]
+        coords_gt = y_true[0, :, :, :]
+        coords_gt = heatmap_to_scatter(coords_gt)[:-1]
+        # coords_gt = y_true[0, :, :, :]
+        coords_predict = heatmap_to_scatter(y_predict)[:-1]
+        plt.imshow(X_val[id][:, :, 0])
+        for map_id, map in enumerate(coords_predict):
+            true = coords_gt[map_id]
+            plt.scatter(map[1], map[0], c="red")
+            plt.scatter(true[1], true[0], c="blue")
+        plt.show()
+        print("plotted")
+        return
+
+
+def train_on_data(species, config, results_sink, percentage, save=False):
     global posenet
     if species == "primate":
         X = np.load(
@@ -402,7 +432,7 @@ def train_on_data(species, config, results_sink, percentage):
     img_rows, img_cols = x_train.shape[1], x_train.shape[2]
     input_shape = (img_rows, img_cols, 3)
 
-    adam = keras.optimizers.Adam(lr=0.0001)
+    adam = keras.optimizers.Adam(lr=0.0005)
 
     if species == "primate":
         posenet = posenet_primate(input_shape, num_classes=14)
@@ -414,7 +444,7 @@ def train_on_data(species, config, results_sink, percentage):
         metrics=["binary_crossentropy"],
     )
 
-    sometimes = lambda aug: iaa.Sometimes(0.8, aug)
+    sometimes = lambda aug: iaa.Sometimes(0.1, aug)
 
     augmentation_image = iaa.Sequential(
         [
@@ -431,7 +461,7 @@ def train_on_data(species, config, results_sink, percentage):
 
     # mouse
     batch_size = 8
-    epochs = 35
+    epochs = 30
 
     logdir = os.path.join("./logs/posenet/", datetime.now().strftime("%Y%m%d-%H%M%S"))
     file_writer = tf.compat.v1.summary.FileWriter(logdir + "/metrics")
@@ -441,16 +471,23 @@ def train_on_data(species, config, results_sink, percentage):
     my_metrics = Metrics(writer=file_writer)
     my_metrics.setModel(posenet)
 
+    viz_cb = VIZ()
+    viz_cb.setModel(posenet)
+
+    callbacks = [my_metrics, tf_callback, viz_cb]
+
     augmentation_image = primate_identification(level=1)
 
     training_generator = DataGenerator(
-        x_train, y_train, augmentation=augmentation_image, batch_size=1
+        x_train, y_train, augmentation=augmentation_image, batch_size=batch_size
     )
+
+    # training_generator.set_sgima(....)
 
     dense_history_1 = posenet.fit_generator(
         epochs=epochs,
         validation_data=(x_test, y_test),
-        callbacks=[my_metrics, tf_callback],
+        callbacks=callbacks,
         shuffle=True,
         generator=training_generator,
         use_multiprocessing=True,
@@ -463,7 +500,7 @@ def train_on_data(species, config, results_sink, percentage):
     dense_history_2 = posenet.fit_generator(
         epochs=epochs,
         validation_data=(x_test, y_test),
-        callbacks=[my_metrics, tf_callback],
+        callbacks=callbacks,
         shuffle=True,
         generator=training_generator,
         use_multiprocessing=True,
@@ -471,27 +508,38 @@ def train_on_data(species, config, results_sink, percentage):
     )
 
     K.set_value(posenet.optimizer.lr, 0.00001)
-    epochs = 100
+    epochs = 50
 
     dense_history_2 = posenet.fit_generator(
         epochs=epochs,
         validation_data=(x_test, y_test),
-        callbacks=[my_metrics, tf_callback],
+        callbacks=callbacks,
         shuffle=True,
         generator=training_generator,
         use_multiprocessing=True,
         workers=40,
     )
 
-    posenet.save(results_sink + "posenetNet" + ".h5")
+    K.set_value(posenet.optimizer.lr, 0.000005)
+    epochs = 100
+
+    dense_history_2 = posenet.fit_generator(
+        epochs=epochs,
+        validation_data=(x_test, y_test),
+        callbacks=callbacks,
+        shuffle=True,
+        generator=training_generator,
+        use_multiprocessing=True,
+        workers=40,
+    )
 
     # skip tail for now
     rmses = []
     for idx, test_img in tqdm(enumerate(x_test)):
         heatmaps = posenet.predict(np.expand_dims(test_img, axis=0))
         # set upper left to 0
-        heatmaps[:20, :20, :] = 0
         heatmaps = heatmaps[0, :, :, :]
+        heatmaps[:20, :20, :] = 0
         coords_gt = heatmap_to_scatter(y[idx])[:-1]
         coords_predict = heatmap_to_scatter(heatmaps)[:-1]
         rmses.append(calculate_rmse(coords_predict, coords_gt))
@@ -502,7 +550,9 @@ def train_on_data(species, config, results_sink, percentage):
     print("\n")
     print(str(np.mean(rmses)))
     res = np.mean(rmses)
-    np.save(results_sink + "results" + ".npy", res)
+    if save:
+        posenet.save(results_sink + "posenetNet" + ".h5")
+        np.save(results_sink + "results" + ".npy", res)
 
 
 parser = ArgumentParser()
@@ -527,8 +577,24 @@ parser.add_argument(
     action="store",
     dest="fraction",
     type=float,
-    default=None,
+    default=1.0,
     help="fraction to use for training",
+)
+parser.add_argument(
+    "--annotations",
+    action="store",
+    dest="annotations",
+    type=str,
+    default=None,
+    help="path for annotations from VGG annotator",
+)
+parser.add_argument(
+    "--frames",
+    action="store",
+    dest="frames",
+    type=str,
+    default=None,
+    help="path to folder with annotated frames",
 )
 
 
@@ -537,6 +603,8 @@ def main():
     operation = args.operation
     gpu_name = args.gpu
     fraction = args.fraction
+    annotations = args.annotations
+    frames = args.frames
 
     setGPU(K, gpu_name)
 
@@ -554,9 +622,9 @@ def main():
         + "/"
     )
     check_directory(results_sink)
-    with open(results_sink + "config.json", "w") as f:
-        json.dump(config, f)
-    f.close()
+    # with open(results_sink + "config.json", "w") as f:
+    #     json.dump(config, f)
+    # f.close()
 
     if operation == "train_primate":
         train_on_data(species="primate", config=config, results_sink=results_sink)
@@ -567,3 +635,7 @@ def main():
             results_sink=results_sink,
             percentage=fraction,
         )
+
+
+if __name__ == "__main__":
+    main()
