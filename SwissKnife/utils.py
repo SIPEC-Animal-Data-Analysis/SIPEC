@@ -645,6 +645,7 @@ def setGPU(backend, GPU):
     #config.gpu_options.allow_growth = True
     #config.gpu_options.visible_device_list = GPU
     #https://www.tensorflow.org/guide/migrate
+    tf.config.set_visible_devices(GPU, 'GPU')
     physical_devices = tf.config.experimental.list_physical_devices('GPU')
     print(physical_devices)
     #tf.config.experimental.set_memory_growth(physical_devices[0], True)

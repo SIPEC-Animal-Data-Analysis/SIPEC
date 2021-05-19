@@ -1,7 +1,7 @@
 # SIPEC
 # MARKUS MARKS
 # COMPARISON OF DLC VS. END-TO-END
-from keras.layers import Concatenate, Dense, Activation
+from tensorflow.keras.layers import Concatenate, Dense, Activation
 from skimage.color import rgb2gray
 from skimage.util import img_as_uint
 
@@ -16,10 +16,9 @@ import pandas as pd
 from imgaug import augmenters as iaa
 
 import tensorflow as tf
-from keras import backend as K, Input
-from keras.models import Sequential, Model
+from tensorflow.keras import backend as K, Input
+from tensorflow.keras.models import Sequential, Model
 
-from SwissKnife.datasets.mouse import MouseDataset
 from SwissKnife.architectures import (
     dlc_model,
     classification_small,
@@ -908,17 +907,25 @@ def main():
     # init stuff
 
     base_path = "/media/nexus/storage5/swissknife_data/mouse"
-    mouse_data = MouseDataset(base_path)
-    config = load_config("./configs/behavior/shared_config")
-    exp_config = load_config("./configs/behavior/reproduce_configs/" + config_name)
+    #mouse_data = MouseDataset(base_path)
+    config = load_config("../configs/behavior/shared_config")
+    exp_config = load_config("../configs/behavior/reproduce_configs/" + config_name)
 
     config.update(exp_config)
 
     ### setting up sessions
     # set gpu
-    keras_config = tf.ConfigProto()
-    keras_config.gpu_options.allow_growth = True
-    keras_config.gpu_options.visible_device_list = str(gpu_name)
+    #keras_config = tf.ConfigProto()
+    #keras_config.gpu_options.allow_growth = True
+    #keras_config.gpu_options.visible_device_list = str(gpu_name)
+    #https://www.tensorflow.org/guide/migrate
+    tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[gpu_name], 'GPU')
+    physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    print(physical_devices)
+    #tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    for device in physical_devices:
+        tf.config.experimental.set_memory_growth(device, True)
+
 
     # set all the randomness according to
     # https://stackoverflow.com/questions/50659482/why-cant-i-get-reproducible-results-in-keras-even-though-i-set-the-random-seeds
@@ -930,8 +937,9 @@ def main():
     # double check this
     # TODO:
     # session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
-    sess = tf.Session(graph=tf.get_default_graph(), config=keras_config)
-    K.set_session(sess)
+    # tf.Session is outdated
+    #sess = tf.Session(graph=tf.get_default_graph(), config=keras_config)
+    #K.set_session(sess)
 
     num_classes = 4
     if config["reduced_behavior"]:
