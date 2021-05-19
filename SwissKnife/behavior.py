@@ -9,7 +9,7 @@ from sklearn.externals._pilutil import imresize
 from tqdm import tqdm
 import pandas as pd
 import random
-import datetime
+from datetime import datetime
 
 from SwissKnife.architectures import classification_small
 

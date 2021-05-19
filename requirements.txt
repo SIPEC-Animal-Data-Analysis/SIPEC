@@ -34,10 +34,10 @@ imageio==2.5.0
 imagesize==1.1.0
 imbalanced-learn==0.4.3
 imblearn==0.0
-imgaug==0.2.9
-ipykernel==5.1.0
-ipyparallel==6.2.4
-ipython==7.5.0
+git+https://github.com/aleju/imgaug@14b85e2209de0107c250e4d9dd6507dec1eae826
+importlib-metadata==3.10.1
+ipykernel==5.5.3
+ipython==7.22.0
 ipython-genutils==0.2.0
 ipywidgets==7.4.2
 itsdangerous==1.1.0
