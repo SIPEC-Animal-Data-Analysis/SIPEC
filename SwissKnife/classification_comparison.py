@@ -914,6 +914,8 @@ def main():
     config.update(exp_config)
 
     ### setting up sessions
+    setGPU(None, gpu_name)
+    """
     # set gpu
     #keras_config = tf.ConfigProto()
     #keras_config.gpu_options.allow_growth = True
@@ -925,7 +927,7 @@ def main():
     #tf.config.experimental.set_memory_growth(physical_devices[0], True)
     for device in physical_devices:
         tf.config.experimental.set_memory_growth(device, True)
-
+    """
 
     # set all the randomness according to
     # https://stackoverflow.com/questions/50659482/why-cant-i-get-reproducible-results-in-keras-even-though-i-set-the-random-seeds
