@@ -1,6 +1,8 @@
 #FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04
+
 #FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu18.04
 FROM nvidia/cuda:11.0.3-cudnn8-runtime-ubuntu20.04
+
 MAINTAINER tarun.chadha@id.ethz.com 
 
 RUN apt-get -y update && apt-get -y upgrade
@@ -43,7 +45,7 @@ RUN git clone https://github.com/damaggu/SIPEC.git
 
 WORKDIR /home/user/SIPEC
 
-RUN git checkout mrcnn_to_tf2
+RUN git checkout devel
 
 ENV VIRTUAL_ENV=/home/user/SIPEC/env
 
@@ -52,6 +54,7 @@ RUN python3.7 -m venv env
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 RUN python -m pip install --upgrade pip  && \ 
+
 	pip install -r requirements.txt
 
 ENV PYTHONPATH="/home/user/SIPEC:${PYTHONPATH}" 

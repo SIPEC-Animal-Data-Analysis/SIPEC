@@ -256,15 +256,23 @@ class Dataloader:
             self.y_train = self.y_train[random_idxs]
             self.x_train_recurrent = self.x_train_recurrent[random_idxs]
             self.y_train_recurrent = self.y_train_recurrent[random_idxs]
-            if self.dlc_train_recurrent is not None:
-                self.dlc_train_recurrent = self.dlc_train_recurrent[random_idxs]
-                self.dlc_train_recurrent_flat = self.dlc_train_recurrent_flat[random_idxs]
-        else:
+        if self.config["train_ours"] or self.config["train_ours_plus_dlc"]:
             num_labels = int(len(self.x_train) * percentage)
             indices = np.arange(0, len(self.x_train))
             random_idxs = np.random.choice(indices, size=num_labels, replace=False)
             self.x_train = self.x_train[random_idxs]
             self.y_train = self.y_train[random_idxs]
+        if self.dlc_train is not None:
+            num_labels = int(len(self.dlc_train) * percentage)
+            indices = np.arange(0, len(self.dlc_train))
+            random_idxs = np.random.choice(indices, size=num_labels, replace=False)
+            self.dlc_train = self.dlc_train[random_idxs]
+            self.dlc_train_flat = self.dlc_train_flat[random_idxs]
+            # self.y_train = self.y_train[random_idxs]
+        if self.dlc_train_recurrent is not None:
+            self.dlc_train_recurrent = self.dlc_train_recurrent[random_idxs]
+            self.dlc_train_recurrent_flat = self.dlc_train_recurrent_flat[random_idxs]
+            # self.y_train_recurrent = self.y_train_recurrent[random_idxs]
 
     # old
     def reduce_labels(self, behavior, num_labels):
@@ -373,6 +381,7 @@ class Dataloader:
             else:
                 raise NotImplementedError
 
+    # TODO: parallelizs
     def downscale_frames(self, factor=0.5):
         im_re = []
         for el in tqdm(self.x_train):
