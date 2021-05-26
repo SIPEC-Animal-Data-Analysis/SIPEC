@@ -53,7 +53,8 @@ def run_experiment(
 ):
     # TODO: replace stuff
     # old path
-    videos = glob(base_path + "/inference/segmentation/individual/*.npy")
+    #videos = glob(base_path + "/inference/segmentation/individual/*.npy")
+    videos = glob(base_path + "/individual/*.npy")
     dlc_annot = glob(base_path + "/dlc_annotations/*.npy")
     labels = glob(base_path + "/labels/" + config["experimenter"] + "/*.npy")
 
