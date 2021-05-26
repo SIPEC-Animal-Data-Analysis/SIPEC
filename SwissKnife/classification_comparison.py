@@ -25,7 +25,7 @@ from SwissKnife.architectures import (
     recurrent_model_tcn,
     pretrained_recognition,
     dlc_model_sturman,
-)
+    )
 from SwissKnife.utils import (
     Metrics,
     train_model,
@@ -906,10 +906,10 @@ def main():
 
     # init stuff
 
-    base_path = "/media/nexus/storage5/swissknife_data/mouse"
+    base_path = "/home/user/mouse_classification_comparison/"
     #mouse_data = MouseDataset(base_path)
-    config = load_config("../configs/behavior/shared_config")
-    exp_config = load_config("../configs/behavior/reproduce_configs/" + config_name)
+    config = load_config("/home/user/SIPEC/configs/behavior/shared_config")
+    exp_config = load_config("/home/user/SIPEC/configs/behavior/reproduce_configs/" + config_name)
 
     config.update(exp_config)
 
@@ -990,6 +990,7 @@ def main():
 
     # save results
     results_array = np.asarray(results_array)
+    
     results = pd.DataFrame(
         {
             "Method": results_array[:, 0],
