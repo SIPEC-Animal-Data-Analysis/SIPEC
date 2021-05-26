@@ -27,10 +27,10 @@ import skvideo.io
 import tensorflow as tf
 from sklearn.metrics import balanced_accuracy_score, f1_score
 
-from keras import backend as K
-import keras
-from keras.preprocessing.image import ImageDataGenerator
-from keras.utils import multi_gpu_model
+from tensorflow.keras import backend as K
+import tensorflow.keras as keras
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+#from tensorflow.keras.utils import multi_gpu_model
 
 
 def masks_to_coords(masks):
@@ -197,8 +197,9 @@ def set_random_seed(random_seed):
     os.environ["PYTHONHASHSEED"] = str(random_seed)
     random.seed(random_seed)
     my_rnd_seed = np.random.seed(random_seed)
-    tf.set_random_seed(random_seed)
-    tf.random.set_random_seed(random_seed)
+    tf.random.set_seed(random_seed)
+    #tf.set_random_seed(random_seed)
+    #tf.random.set_random_seed(random_seed)
 
 
 def detect_primate(_img, _model, classes, threshold):
@@ -470,7 +471,8 @@ def train_model(
     num_gpus=1,
 ):
     if num_gpus > 1:
-        model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
+        print("This part needs to be fixed!!!")
+        #model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
     if loss == "crossentropy":
         # TODO: integrate number of GPUs in config
         model.compile(
@@ -638,11 +640,19 @@ def check_folder(directory):
 
 ### set gpu backend
 def setGPU(backend, GPU):
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    config.gpu_options.visible_device_list = GPU
+    # Outdated syntax from tf1
+    #config = tf.ConfigProto()
+    #config.gpu_options.allow_growth = True
+    #config.gpu_options.visible_device_list = GPU
+    #https://www.tensorflow.org/guide/migrate
+    physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    print(physical_devices)
+    #tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    for device in physical_devices:
+        tf.config.experimental.set_memory_growth(device, True)
     # session = tf.Session(config=config)
-    backend.tensorflow_backend.set_session(tf.Session(config=config))
+    # TODO: Replace the following by tf2 equivalent 
+    ##backend.tensorflow_backend.set_session(tf.Session(config=config))
 
 
 def pathForFile(paths, filename):
