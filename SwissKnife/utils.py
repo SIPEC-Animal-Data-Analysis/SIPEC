@@ -565,6 +565,13 @@ def train_model(
                 class_weight=class_weights,
             )
         else:
+            #Testing
+            print("Xception net error")
+            print(model.summary())
+            print(data_train[0].shape)
+            print(data_val[0].shape)
+            for layer in model.layers:
+                print(layer.name, layer.input_shape, layer.output_shape)
             training_history = model.fit(
                 data_train[0],
                 data_train[1],

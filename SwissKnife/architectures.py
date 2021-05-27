@@ -806,6 +806,7 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
         fix_layers:
     """
     if model_name == "xception":
+        print("INPUT SHAPED {} {}".format(input_shape[0], input_shape[1]))
         recognition_model = Xception(
             include_top=False,
             # input_shape=(75, 75, 3),
