@@ -1,7 +1,7 @@
 # SIPEC
 # MARKUS MARKS
 # Dataloader
-from tensorflow import keras
+import keras
 import numpy as np
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn import preprocessing

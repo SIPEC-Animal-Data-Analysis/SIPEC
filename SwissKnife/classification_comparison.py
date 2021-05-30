@@ -1,7 +1,7 @@
 # SIPEC
 # MARKUS MARKS
 # COMPARISON OF DLC VS. END-TO-END
-
+from keras.layers import Concatenate, Dense, Activation
 from skimage.color import rgb2gray
 from skimage.util import img_as_uint
 
@@ -16,10 +16,8 @@ import pandas as pd
 from imgaug import augmenters as iaa
 
 import tensorflow as tf
-from tensorflow.keras import Input
-from tensorflow.keras.models import Sequential, Model
-import tensorflow.keras as keras
-from tensorflow.keras.layers import Concatenate, Dense, Activation
+from keras import backend as K, Input
+from keras.models import Sequential, Model
 
 from SwissKnife.datasets.mouse import MouseDataset
 from SwissKnife.architectures import (
@@ -281,19 +279,19 @@ def run_experiment(
                 get_tensorbaord_callback,
             )
             import os
-            # TODO: fix logging for TF2, call from utils
-            # logdir = os.path.join("./logs/classifciation_comparison/dlc/", datetime.now().strftime("%Y%m%d-%H%M%S"))
-            # file_writer = tf.compat.v1.summary.FileWriter(logdir + "/metrics")
-            # tf_callback = get_tensorbaord_callback(logdir)
+            logdir = os.path.join("./logs/classifciation_comparison/dlc/", datetime.now().strftime("%Y%m%d-%H%M%S"))
+            file_writer = tf.compat.v1.summary.FileWriter(logdir + "/metrics")
+            # file_writer.set_as_desfault()
+            tf_callback = get_tensorbaord_callback(logdir)
 
-            # cbs.append(tf_callback)
+            cbs.append(tf_callback)
 
 
-            optim = get_optimizer("adam", lr=0.0001)
+            optim = get_optimizer("adam", lr=0.000075)
+            # optim = get_optimizer("rmsprop", lr=0.0001)
 
-            my_metrics.setModel(my_dlc_model_recurrent)
-            my_metrics.validation_data = (dataloader.dlc_test_recurrent_flat,
-                    dataloader.y_test_recurrent)
+            config["dlc_model_recurrent_epochs"] = 50
+            config["dlc_model_recurrent_batch_size"] = 64
 
             my_dlc_model_recurrent, my_dlc_model_recurrent_history = train_model(
                 my_dlc_model_recurrent,
@@ -329,10 +327,10 @@ def run_experiment(
                 dataloader.x_train.shape[1],
                 dataloader.x_train.shape[2],
             )
-            input_shape_recognition = (img_rows, img_cols, dataloader.x_train.shape[3])
+            input_shape = (img_rows, img_cols, dataloader.x_train.shape[3])
 
             if config["backbone"] == "custom":
-                recognition_model = classification_small(input_shape_recognition, num_classes)
+                recognition_model = classification_small(input_shape, num_classes)
             # recognition_model.summary()
 
             # if config['backbone'] == 'resnet':
@@ -607,7 +605,6 @@ def run_experiment(
 
             CB_es, CB_lr = get_callbacks()
             my_metrics = Metrics()
-            my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
             my_metrics.setModel(recognition_model)
 
             CB_train = [CB_lr, CB_es, my_metrics]
@@ -670,7 +667,6 @@ def run_experiment(
             )
 
             my_metrics.setModel(sequential_model)
-            my_metrics.validation_data = (dataloader.x_test_recurrent, dataloader.y_test_recurrent)
 
             optim = get_optimizer(
                 config["sequential_model_optimizer"], config["sequential_model_lr"]
@@ -733,11 +729,7 @@ def run_experiment(
                 dataloader.dlc_train_recurrent_flat.shape, num_classes
             )
 
-            optim = get_optimizer("adam", lr=0.0001)
-
-            my_metrics.setModel(my_dlc_model_recurrent)
-            my_metrics.validation_data = (dataloader.dlc_test_recurrent_flat,
-                    dataloader.y_test_recurrent)
+            optim = get_optimizer("rmsprop")
 
             my_dlc_model_recurrent, my_dlc_model_recurrent_history = train_model(
                 my_dlc_model_recurrent,
@@ -922,7 +914,11 @@ def main():
 
     config.update(exp_config)
 
-    setGPU(gpu_name)
+    ### setting up sessions
+    # set gpu
+    keras_config = tf.ConfigProto()
+    keras_config.gpu_options.allow_growth = True
+    keras_config.gpu_options.visible_device_list = str(gpu_name)
 
     # set all the randomness according to
     # https://stackoverflow.com/questions/50659482/why-cant-i-get-reproducible-results-in-keras-even-though-i-set-the-random-seeds
@@ -930,6 +926,12 @@ def main():
     if random_seed is not None:
         rnd = random_seed
     set_random_seed(rnd)
+
+    # double check this
+    # TODO:
+    # session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+    sess = tf.Session(graph=tf.get_default_graph(), config=keras_config)
+    K.set_session(sess)
 
     num_classes = 4
     if config["reduced_behavior"]:

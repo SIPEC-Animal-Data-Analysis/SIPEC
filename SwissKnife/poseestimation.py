@@ -5,8 +5,6 @@ import json
 from datetime import datetime
 
 ## adapted from matterport Mask_RCNN implementation
-from sklearn.externals._pilutil import imresize
-
 from SwissKnife.mrcnn import utils
 
 import numpy as np
@@ -16,12 +14,10 @@ from skimage.filters import gaussian
 from scipy.ndimage.morphology import binary_dilation
 import cv2
 
-import tensorflow as tf
-import tensorflow.keras.backend as K
-from tensorflow import keras
+from keras import backend as K
 
 import os
-
+import tensorflow as tf
 
 import imgaug.augmenters as iaa
 
@@ -37,6 +33,7 @@ from SwissKnife.utils import (
 from SwissKnife.augmentations import primate_identification
 
 import numpy as np
+import keras
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 
 import matplotlib.pyplot as plt
@@ -318,18 +315,13 @@ class Metrics(keras.callbacks.Callback):
         self._data.append(
             {"rmse": rmse_mean,}
         )
-        self._data.append(rmse_mean)
         print("rmse ::: ", rmse_mean)
         if self.writer is not None:
             rmse_summary = tf.compat.v1.summary.scalar(
-                "rmses", tf.convert_to_tensor(value=rmse_mean)
+                "rmses", tf.convert_to_tensor(rmse_mean)
             )
-            # rmse_summary = tf.compat.v1.summary.scalar(
-            #     "rmses", tf.convert_to_tensor(self._data)
-            # )
             all_summary = tf.compat.v1.summary.merge_all()
             self.writer.add_summary(K.eval(all_summary), batch)
-            # self.writer.add_summary(K.eval(all_summary))
             self.writer.flush()
         return
 
@@ -338,11 +330,11 @@ class Metrics(keras.callbacks.Callback):
 
 
 def custom_binary_crossentropy(y_true, y_pred, from_logits=False, label_smoothing=0):
-    y_pred = tf.constant(y_pred) if not tf.is_tensor(y_pred) else y_pred
-    y_true = tf.cast(y_true, y_pred.dtype)
+    y_pred = K.constant(y_pred) if not K.is_tensor(y_pred) else y_pred
+    y_true = K.cast(y_true, y_pred.dtype)
 
-    return tf.reduce_mean(
-        input_tensor=tf.keras.losses.binary_crossentropy(y_true, y_pred, from_logits=from_logits), axis=-1
+    return K.mean(
+        K.binary_crossentropy(y_true, y_pred, from_logits=from_logits), axis=-1
     )
 
 
@@ -356,7 +348,7 @@ class VIZ(keras.callbacks.Callback):
     def on_epoch_end(self, batch, logs={}):
         X_val, y_val = self.validation_data[0], self.validation_data[1]
 
-        id = 1
+        id = 5
         y_true = y_val[id : id + 1]
         y_predict = self.model.predict(X_val[id : id + 1])
         y_predict[:20, :20, :] = 0
@@ -477,15 +469,12 @@ def train_on_data(species, config, results_sink, percentage, save=False):
     tf_callback = get_tensorbaord_callback(logdir)
 
     my_metrics = Metrics(writer=file_writer)
-    my_metrics.validation_data = (np.asarray(x_test), np.asarray(y_test))
     my_metrics.setModel(posenet)
 
     viz_cb = VIZ()
-    viz_cb.validation_data = (np.asarray(x_test), np.asarray(y_test))
     viz_cb.setModel(posenet)
 
-    # callbacks = [my_metrics, tf_callback, viz_cb, lr_callback]
-    callbacks = [viz_cb]
+    callbacks = [my_metrics, tf_callback, viz_cb]
 
     augmentation_image = primate_identification(level=1)
 
@@ -617,7 +606,7 @@ def main():
     annotations = args.annotations
     frames = args.frames
 
-    setGPU(gpu_name)
+    setGPU(K, gpu_name)
 
     config_name = "poseestimation_config"
     config = load_config("../configs/poseestimation/" + config_name)

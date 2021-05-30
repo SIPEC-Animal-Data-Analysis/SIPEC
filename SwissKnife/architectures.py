@@ -1,19 +1,20 @@
 # SIPEC
 # MARKUS MARKS
 # MODEL ARCHITECTURES
-import tensorflow as tf
-from tensorflow.keras import regularizers, Model
-from tensorflow.keras.applications import (
+
+from keras import regularizers, Model
+from keras.applications import (
     DenseNet121,
     DenseNet201,
     ResNet50,
     ResNet101,
     InceptionResNetV2,
     Xception,
+    # ResNet152,
     NASNetLarge,
     InceptionV3,
 )
-from tensorflow.keras.layers import (
+from keras.layers import (
     Conv2D,
     BatchNormalization,
     Flatten,
@@ -23,6 +24,8 @@ from tensorflow.keras.layers import (
     TimeDistributed,
     LSTM,
     Input,
+    CuDNNLSTM,
+    CuDNNGRU,
     Bidirectional,
     MaxPooling2D,
     Conv1D,
@@ -33,9 +36,9 @@ from tensorflow.keras.layers import (
     Conv2DTranspose,
     UpSampling2D,
     Reshape,
-    LeakyReLU
 )
-from tensorflow.keras.models import Sequential
+from keras.layers.advanced_activations import LeakyReLU
+from keras.models import Sequential
 
 
 def posenet_mouse(input_shape, num_classes):
@@ -805,8 +808,8 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
     if model_name == "xception":
         recognition_model = Xception(
             include_top=False,
-            input_shape=(75, 75, 3),
-            # input_shape=(input_shape[0], input_shape[1], 3),
+            # input_shape=(75, 75, 3),
+            input_shape=(input_shape[0], input_shape[1], 3),
             pooling="avg",
             weights="imagenet",
         )
