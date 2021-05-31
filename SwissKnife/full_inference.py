@@ -25,16 +25,17 @@ from SwissKnife.utils import (
 
 # TODO: save molded imgs?
 
+
 def full_inference(
-        videodata,
-        results_sink,
-        networks,
-        id_classes,
-        mask_matching=False,
-        id_matching=False,
-        mask_size=256,
-        lookback=100,
-        max_ids=4,
+    videodata,
+    results_sink,
+    networks,
+    id_classes,
+    mask_matching=False,
+    id_matching=False,
+    mask_size=256,
+    lookback=100,
+    max_ids=4,
 ):
     maskmatcher = MaskMatcher()
     maskmatcher.max_ids = max_ids
@@ -50,9 +51,9 @@ def full_inference(
         # for idx in range(length):
         #     el = cv2.imread(videodata + "frame%d.jpg" % idx)
         if idx == 115:
-            print('yo')
+            print("yo")
         results_per_frame = {}
-        molded_img, masks, boxes, mask_scores = networks['SegNet'].detect_image(
+        molded_img, masks, boxes, mask_scores = networks["SegNet"].detect_image(
             el, verbose=0, mold=True
         )
 
@@ -125,22 +126,22 @@ def full_inference(
         results_per_frame["rescaled_imgs"] = rescaled_imgs.astype("uint8")
         # maskmatch.sort ()
 
-        if 'IdNet' in networks.keys():
+        if "IdNet" in networks.keys():
             ids = []
             confidences = []
             for img in rescaled_imgs:
                 primate, confidence = detect_primate(
-                    img, networks['IdNet'], classes_invert, threshold
+                    img, networks["IdNet"], classes_invert, threshold
                 )
                 ids.append(primate)
                 confidences.append(confidence)
             results_per_frame["ids"] = ids
             results_per_frame["confidences"] = confidences
 
-        if 'PoseNet' in networks.keys():
+        if "PoseNet" in networks.keys():
             maps = []
             for img in masked_imgs:
-                heatmaps = networks['PoseNet'].predict(np.expand_dims(img, axis=0))
+                heatmaps = networks["PoseNet"].predict(np.expand_dims(img, axis=0))
                 heatmaps = heatmaps[0, :, :, :]
                 coords_predict = heatmap_to_scatter(heatmaps)
                 maps.append(coords_predict)
@@ -205,15 +206,20 @@ def main():
     results_sink = args.results_sink
     output_video_name = args.output_video_name
 
-    #TODO: put me in cfg file
+    # TODO: put me in cfg file
     inference_cfg = {
-        'mold_dimension': 1024,
-        'mask_size': 64,
-        'lookback': 25,
-        'id_matching': False,
-        'mask_matching': True,
-        'display_coms': False,
-        'id_classes': {"0": 0, "1": 1, "2": 2, "3": 3, },
+        "mold_dimension": 1024,
+        "mask_size": 64,
+        "lookback": 25,
+        "id_matching": False,
+        "mask_matching": True,
+        "display_coms": False,
+        "id_classes": {
+            "0": 0,
+            "1": 1,
+            "2": 2,
+            "3": 3,
+        },
     }
     # primate: id_classes = {"Charles": 0,"Max": 1,"Paul": 2,"Alan": 3,}
 
@@ -221,32 +227,34 @@ def main():
     check_directory(results_sink)
 
     videodata = loadVideo(video, greyscale=False)
-    molded_video = mold_video(videodata, dimension=inference_cfg['mold_dimension'], n_jobs=20)
+    molded_video = mold_video(
+        videodata, dimension=inference_cfg["mold_dimension"], n_jobs=20
+    )
 
     SegNet = SegModel(species=species)
     SegNet.inference_config.DETECTION_MIN_CONFIDENCE = 0.99
     SegNet.set_inference(model_path=segnet_path)
     # SegNet.inference_config.DETECTION_MIN_CONFIDENCE = 0.1
 
-    networks = {'SegNet': SegNet}
+    networks = {"SegNet": SegNet}
 
     if posenet_path:
         PoseNet = load_model(
             posenet_path,
             custom_objects={"loss": custom_binary_crossentropy},
         )
-        networks['PoseNet'] = PoseNet
+        networks["PoseNet"] = PoseNet
 
     results = full_inference(
         videodata=molded_video,
         results_sink=results_sink,
         networks=networks,
-        id_classes=inference_cfg['id_classes'],
+        id_classes=inference_cfg["id_classes"],
         max_ids=max_ids,
-        id_matching=inference_cfg['id_matching'],
-        mask_matching=inference_cfg['mask_matching'],
-        mask_size=inference_cfg['mask_size'],
-        lookback=inference_cfg['lookback'],
+        id_matching=inference_cfg["id_matching"],
+        mask_matching=inference_cfg["mask_matching"],
+        mask_size=inference_cfg["mask_size"],
+        lookback=inference_cfg["lookback"],
     )
     if do_visualization:
         visualize_full_inference(
@@ -255,8 +263,8 @@ def main():
             video=molded_video,
             results=results,
             output_video_name=output_video_name,
-            dimension=inference_cfg['mold_dimension'],
-            display_coms=inference_cfg['display_coms'],
+            dimension=inference_cfg["mold_dimension"],
+            display_coms=inference_cfg["display_coms"],
         )
 
 
@@ -330,7 +338,7 @@ parser.add_argument(
     action="store",
     dest="output_video_name",
     type=str,
-    default='results_video.mp4',
+    default="results_video.mp4",
     help="name for visualization video",
 )
 
@@ -338,5 +346,5 @@ parser.add_argument(
 if __name__ == "__main__":
     main()
 
-#example call
-#python full_inference.py --gpu 0 --species mouse --video ./animal5678_day2.avi --segnet_path "./mask_rcnn_mouse_0095.h5" --max_ids 4 --results_sink .//
+# example call
+# python full_inference.py --gpu 0 --species mouse --video ./animal5678_day2.avi --segnet_path "./mask_rcnn_mouse_0095.h5" --max_ids 4 --results_sink .//

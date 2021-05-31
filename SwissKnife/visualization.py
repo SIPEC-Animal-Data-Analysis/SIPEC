@@ -10,7 +10,7 @@ from collections import Counter
 import sys
 
 from SwissKnife.segmentation import mold_video
-from SwissKnife.utils import loadVideo, load_vgg_labels,  coords_to_masks
+from SwissKnife.utils import loadVideo, load_vgg_labels, coords_to_masks
 import skvideo.io
 
 
@@ -34,7 +34,7 @@ def visualize_labels_on_video_cv(video, labels, framerate_video, out_path):
                 size = np.asarray(frame).shape
             cv2.putText(
                 frame,
-                labels[idx] + '___' + str(idx),
+                labels[idx] + "___" + str(idx),
                 (50, 50),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                 fontScale=1,
@@ -103,11 +103,12 @@ def displayScatter(frame, coords, color=(0, 0, 255)):
 
 
 def apply_mask(image, mask, color, alpha=0.5):
-    """Apply the given mask to the image.
-    """
+    """Apply the given mask to the image."""
     for c in range(3):
         image[:, :, c] = np.where(
-            mask == 1, image[:, :, c] * (1 - alpha) + alpha * color[c], image[:, :, c],
+            mask == 1,
+            image[:, :, c] * (1 - alpha) + alpha * color[c],
+            image[:, :, c],
         )
     return image
 
@@ -120,7 +121,16 @@ colors = [
     (255, 0, 255),
 ]
 
-def visualize_full_inference(results_sink, networks, video, results, output_video_name, display_coms=False, dimension=1024):
+
+def visualize_full_inference(
+    results_sink,
+    networks,
+    video,
+    results,
+    output_video_name,
+    display_coms=False,
+    dimension=1024,
+):
     resulting_frames = []
     for idx in tqdm(range(0, len(video))):
         frame = video[idx]
@@ -266,7 +276,8 @@ def visualize_full_inference(results_sink, networks, video, results, output_vide
                                 colors[0],
                                 1,
                                 cv2.LINE_AA,
-                                10)
+                                10,
+                            )
                     if i < len(mymasks):
                         masksize = float(mymasks[i].sum()) / float(
                             mymasks[i].shape[0] * mymasks[i].shape[1]
@@ -300,6 +311,7 @@ def visualize_full_inference(results_sink, networks, video, results, output_vide
         resulting_frames.append(frame)
     skvideo.io.vwrite(results_sink + output_video_name, resulting_frames, verbosity=1)
 
+
 @DeprecationWarning
 def main():
     args = parser.parse_args()
@@ -310,28 +322,33 @@ def main():
     # TODO: put me in cfg file
     # TODO: readout networks automatically
     viz_cfg = {
-        'mold_dimension': 1024,
-        'mask_size': 64,
-        'lookback': 25,
-        'id_matching': False,
-        'mask_matching': True,
-        'display_coms': False,
-        'id_classes': {"0": 0, "1": 1, "2": 2, "3": 3, },
-        'networks':["segmentation"],
+        "mold_dimension": 1024,
+        "mask_size": 64,
+        "lookback": 25,
+        "id_matching": False,
+        "mask_matching": True,
+        "display_coms": False,
+        "id_classes": {
+            "0": 0,
+            "1": 1,
+            "2": 2,
+            "3": 3,
+        },
+        "networks": ["segmentation"],
     }
 
     videodata = loadVideo(video, greyscale=False)
-    molded_video = mold_video(videodata, dimension=viz_cfg['mold_dimension'])
+    molded_video = mold_video(videodata, dimension=viz_cfg["mold_dimension"])
     results = np.load(results_path, allow_pickle=True)
 
     visualize_full_inference(
         results_sink=results_path,
-        networks=viz_cfg['networks'],
+        networks=viz_cfg["networks"],
         video=molded_video,
         results=results,
         output_video_name=output_video_name,
-        dimension=viz_cfg['mold_dimension'],
-        display_coms=viz_cfg['display_coms'],
+        dimension=viz_cfg["mold_dimension"],
+        display_coms=viz_cfg["display_coms"],
     )
     print("DONE")
 
@@ -351,7 +368,7 @@ parser.add_argument(
     action="store",
     dest="output_video_name",
     type=str,
-    default='results_video.mp4',
+    default="results_video.mp4",
     help="name for visualization video",
 )
 parser.add_argument(
