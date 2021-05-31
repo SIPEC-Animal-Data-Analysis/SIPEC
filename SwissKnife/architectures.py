@@ -37,8 +37,10 @@ from tensorflow.keras.layers import (
 )
 from tensorflow.keras.models import Sequential
 
+import math
 
-def posenet_mouse(input_shape, num_classes):
+def posenet_mouse(input_shape, num_classes, output_size=512, bottleneck_features=512,
+                  kernel_size=2, gaussian_noise=0.05, conv_features = 512, fix_recognition=False):
     """Mouse pose estimation architecture.
 
     Extended description of function.
@@ -56,108 +58,69 @@ def posenet_mouse(input_shape, num_classes):
         model
     """
     recognition_model = Xception(
-        include_top=False, input_shape=input_shape, pooling="avg", weights="imagenet",
+        # include_top=False, input_shape=input_shape, pooling="avg", weights="imagenet",
+        include_top=False,
+        input_shape=(input_shape[0], input_shape[1], input_shape[2]),
+        # pooling=None,
+        weights="imagenet",
+        pooling="avg",
+        # include_top=False, pooling=None, weights="imagenet",
     )
+
+    print(recognition_model.summary())
+
+    if fix_recognition:
+        for layer in recognition_model.layers:
+            layer.trainable = False
 
     new_input = Input(
         batch_shape=(None, input_shape[0], input_shape[1], input_shape[2])
     )
 
-    #### mouse w resnet
-
-    gaussian_noise = 0.01
-
     x = Conv2D(3, kernel_size=(1, 1), strides=(1, 1))(new_input)
 
     x = recognition_model(x)
-    # x = Flatten()(x)
-    x = Dense(1024)(x)
-    x = Reshape((2, 2, 256))(x)
-    u_7 = UpSampling2D(size=(64, 64))(x)
+    x = Dense(bottleneck_features)(x)
+    x = Reshape((1, 1, bottleneck_features))(x)
 
-    x = Conv2DTranspose(256, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
+    num_layers = int(math.log(output_size, 2))
 
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
+    res = []
+    for num_layer in range(num_layers):
+        power = kernel_size ** (num_layer)
+        newsize = (int(output_size / power), int(output_size / power))
+        u = UpSampling2D(size=newsize)(x)
+        res.append(u)
+        x = GaussianNoise(gaussian_noise)(x)
+        x = Conv2DTranspose(
+            conv_features,
+            kernel_size=(kernel_size, kernel_size),
+            strides=(kernel_size, kernel_size),
+            padding="valid",
+        )(x)
+        x = BatchNormalization()(x)
+        x = Activation("relu")(x)
 
-    ###
-    # x = Dropout(0.2)(x)
-    u_6 = UpSampling2D(size=(32, 32))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(256, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_5 = UpSampling2D(size=(16, 16))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(256, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_4 = UpSampling2D(size=(8, 8))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(256, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_3 = UpSampling2D(size=(4, 4))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(256, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_2 = UpSampling2D(size=(2, 2))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(512, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    x = concatenate([x, u_2, u_3, u_4, u_5, u_6, u_7], axis=-1)
+    x = concatenate([x] + res, axis=-1)
 
     x = Conv2DTranspose(256, kernel_size=(1, 1), strides=(1, 1), padding="valid")(x)
-    x = Activation("relu")(x)
     x = BatchNormalization()(x)
+    x = Activation("relu")(x)
+
 
     x = Conv2DTranspose(128, kernel_size=(1, 1), strides=(1, 1), padding="valid")(x)
-    x = Activation("relu")(x)
     x = BatchNormalization()(x)
+    x = Activation("relu")(x)
+
 
     x = Conv2DTranspose(64, kernel_size=(1, 1), strides=(1, 1), padding="valid")(x)
-    x = Activation("relu")(x)
     x = BatchNormalization()(x)
+    x = Activation("relu")(x)
+
 
     x = Conv2DTranspose(
         num_classes, kernel_size=(1, 1), strides=(1, 1), padding="valid"
     )(x)
-
-    # x = Conv3DTranspose(3, kernel_size=(1,1,1), strides=(1,1,1))(x)
 
     x = Activation("sigmoid")(x)
 
