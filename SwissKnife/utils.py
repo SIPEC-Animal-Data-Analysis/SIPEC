@@ -338,6 +338,9 @@ def categorical_focal_loss(gamma=2.0, alpha=0.25):
     def focal_loss(y_true, y_pred):
         # Define epsilon so that the backpropagation will not result in NaN
         # for 0 divisor case
+
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.cast(y_pred, tf.float32)
         epsilon = K.epsilon()
         # Add the epsilon to prediction value
         # y_pred = y_pred + epsilon
@@ -372,7 +375,7 @@ def f1(y_true, y_pred):
     r = tp / (tp + fn + K.epsilon())
 
     f1 = 2 * p * r / (p + r + K.epsilon())
-    f1 = tf.where(tf.is_nan(f1), tf.zeros_like(f1), f1)
+    f1 = tf.compat.v1.where(tf.math.is_nan(f1), tf.zeros_like(f1), f1)
     return K.mean(f1)
 
 
@@ -386,7 +389,7 @@ def f1_loss(y_true, y_pred):
     r = tp / (tp + fn + K.epsilon())
 
     f1 = 2 * p * r / (p + r + K.epsilon())
-    f1 = tf.where(tf.is_nan(f1), tf.zeros_like(f1), f1)
+    f1 = tf.compat.v1.where(tf.math.is_nan(f1), tf.zeros_like(f1), f1)
     return 1 - K.mean(f1)
 
 
@@ -398,7 +401,7 @@ def balanced_acc(y_true, y_pred):
 from sklearn.metrics import classification_report
 
 
-class Metrics(keras.callbacks.Callback):
+class Metrics(tf.keras.callbacks.Callback):
     def setModel(self, model):
         self.model = model
 
@@ -407,7 +410,7 @@ class Metrics(keras.callbacks.Callback):
 
     def on_epoch_end(self, batch, logs={}):
         X_val, y_val = self.validation_data[0], self.validation_data[1]
-        y_val = np.where(y_val == 1)[1].astype(int)
+        y_val = np.argmax(y_val, axis=-1)
 
         # old
         y_predict = self.model.predict(X_val)
@@ -416,7 +419,6 @@ class Metrics(keras.callbacks.Callback):
 
         self._data.append(
             {
-                # 'val_roc': roc_auc_score(y_val, y_predict, average='macro'),
                 "val_balanced_acc": balanced_accuracy_score(y_val, y_predict),
                 "val_sklearn_f1": f1_score(y_val, y_predict, average="macro"),
             }
@@ -637,23 +639,23 @@ def check_folder(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-
 ### set gpu backend
-def setGPU(backend, GPU):
-    # Outdated syntax from tf1
-    #config = tf.ConfigProto()
-    #config.gpu_options.allow_growth = True
-    #config.gpu_options.visible_device_list = GPU
-    #https://www.tensorflow.org/guide/migrate
+def setGPU_growth():
     physical_devices = tf.config.experimental.list_physical_devices('GPU')
     print(physical_devices)
-    #tf.config.experimental.set_memory_growth(physical_devices[0], True)
     for device in physical_devices:
         tf.config.experimental.set_memory_growth(device, True)
     # session = tf.Session(config=config)
-    # TODO: Replace the following by tf2 equivalent 
+    # TODO: Replace the following by tf2 equivalent
     ##backend.tensorflow_backend.set_session(tf.Session(config=config))
 
+def setGPU(gpu_name, growth=True):
+    # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+    # os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
+    tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[int(gpu_name)], 'GPU')
+    if growth:
+        setGPU_growth()
+    pass
 
 def pathForFile(paths, filename):
     if "labels" in paths[0]:

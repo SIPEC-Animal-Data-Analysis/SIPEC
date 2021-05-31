@@ -4,9 +4,6 @@
 import json
 from datetime import datetime
 
-## adapted from matterport Mask_RCNN implementation
-from SwissKnife.mrcnn import utils
-
 import numpy as np
 from tqdm import tqdm
 from argparse import ArgumentParser
@@ -14,15 +11,18 @@ from skimage.filters import gaussian
 from scipy.ndimage.morphology import binary_dilation
 import cv2
 
-from keras import backend as K
+import tensorflow as tf
+import tensorflow.keras.backend as K
+from tensorflow import keras
 
 import os
-import tensorflow as tf
+
+tf.compat.v1.disable_eager_execution()
 
 import imgaug.augmenters as iaa
 
 from SwissKnife.architectures import posenet_primate, posenet_mouse
-
+from SwissKnife.mrcnn import utils
 from SwissKnife.utils import (
     setGPU,
     load_config,
@@ -33,7 +33,6 @@ from SwissKnife.utils import (
 from SwissKnife.augmentations import primate_identification
 
 import numpy as np
-import keras
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 
 import matplotlib.pyplot as plt
@@ -315,13 +314,18 @@ class Metrics(keras.callbacks.Callback):
         self._data.append(
             {"rmse": rmse_mean,}
         )
+        self._data.append(rmse_mean)
         print("rmse ::: ", rmse_mean)
         if self.writer is not None:
             rmse_summary = tf.compat.v1.summary.scalar(
-                "rmses", tf.convert_to_tensor(rmse_mean)
+                "rmses", tf.convert_to_tensor(value=rmse_mean)
             )
+            # rmse_summary = tf.compat.v1.summary.scalar(
+            #     "rmses", tf.convert_to_tensor(self._data)
+            # )
             all_summary = tf.compat.v1.summary.merge_all()
             self.writer.add_summary(K.eval(all_summary), batch)
+            # self.writer.add_summary(K.eval(all_summary))
             self.writer.flush()
         return
 
@@ -330,11 +334,11 @@ class Metrics(keras.callbacks.Callback):
 
 
 def custom_binary_crossentropy(y_true, y_pred, from_logits=False, label_smoothing=0):
-    y_pred = K.constant(y_pred) if not K.is_tensor(y_pred) else y_pred
-    y_true = K.cast(y_true, y_pred.dtype)
+    y_pred = tf.constant(y_pred) if not tf.is_tensor(y_pred) else y_pred
+    y_true = tf.cast(y_true, y_pred.dtype)
 
-    return K.mean(
-        K.binary_crossentropy(y_true, y_pred, from_logits=from_logits), axis=-1
+    return tf.reduce_mean(
+        input_tensor=tf.keras.losses.binary_crossentropy(y_true, y_pred, from_logits=from_logits), axis=-1
     )
 
 
@@ -367,16 +371,14 @@ class VIZ(keras.callbacks.Callback):
         return
 
 
-def train_on_data(species, config, results_sink, percentage, save=False):
+def train_on_data(species, config, results_sink, percentage, data_path, output_path, save=False):
     global posenet
     if species == "primate":
         X = np.load(
-            "/media/nexus/storage5/swissknife_data/primate/pose_inputs/"
-            "pose_estimation_no_threshold_no_masked_X_128.npy",
+            os.path.join(data_path,"pose_estimation_no_threshold_no_masked_X_128.npy")
         )
         y = np.load(
-            "/media/nexus/storage5/swissknife_data/primate/pose_inputs/"
-            "pose_estimation_no_threshold_no_masked_y_128.npy",
+            os.path.join(data_path,"pose_estimation_no_threshold_no_masked_y_128.npy")
         )
 
         y = np.swapaxes(y, 1, 2)
@@ -395,13 +397,11 @@ def train_on_data(species, config, results_sink, percentage, save=False):
 
     if species == "mouse":
         X = np.load(
-            "/media/nexus/storage5/swissknife_data/mouse/pose_inputs/"
-            "mouse_posedata_masked_X.npy"
+            os.path.join(data_path,"mouse_posedata_masked_X.npy")
         )
 
         y = np.load(
-            "/media/nexus/storage5/swissknife_data/mouse/pose_inputs/"
-            "mouse_posedata_masked_y.npy"
+            os.path.join(data_path,"mouse_posedata_masked_y.npy")
         )
 
         new_X = []
@@ -463,18 +463,23 @@ def train_on_data(species, config, results_sink, percentage, save=False):
     batch_size = 8
     epochs = 30
 
-    logdir = os.path.join("./logs/posenet/", datetime.now().strftime("%Y%m%d-%H%M%S"))
+    logdir = os.path.join(output_path, "/logs/posenet/", datetime.now().strftime("%Y%m%d-%H%M%S"))
     file_writer = tf.compat.v1.summary.FileWriter(logdir + "/metrics")
+    #file_writer = tf.summary.create_file_writer(logdir + "/metrics")
+
     # file_writer.set_as_desfault()
     tf_callback = get_tensorbaord_callback(logdir)
 
     my_metrics = Metrics(writer=file_writer)
+    my_metrics.validation_data = (np.asarray(x_test), np.asarray(y_test))
     my_metrics.setModel(posenet)
 
     viz_cb = VIZ()
+    viz_cb.validation_data = (np.asarray(x_test), np.asarray(y_test))
     viz_cb.setModel(posenet)
 
-    callbacks = [my_metrics, tf_callback, viz_cb]
+    # callbacks = [my_metrics, tf_callback, viz_cb, lr_callback]
+    callbacks = [viz_cb]
 
     augmentation_image = primate_identification(level=1)
 
@@ -484,53 +489,53 @@ def train_on_data(species, config, results_sink, percentage, save=False):
 
     # training_generator.set_sgima(....)
 
-    dense_history_1 = posenet.fit_generator(
+    dense_history_1 = posenet.fit(
+        training_generator,
         epochs=epochs,
         validation_data=(x_test, y_test),
         callbacks=callbacks,
         shuffle=True,
-        generator=training_generator,
         use_multiprocessing=True,
-        workers=40,
+        workers=8
     )
 
     K.set_value(posenet.optimizer.lr, 0.0001)
     epochs = 50
 
-    dense_history_2 = posenet.fit_generator(
+    dense_history_2 = posenet.fit(
+        training_generator,
         epochs=epochs,
         validation_data=(x_test, y_test),
         callbacks=callbacks,
         shuffle=True,
-        generator=training_generator,
         use_multiprocessing=True,
-        workers=40,
+        workers=8
     )
 
     K.set_value(posenet.optimizer.lr, 0.00001)
     epochs = 50
 
-    dense_history_2 = posenet.fit_generator(
+    dense_history_2 = posenet.fit(
+        training_generator,
         epochs=epochs,
         validation_data=(x_test, y_test),
         callbacks=callbacks,
         shuffle=True,
-        generator=training_generator,
         use_multiprocessing=True,
-        workers=40,
+        workers=8,
     )
 
     K.set_value(posenet.optimizer.lr, 0.000005)
     epochs = 100
 
-    dense_history_2 = posenet.fit_generator(
+    dense_history_2 = posenet.fit(
+        training_generator,
         epochs=epochs,
         validation_data=(x_test, y_test),
         callbacks=callbacks,
         shuffle=True,
-        generator=training_generator,
         use_multiprocessing=True,
-        workers=40,
+        workers=8,
     )
 
     # skip tail for now
@@ -606,20 +611,20 @@ def main():
     annotations = args.annotations
     frames = args.frames
 
-    setGPU(K, gpu_name)
+    setGPU(gpu_name)
 
     config_name = "poseestimation_config"
     config = load_config("../configs/poseestimation/" + config_name)
     set_random_seed(config["random_seed"])
+    
+    data_path = "/home/user/pose_estimation"
+    
+    output_path = "/home/user/pose_estimation/poseestimation_test"
+
+    
 
     results_sink = (
-        "/media/nexus/storage4/swissknife_results/poseestimation/"
-        + config["experiment_name"]
-        + "_"
-        + str(fraction)
-        + "_"
-        + datetime.now().strftime("%Y-%m-%d-%H_%M")
-        + "/"
+            os.path.join(output_path, "{}-{}-{}/".format(config["experiment_name"], fraction, datetime.now().strftime("%Y-%m-%d-%H_%M")))
     )
     check_directory(results_sink)
     # with open(results_sink + "config.json", "w") as f:
@@ -627,13 +632,15 @@ def main():
     # f.close()
 
     if operation == "train_primate":
-        train_on_data(species="primate", config=config, results_sink=results_sink)
+        train_on_data(species="primate", config=config, results_sink=results_sink, data_path=data_path, output_path=output_path)
     if operation == "train_mouse":
         train_on_data(
             species="mouse",
             config=config,
             results_sink=results_sink,
             percentage=fraction,
+            data_path = data_path,
+            output_path=output_path
         )
 
 

@@ -1,20 +1,19 @@
 # SIPEC
 # MARKUS MARKS
 # MODEL ARCHITECTURES
-
-from keras import regularizers, Model
-from keras.applications import (
+import tensorflow as tf
+from tensorflow.keras import regularizers, Model
+from tensorflow.keras.applications import (
     DenseNet121,
     DenseNet201,
     ResNet50,
     ResNet101,
     InceptionResNetV2,
     Xception,
-    # ResNet152,
     NASNetLarge,
     InceptionV3,
 )
-from keras.layers import (
+from tensorflow.keras.layers import (
     Conv2D,
     BatchNormalization,
     Flatten,
@@ -24,8 +23,6 @@ from keras.layers import (
     TimeDistributed,
     LSTM,
     Input,
-    CuDNNLSTM,
-    CuDNNGRU,
     Bidirectional,
     MaxPooling2D,
     Conv1D,
@@ -36,9 +33,9 @@ from keras.layers import (
     Conv2DTranspose,
     UpSampling2D,
     Reshape,
+    LeakyReLU
 )
-from keras.layers.advanced_activations import LeakyReLU
-from keras.models import Sequential
+from tensorflow.keras.models import Sequential
 
 
 def posenet_mouse(input_shape, num_classes):
@@ -618,11 +615,12 @@ def recurrent_model_old(
         )
 
     else:
-        k = Bidirectional(CuDNNLSTM(units=128, return_sequences=True))(
+        # As of TF 2, one can just use LSTM and there is no CuDNNLSTM
+        k = Bidirectional(LSTM(units=128, return_sequences=True))(
             sequential_model_helper
         )
-        k = Bidirectional(CuDNNLSTM(units=64, return_sequences=True))(k)
-        k = Bidirectional(CuDNNLSTM(units=32, return_sequences=False))(k)
+        k = Bidirectional(LSTM(units=64, return_sequences=True))(k)
+        k = Bidirectional(LSTM(units=32, return_sequences=False))(k)
 
     dout = 0.3
     k = Dense(256)(k)
@@ -771,11 +769,12 @@ def recurrent_model_lstm(
         )
 
     else:
-        k = Bidirectional(CuDNNGRU(units=128, return_sequences=True))(k)
+        # As of TF 2, one can just use LSTM and there is no CuDNNGRU
+        k = Bidirectional(GRU(units=128, return_sequences=True))(k)
         k = Activation(LeakyReLU(alpha=0.3))(k)
-        k = Bidirectional(CuDNNGRU(units=64, return_sequences=True))(k)
+        k = Bidirectional(GRU(units=64, return_sequences=True))(k)
         k = Activation(LeakyReLU(alpha=0.3))(k)
-        k = Bidirectional(CuDNNGRU(units=32, return_sequences=False))(k)
+        k = Bidirectional(GRU(units=32, return_sequences=False))(k)
         k = Activation(LeakyReLU(alpha=0.3))(k)
 
     # k = Dense(256)(k)
@@ -808,8 +807,8 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
     if model_name == "xception":
         recognition_model = Xception(
             include_top=False,
-            # input_shape=(75, 75, 3),
-            input_shape=(input_shape[0], input_shape[1], 3),
+            input_shape=(75, 75, 3),
+            # input_shape=(input_shape[0], input_shape[1], 3),
             pooling="avg",
             weights="imagenet",
         )
