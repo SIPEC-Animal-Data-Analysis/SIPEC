@@ -338,7 +338,7 @@ def run_experiment(
             # if config['backbone'] == 'resnet':
             else:
                 recognition_model = pretrained_recognition(
-                    config["backbone"], input_shape, num_classes, fix_layers=False
+                    config["backbone"], input_shape_recognition, num_classes, fix_layers=False
                 )
 
             # augmentation
@@ -384,6 +384,7 @@ def run_experiment(
 
             CB_es, CB_lr = get_callbacks()
             my_metrics = Metrics()
+            my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
             my_metrics.setModel(recognition_model)
 
             CB_train = [CB_lr, CB_es, my_metrics]
