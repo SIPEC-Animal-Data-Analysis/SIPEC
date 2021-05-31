@@ -17,6 +17,7 @@ from tensorflow import keras
 
 import os
 
+tf.compat.v1.disable_eager_execution()
 
 import imgaug.augmenters as iaa
 
@@ -370,16 +371,14 @@ class VIZ(keras.callbacks.Callback):
         return
 
 
-def train_on_data(species, config, results_sink, percentage, save=False):
+def train_on_data(species, config, results_sink, percentage, data_path, output_path, save=False):
     global posenet
     if species == "primate":
         X = np.load(
-            "/media/nexus/storage5/swissknife_data/primate/pose_inputs/"
-            "pose_estimation_no_threshold_no_masked_X_128.npy",
+            os.path.join(data_path,"pose_estimation_no_threshold_no_masked_X_128.npy")
         )
         y = np.load(
-            "/media/nexus/storage5/swissknife_data/primate/pose_inputs/"
-            "pose_estimation_no_threshold_no_masked_y_128.npy",
+            os.path.join(data_path,"pose_estimation_no_threshold_no_masked_y_128.npy")
         )
 
         y = np.swapaxes(y, 1, 2)
@@ -398,13 +397,11 @@ def train_on_data(species, config, results_sink, percentage, save=False):
 
     if species == "mouse":
         X = np.load(
-            "/media/nexus/storage5/swissknife_data/mouse/pose_inputs/"
-            "mouse_posedata_masked_X.npy"
+            os.path.join(data_path,"mouse_posedata_masked_X.npy")
         )
 
         y = np.load(
-            "/media/nexus/storage5/swissknife_data/mouse/pose_inputs/"
-            "mouse_posedata_masked_y.npy"
+            os.path.join(data_path,"mouse_posedata_masked_y.npy")
         )
 
         new_X = []
@@ -466,8 +463,10 @@ def train_on_data(species, config, results_sink, percentage, save=False):
     batch_size = 8
     epochs = 30
 
-    logdir = os.path.join("./logs/posenet/", datetime.now().strftime("%Y%m%d-%H%M%S"))
+    logdir = os.path.join(output_path, "/logs/posenet/", datetime.now().strftime("%Y%m%d-%H%M%S"))
     file_writer = tf.compat.v1.summary.FileWriter(logdir + "/metrics")
+    #file_writer = tf.summary.create_file_writer(logdir + "/metrics")
+
     # file_writer.set_as_desfault()
     tf_callback = get_tensorbaord_callback(logdir)
 
@@ -490,53 +489,53 @@ def train_on_data(species, config, results_sink, percentage, save=False):
 
     # training_generator.set_sgima(....)
 
-    dense_history_1 = posenet.fit_generator(
+    dense_history_1 = posenet.fit(
+        training_generator,
         epochs=epochs,
         validation_data=(x_test, y_test),
         callbacks=callbacks,
         shuffle=True,
-        generator=training_generator,
         use_multiprocessing=True,
-        workers=40,
+        workers=8
     )
 
     K.set_value(posenet.optimizer.lr, 0.0001)
     epochs = 50
 
-    dense_history_2 = posenet.fit_generator(
+    dense_history_2 = posenet.fit(
+        training_generator,
         epochs=epochs,
         validation_data=(x_test, y_test),
         callbacks=callbacks,
         shuffle=True,
-        generator=training_generator,
         use_multiprocessing=True,
-        workers=40,
+        workers=8
     )
 
     K.set_value(posenet.optimizer.lr, 0.00001)
     epochs = 50
 
-    dense_history_2 = posenet.fit_generator(
+    dense_history_2 = posenet.fit(
+        training_generator,
         epochs=epochs,
         validation_data=(x_test, y_test),
         callbacks=callbacks,
         shuffle=True,
-        generator=training_generator,
         use_multiprocessing=True,
-        workers=40,
+        workers=8,
     )
 
     K.set_value(posenet.optimizer.lr, 0.000005)
     epochs = 100
 
-    dense_history_2 = posenet.fit_generator(
+    dense_history_2 = posenet.fit(
+        training_generator,
         epochs=epochs,
         validation_data=(x_test, y_test),
         callbacks=callbacks,
         shuffle=True,
-        generator=training_generator,
         use_multiprocessing=True,
-        workers=40,
+        workers=8,
     )
 
     # skip tail for now
@@ -617,15 +616,15 @@ def main():
     config_name = "poseestimation_config"
     config = load_config("../configs/poseestimation/" + config_name)
     set_random_seed(config["random_seed"])
+    
+    data_path = "/home/user/pose_estimation"
+    
+    output_path = "/home/user/pose_estimation/poseestimation_test"
+
+    
 
     results_sink = (
-        "/media/nexus/storage4/swissknife_results/poseestimation/"
-        + config["experiment_name"]
-        + "_"
-        + str(fraction)
-        + "_"
-        + datetime.now().strftime("%Y-%m-%d-%H_%M")
-        + "/"
+            os.path.join(output_path, "{}-{}-{}/".format(config["experiment_name"], fraction, datetime.now().strftime("%Y-%m-%d-%H_%M")))
     )
     check_directory(results_sink)
     # with open(results_sink + "config.json", "w") as f:
@@ -633,13 +632,15 @@ def main():
     # f.close()
 
     if operation == "train_primate":
-        train_on_data(species="primate", config=config, results_sink=results_sink)
+        train_on_data(species="primate", config=config, results_sink=results_sink, data_path=data_path, output_path=output_path)
     if operation == "train_mouse":
         train_on_data(
             species="mouse",
             config=config,
             results_sink=results_sink,
             percentage=fraction,
+            data_path = data_path,
+            output_path=output_path
         )
 
 
