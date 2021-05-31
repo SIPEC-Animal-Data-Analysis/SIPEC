@@ -9,10 +9,9 @@ from collections import Counter
 
 import sys
 
-sys.path.append("../")
-
 from SwissKnife.segmentation import mold_video
-from SwissKnife.utils import loadVideo, load_vgg_labels, load_dict, coords_to_masks
+from SwissKnife.utils import loadVideo, load_vgg_labels,  coords_to_masks
+import skvideo.io
 
 
 def visualize_labels_on_video_cv(video, labels, framerate_video, out_path):
@@ -26,12 +25,16 @@ def visualize_labels_on_video_cv(video, labels, framerate_video, out_path):
     idx = 0
     while cap.isOpened():
         ret, frame = cap.read()
+        if idx < 250:
+            continue
+        else:
+            idx = 0
         if ret:
             if idx == 0:
                 size = np.asarray(frame).shape
             cv2.putText(
                 frame,
-                labels[idx],
+                labels[idx] + '___' + str(idx),
                 (50, 50),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                 fontScale=1,
@@ -56,14 +59,7 @@ def visualize_labels_on_video_cv(video, labels, framerate_video, out_path):
     cv2.destroyAllWindows()
 
 
-def visualize_labels_on_video():
-    base_path = "/home/nexus/github/DeepLab-SwissKnife/ineichen_data/data/"
-    video_path = base_path + "BMA1_PE2_2018_12_19_084143.576.mp4"
-    labels_path = base_path + "video_freezing_tempseg_only_BMA1_PE2.csv"
-    outpath = (
-        "/home/nexus/github/DeepLab-SwissKnife/ineichen_data/results/testowatz.avi"
-    )
-
+def visualize_labels_on_video(video_path, labels_path, outpath):
     vid = loadVideo(video_path, greyscale=False)
     framerate_video = 17
     behavior = "freezing"
@@ -124,8 +120,7 @@ colors = [
     (255, 0, 255),
 ]
 
-
-def visualize_full_inference(networks, video, results, display_coms=False):
+def visualize_full_inference(results_sink, networks, video, results, output_video_name, display_coms=False, dimension=1024):
     resulting_frames = []
     for idx in tqdm(range(0, len(video))):
         frame = video[idx]
@@ -146,7 +141,7 @@ def visualize_full_inference(networks, video, results, display_coms=False):
             cv2.LINE_AA,
         )
 
-        if "segmentation" in networks:
+        if "SegNet" in networks.keys():
             coms = results[idx]["coms"]
 
             # ids = np.zeros([0, 1, 2, 3]).astype("int")
@@ -156,8 +151,11 @@ def visualize_full_inference(networks, video, results, display_coms=False):
             for box_id, box in enumerate(boxes):
                 if box[0] == 0:
                     continue
-                frame = displayBoxes(frame, box, color=colors[box_id])
-            masks = coords_to_masks(results[idx]["mask_coords"])
+                try:
+                    frame = displayBoxes(frame, box, color=colors[box_id])
+                except IndexError:
+                    continue
+            masks = coords_to_masks(results[idx]["mask_coords"], dim=dimension)
             print("num masks: ", str(masks.shape[-1]))
             for i in range(masks.shape[-1]):
                 mask = masks[:, :, i]
@@ -169,7 +167,7 @@ def visualize_full_inference(networks, video, results, display_coms=False):
                 if display_coms:
                     frame = displayScatter(frame, coms[i, :], color=colors[i])
 
-        if "identification" in networks:
+        if "IdNet" in networks.keys():
             offset = 100
             name_ids = results[idx]["ids"]
             confidences = results[idx]["confidences"]
@@ -268,7 +266,7 @@ def visualize_full_inference(networks, video, results, display_coms=False):
                                 colors[0],
                                 1,
                                 cv2.LINE_AA,
-                            )
+                                10)
                     if i < len(mymasks):
                         masksize = float(mymasks[i].sum()) / float(
                             mymasks[i].shape[0] * mymasks[i].shape[1]
@@ -286,7 +284,7 @@ def visualize_full_inference(networks, video, results, display_coms=False):
                 except (TypeError, IndexError):
                     continue
 
-        if "poseestimation" in networks:
+        if "PoseNet" in networks.keys():
             # TODO: fix hack
             for pose_id, poses in enumerate(results[idx]["pose_coordinates"]):
                 try:
@@ -300,63 +298,41 @@ def visualize_full_inference(networks, video, results, display_coms=False):
                     pass
 
         resulting_frames.append(frame)
+    skvideo.io.vwrite(results_sink + output_video_name, resulting_frames, verbosity=1)
 
-    out_path = "../viz_tests/"
-    import skvideo.io
-
-    skvideo.io.vwrite(out_path + "/outputvideo_short_new.mp4", resulting_frames)
-
-
+@DeprecationWarning
 def main():
     args = parser.parse_args()
-    operation = args.operation
-    if operation == "behavior_labels_mouse":
-        visualize_labels_on_video()
-    if operation == "vis_results_mouse":
-        print("load data")
-        videoname = (
-            "/media/nexus/storage5/swissknife_data/mouse/raw_videos/individual_data/"
-            "OFT_38.mp4"
-        )
-        videodata = loadVideo(videoname, greyscale=False, num_frames=700)[300:500]
-        molded_video = mold_video(videodata, dimension=1024)
-        results_path = (
-            "/media/nexus/storage4/swissknife_results/full_inference/mouse_test/"
-        )
-        results = np.load(results_path + "inference_results.npy", allow_pickle=True)
-        print("data loaded")
-        visualize_full_inference(
-            networks=["segmentation", "poseestimation"],
-            video=molded_video,
-            results=results,
-        )
+    output_video_name = args.output_video_name
+    video = args.video
+    results_path = args.results_path
 
-    if operation == "vis_results_primate":
-        print("load data")
-        videoname = (
-            "/media/nexus/storage5/swissknife_data/primate/raw_videos_sorted/2018_merge/"
-            "20180115T150502-20180115T150902_%T1.mp4"
-        )
+    # TODO: put me in cfg file
+    # TODO: readout networks automatically
+    viz_cfg = {
+        'mold_dimension': 1024,
+        'mask_size': 64,
+        'lookback': 25,
+        'id_matching': False,
+        'mask_matching': True,
+        'display_coms': False,
+        'id_classes': {"0": 0, "1": 1, "2": 2, "3": 3, },
+        'networks':["segmentation"],
+    }
 
-        # videoname = '../testovideo_short.mp4'
+    videodata = loadVideo(video, greyscale=False)
+    molded_video = mold_video(videodata, dimension=viz_cfg['mold_dimension'])
+    results = np.load(results_path, allow_pickle=True)
 
-        videodata = loadVideo(videoname, greyscale=False)
-        molded_video = mold_video(videodata, dimension=2048, n_jobs=40)
-        print("loaded_video")
-
-        results_path = (
-            "/media/nexus/storage5/swissknife_results/full_inference/primate_july_test_large/"
-            "/20180115T150502-20180115T150902_%T1/"
-        )
-
-        results = np.load(results_path + "inference_results.npy", allow_pickle=True)
-        # results_masks = load_dict(results_path + "inference_resulting_masks.pkl")
-        print("data loaded")
-        visualize_full_inference(
-            networks=["segmentation", "identification"],
-            video=molded_video,
-            results=results,
-        )
+    visualize_full_inference(
+        results_sink=results_path,
+        networks=viz_cfg['networks'],
+        video=molded_video,
+        results=results,
+        output_video_name=output_video_name,
+        dimension=viz_cfg['mold_dimension'],
+        display_coms=viz_cfg['display_coms'],
+    )
     print("DONE")
 
 
@@ -371,13 +347,22 @@ parser.add_argument(
     help="which video to visualize",
 )
 parser.add_argument(
-    "--operation",
+    "--output_video_name",
     action="store",
-    dest="operation",
+    dest="output_video_name",
     type=str,
-    default="train_primate",
-    help="standard training options for SIPEC data",
+    default='results_video.mp4',
+    help="name for visualization video",
 )
+parser.add_argument(
+    "--results_path",
+    action="store",
+    dest="results_path",
+    type=str,
+    default=None,
+    help="path the results file from full_inference",
+)
+
 
 if __name__ == "__main__":
     main()
