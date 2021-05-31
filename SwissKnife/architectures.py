@@ -1,7 +1,7 @@
 # SIPEC
 # MARKUS MARKS
 # MODEL ARCHITECTURES
-
+import tensorflow as tf
 from tensorflow.keras import regularizers, Model
 from tensorflow.keras.applications import (
     DenseNet121,
@@ -10,7 +10,6 @@ from tensorflow.keras.applications import (
     ResNet101,
     InceptionResNetV2,
     Xception,
-    # ResNet152,
     NASNetLarge,
     InceptionV3,
 )
@@ -34,8 +33,8 @@ from tensorflow.keras.layers import (
     Conv2DTranspose,
     UpSampling2D,
     Reshape,
+    LeakyReLU
 )
-from tensorflow.keras.layers import LeakyReLU
 from tensorflow.keras.models import Sequential
 
 
@@ -809,8 +808,8 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
         print("INPUT SHAPED {} {}".format(input_shape[0], input_shape[1]))
         recognition_model = Xception(
             include_top=False,
-            # input_shape=(75, 75, 3),
-            input_shape=(input_shape[0], input_shape[1], 3),
+            input_shape=(75, 75, 3),
+            # input_shape=(input_shape[0], input_shape[1], 3),
             pooling="avg",
             weights="imagenet",
         )
