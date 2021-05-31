@@ -1,7 +1,11 @@
-# SIPEC
-# MARKUS MARKS
-# MRCNN PART
-# This code is optimized from the Mask RCNN (Waleed Abdulla, (c) 2017 Matterport, Inc.) repository
+"""
+Mask R-CNN
+Base Configurations class.
+
+Copyright (c) 2017 Matterport, Inc.
+Licensed under the MIT License (see LICENSE for details)
+Written by Waleed Abdulla
+"""
 
 import numpy as np
 
