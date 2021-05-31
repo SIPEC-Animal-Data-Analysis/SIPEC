@@ -783,21 +783,51 @@ def run_experiment(
             for layer in my_dlc_model_recurrent.layers:
                 layer.trainable = False
 
+            for layer in recognition_model.layers:
+                layer.trainable = False
+
+            from tensorflow.keras.layers import BatchNormalization
+
             ### combine boehaviornet and posenet
             dlc_model_input = Input(
                 shape=(dataloader.dlc_train_recurrent_flat.shape[1],)
             )
+            # behaviornet_input = Input(shape=input_shape)
             behaviornet_input = Input(shape=recurrent_input_shape)
+
             output_behavior = sequential_model(behaviornet_input)
+            # output_behavior = recognition_model(behaviornet_input)
+            output_behavior = BatchNormalization()(output_behavior)
+            output_behavior = Dense(64)(output_behavior)
+            output_behavior = Activation('relu')(output_behavior)
+            # output_behavior = Dropout(0.1)(output_behavior)
             output_dlc = my_dlc_model_recurrent(dlc_model_input)
+            output_dlc = BatchNormalization()(output_dlc)
+            output_dlc = Dense(64)(output_dlc)
+            output_dlc = Activation('relu')(output_dlc)
+            # output_dlc = Dropout(0.1)(output_dlc)
             input = Concatenate()([output_dlc, output_behavior])
-            x = Dense(num_classes)(input)
+            x = BatchNormalization()(input)
+            x = Dense(32)(x)
+            x = Activation('relu')(x)
+
+            x = Dense(num_classes)(x)
             x = Activation("softmax")(x)
             combined_model = Model(
                 inputs=[dlc_model_input, behaviornet_input], outputs=x
             )
             print('COMBINED MODEL')
             combined_model.summary()
+
+            # optim = get_optimizer("sgd", lr=0.005)
+            optim = get_optimizer("adam", lr=0.000075)
+
+            CB_es, CB_lr = get_callbacks()
+            my_metrics = Metrics()
+            my_metrics.setModel(combined_model)
+            my_metrics.validation_data = ([dataloader.dlc_test_recurrent_flat, dataloader.x_test_recurrent],dataloader.y_test)
+
+            CB_train = [CB_lr, CB_es, my_metrics]
 
             sequential_model, sequential_model_history = train_model(
                 combined_model,
@@ -806,13 +836,13 @@ def run_experiment(
                 config["sequential_model_batch_size"],
                 (
                     [dataloader.dlc_train_recurrent_flat, dataloader.x_train_recurrent],
-                    dataloader.y_train_recurrent,
+                    dataloader.y_train,
                 ),
                 data_val=(
                     [dataloader.dlc_test_recurrent_flat, dataloader.x_test_recurrent],
-                    dataloader.y_test_recurrent,
+                    dataloader.y_test,
                 ),
-                # callbacks=CB_train,
+                callbacks=CB_train,
                 loss=config["sequential_model_loss"],
                 num_gpus=config["num_gpus"],
                 # TODO: activate augmentation for recurrent trainign as well?
