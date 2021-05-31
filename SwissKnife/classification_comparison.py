@@ -21,7 +21,6 @@ from tensorflow.keras.models import Sequential, Model
 import tensorflow.keras as keras
 from tensorflow.keras.layers import Concatenate, Dense, Activation
 
-from SwissKnife.datasets.mouse import MouseDataset
 from SwissKnife.architectures import (
     dlc_model,
     classification_small,
@@ -438,7 +437,6 @@ def run_experiment(
                 for layer in recognition_model.layers:
                     layer.trainable = False
 
-            print(recognition_model.summary())
 
             recurrent_input_shape = (
                 dataloader.x_train_recurrent.shape[1],
@@ -658,7 +656,6 @@ def run_experiment(
                 for layer in recognition_model.layers:
                     layer.trainable = False
 
-            print(recognition_model.summary())
 
             recurrent_input_shape = (
                 dataloader.x_train_recurrent.shape[1],
@@ -723,7 +720,6 @@ def run_experiment(
                 layer.trainable = False
             for layer in sequential_model.layers:
                 layer.trainable = False
-            print(sequential_model.summary())
 
             # combine here end to end and pose
             my_dlc_model = dlc_model_sturman(
