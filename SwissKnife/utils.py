@@ -402,6 +402,10 @@ from sklearn.metrics import classification_report
 
 
 class Metrics(tf.keras.callbacks.Callback):
+    
+    def __init__(self, validation_data):
+        self.validation_data = validation_data
+
     def setModel(self, model):
         self.model = model
 
@@ -531,7 +535,7 @@ def train_model(
         #                                                                random_state=42)
 
         if class_weights is not None:
-            training_history = model.fit_generator(
+            training_history = model.fit(
                 batch_gen,
                 epochs=epochs,
                 steps_per_epoch=len(data_train[0]),
@@ -539,10 +543,10 @@ def train_model(
                 callbacks=callbacks,
                 class_weight=class_weights,
                 use_multiprocessing=True,
-                workers=40,
+                workers=8,
             )
         else:
-            training_history = model.fit_generator(
+            training_history = model.fit(
                 batch_gen,
                 epochs=epochs,
                 # TODO: check here, also multiprocessing
@@ -550,7 +554,7 @@ def train_model(
                 validation_data=(data_val[0], data_val[1]),
                 callbacks=callbacks,
                 use_multiprocessing=True,
-                workers=40,
+                workers=8,
             )
 
     else:
@@ -564,7 +568,7 @@ def train_model(
                 validation_data=(data_val[0], data_val[1]),
                 callbacks=callbacks,
                 shuffle=True,
-                class_weight=class_weights,
+                class_weight=class_weights
             )
         else:
             training_history = model.fit(
@@ -574,7 +578,7 @@ def train_model(
                 batch_size=batch_size,
                 validation_data=(data_val[0], data_val[1]),
                 callbacks=callbacks,
-                shuffle=True,
+                shuffle=True
             )
 
     return model, training_history
@@ -651,7 +655,8 @@ def setGPU_growth():
 
 def setGPU(gpu_name, growth=True):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
+    #os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
+    tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[gpu_name], 'GPU')
     if growth:
         setGPU_growth()
     pass
