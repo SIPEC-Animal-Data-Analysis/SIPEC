@@ -88,6 +88,7 @@ def train_behavior(
             input_shape=dataloader.get_input_shape(recurrent=True),
             num_classes=num_classes,
         )
+        my_metrics = Metrics(validation_data=(dataloader.x_test_recurrent,dataloader.y_test_recurrent))
         my_metrics.setModel(our_model.sequential_model)
         our_model.add_callbacks([my_metrics])
         our_model.set_optimizer(
