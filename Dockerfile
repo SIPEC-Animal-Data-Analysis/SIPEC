@@ -35,6 +35,8 @@ RUN apt-get update
 
 RUN apt-get install -y --no-install-recommends ffmpeg
 
+RUN apt-get install unzip
+
 WORKDIR /home/user
 
 SHELL ["/bin/bash", "-c"]
@@ -45,7 +47,7 @@ RUN git clone https://github.com/damaggu/SIPEC.git
 
 WORKDIR /home/user/SIPEC
 
-RUN git checkout devel
+RUN git checkout update_to_tf2
 
 ENV VIRTUAL_ENV=/home/user/SIPEC/env
 
@@ -53,13 +55,19 @@ RUN python3.7 -m venv env
 
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-RUN python -m pip install --upgrade pip  && \ 
-
-	pip install -r requirements.txt
+RUN python -m pip install --upgrade pip  && pip install -r requirements.txt
 
 ENV PYTHONPATH="/home/user/SIPEC:${PYTHONPATH}" 
 
 ENV PATH="/home/user/SIPEC/SwissKnife:$PATH"
+
+RUN mkdir /home/user/data
+
+WORKDIR /home/user/data/
+
+RUN wget -O mouse_segmentation_single.zip https://www.dropbox.com/s/1gvjy2f6o1vu4zh/mouse_segmentation_single.zip?dl=0 && unzip mouse_segmentation_single.zip && rm mouse_segmentation_single.zip
+
+RUN wget -O full_inference_and_vis_data.zip https://www.dropbox.com/s/8sqk4wtj8gjz2jn/full_inference_and_vis_data.zip?dl=0 && unzip full_inference_and_vis_data.zip && rm full_inference_and_vis_data.zip
 
 ENTRYPOINT ["python"]
 
