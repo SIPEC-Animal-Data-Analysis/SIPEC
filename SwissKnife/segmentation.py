@@ -44,7 +44,7 @@ from SwissKnife.utils import (
     clearMemory,
 )
 
-from keras import backend as K
+from tensorflow.keras import backend as K
 
 # TODO: fix this import bug here
 from dataprep import get_segmentation_data
@@ -746,7 +746,7 @@ def main():
     set_random_seed(42)
 
     if gpu_name is not None:
-        setGPU(K, gpu_name)
+        setGPU(gpu_name)
 
     # TODO: remove operations/replace with annot/frames and paths
     # if operation == "train_primate":
