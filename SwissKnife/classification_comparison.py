@@ -257,7 +257,7 @@ def run_experiment(
         print("data prepared")
 
         # intialize metrics
-        my_metrics = Metrics(validation_data=)
+        my_metrics = Metrics(validation_data=None)
 
         if config["train_dlc"]:
             optim = get_optimizer(config["dlc_model_optimizer"], config["dlc_model_lr"])
@@ -387,8 +387,8 @@ def run_experiment(
             lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
             CB_es, CB_lr = get_callbacks()
-            my_metrics = Metrics()
-            my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
+            my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
+            #my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
             my_metrics.setModel(recognition_model)
 
             CB_train = [CB_lr, CB_es, my_metrics]
@@ -469,6 +469,9 @@ def run_experiment(
                 return new_lr
 
             lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
+
+            my_metrics = Metrics(validation_data=(dataloader.x_test_recurrent,dataloader.y_test_recurrent))
+
             if config["lrschedule_seq"]:
                 CB_train = [CB_lr, CB_es, my_metrics, lr_callback]
             else:
@@ -610,8 +613,8 @@ def run_experiment(
             lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
             CB_es, CB_lr = get_callbacks()
-            my_metrics = Metrics()
-            my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
+            my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
+            #my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
             my_metrics.setModel(recognition_model)
 
             CB_train = [CB_lr, CB_es, my_metrics]
