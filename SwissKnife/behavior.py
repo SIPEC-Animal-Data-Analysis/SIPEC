@@ -328,13 +328,14 @@ def main():
     shuffle = args.shuffle
     annotations = args.annotations
     video = args.video
+    output_path = args.output_path
 
-    setGPU(int(gpu_name))
+    setGPU(gpu_name)
 
-    output_path = "/home/user/data"
+    output_path = "/home/user/results"
 
     results_sink = (
-                os.path.join(output_path, "results/primate/behavior-{}-{}/".format(network, datetime.now().strftime("%Y-%m-%d-%H_%M")))
+                os.path.join(output_path, "primate/behavior-{}-{}/".format(network, datetime.now().strftime("%Y-%m-%d-%H_%M")))
             )
     check_directory(results_sink)
 
@@ -434,6 +435,16 @@ parser.add_argument(
 parser.add_argument(
     "--shuffle", action="store", dest="shuffle", type=bool, default=False,
 )
+
+parser.add_argument(
+    "--output_path",
+    action="store", 
+    dest="output_path", 
+    type=str, 
+    default=None, 
+    help="Path to the folder where the ouput should be written"
+)
+
 
 # example usage
 # python behavior.py --annotations "/media/nexus/storage5/swissknife_data/primate/behavior/20180124T113800-20180124T115800_0.csv" --video "/media/nexus/storage5/swissknife_data/primate/behavior/fullvids_20180124T113800-20180124T115800_%T1_0.mp4" --gpu 2

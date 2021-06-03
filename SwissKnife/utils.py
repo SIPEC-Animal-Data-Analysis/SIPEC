@@ -621,10 +621,10 @@ def load_dict(filename):
 
 def check_directory(directory):
     if not os.path.exists(directory):
+        print("Creating directory {}".format(directory))
         os.makedirs(directory)
     else:
-        print("experiment already exists")
-        raise ValueError
+        raise ValueError("Raising value exception as the experiment/directory {} already exists".format(directory))
 
 
 def get_ax(rows=1, cols=1, size=8):

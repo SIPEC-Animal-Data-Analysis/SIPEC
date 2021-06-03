@@ -2,6 +2,8 @@
 # MARKUS MARKS
 # COMPARISON OF DLC VS. END-TO-END
 
+import os
+
 from skimage.color import rgb2gray
 from skimage.util import img_as_uint
 
@@ -28,6 +30,7 @@ from SwissKnife.architectures import (
     pretrained_recognition,
     dlc_model_sturman,
 )
+
 from SwissKnife.utils import (
     Metrics,
     train_model,
@@ -42,6 +45,7 @@ from SwissKnife.utils import (
     save_dict,
     load_dict,
 )
+
 from SwissKnife.dataloader import Dataloader
 
 def remove_layers(model, num_layers):
@@ -253,7 +257,7 @@ def run_experiment(
         print("data prepared")
 
         # intialize metrics
-        my_metrics = Metrics()
+        my_metrics = Metrics(validation_data=)
 
         if config["train_dlc"]:
             optim = get_optimizer(config["dlc_model_optimizer"], config["dlc_model_lr"])
@@ -906,6 +910,9 @@ def main():
     continuation = args.continuation
     random_seed = args.random_seed
     fraction = args.fraction
+    output_path = args.output_path
+    
+    
 
     fraction_string = ""
     if fraction is not None:
@@ -913,7 +920,7 @@ def main():
 
     # init stuff
 
-    base_path = "/home/user/mouse_classification_comparison/"
+    base_path = "/home/user/data/mouse_classification_comparison/"
     #mouse_data = MouseDataset(base_path)
     config = load_config("/home/user/SIPEC/configs/behavior/shared_config")
     exp_config = load_config("/home/user/SIPEC/configs/behavior/reproduce_configs/" + config_name)
@@ -934,27 +941,16 @@ def main():
         num_classes = 2
 
     if config["train_dlc"]:
-        results_sink = (
-                "/media/nexus/storage4/swissknife_results/behavior/dlc_"
-                + config["experiment_name"]
-                + "_"
-                + str(rnd)
-                + "_"
-                + fraction_string
-                + "/"
-        )
+        output_dir = os.path.join(output_path, "dlc_{}_{}_{}/".format(
+            config["experiment_name"], rnd, fraction_string
+            ))
     else:
-        results_sink = (
-                "/media/nexus/storage4/swissknife_results/behavior/ours_"
-                + config["experiment_name"]
-                + "_"
-                + str(rnd)
-                + "_"
-                + fraction_string
-                + "/"
-        )
+        output_dir = os.path.join(output_path, "ours_{}_{}_{}/".format(
+            config["experiment_name"], rnd, fraction_string
+            ))
 
-    # FIXME: check for existence already before
+    results_sink = (output_dir)
+ 
     if not continuation:
         check_directory(results_sink)
 
@@ -1041,6 +1037,15 @@ parser.add_argument(
     type=float,
     default=None,
     help="fraction to use for training",
+)
+
+parser.add_argument(
+    "--output_path",
+    action="store",
+    dest="output_path",
+    type=str,
+    default=None,
+    help="Path to the folder where the ouput should be written"
 )
 
 if __name__ == "__main__":
