@@ -226,7 +226,7 @@ def main():
     setGPU(gpu_name)
     check_directory(results_sink)
 
-    videodata = loadVideo(video, greyscale=False)
+    videodata = loadVideo(video, greyscale=False, num_frames=1000)
     molded_video = mold_video(
         videodata, dimension=inference_cfg["mold_dimension"], n_jobs=20
     )
@@ -348,3 +348,6 @@ if __name__ == "__main__":
 
 # example call
 # python full_inference.py --gpu 0 --species mouse --video ./animal5678_day2.avi --segnet_path "./mask_rcnn_mouse_0095.h5" --max_ids 4 --results_sink .//
+
+# Docker usage
+# docker container run -v "/home/tarun/Documents/Work/Neuro_technology/data:/home/user/data" -v "/home/tarun/Documents/Work/Neuro_technology/SIPEC:/home/user/SIPEC:ro" --runtime=nvidia --rm chadhat/sipec:tf2 full_inference.py --gpu 0 --species mouse --video /home/user/data/full_inference_and_vis_data/animal5678_day2.avi --segnet_path "/home/user//data/full_inference_and_vis_data/mask_rcnn_mouse_0095.h5" --max_ids 4 --results_sink /home/user/data/test

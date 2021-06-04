@@ -44,7 +44,7 @@ from SwissKnife.utils import (
     clearMemory,
 )
 
-from keras import backend as K
+from tensorflow.keras import backend as K
 
 # TODO: fix this import bug here
 from dataprep import get_segmentation_data
@@ -746,7 +746,7 @@ def main():
     set_random_seed(42)
 
     if gpu_name is not None:
-        setGPU(K, gpu_name)
+        setGPU(gpu_name)
 
     # TODO: remove operations/replace with annot/frames and paths
     # if operation == "train_primate":
@@ -839,7 +839,7 @@ parser.add_argument(
     action="store",
     dest="model_path",
     type=str,
-    default=None,
+    default="/home/user/results/",
     help="model path for evaluation",
 )
 parser.add_argument(
@@ -871,4 +871,7 @@ if __name__ == "__main__":
     main()
 
 # example usage
-# python segmentation.py --random_seed 42 --cv_folds 0 --gpu 3 --frames ./published_data_zenodo/mouse/segmentation_single/annotated_frames --annotations ./published_data_zenodo/mouse/segmentation_single/mouse_top_segmentation.json --model_path ./test_models
+# python segmentation.py --cv_folds 0 --gpu 0 --frames ./published_data_zenodo/mouse/segmentation_single/annotated_frames --annotations ./published_data_zenodo/mouse/segmentation_single/mouse_top_segmentation.json --model_path ./test_models
+
+# Docker usage
+# docker container run -v "/home/tarun/Documents/Work/Neuro_technology/data:/home/user/data" -v "/home/tarun/Documents/Work/Neuro_technology/results:/home/user/results" -v "/home/tarun/Documents/Work/Neuro_technology/SIPEC:/home/user/SIPEC:ro" --runtime=nvidia --rm chadhat/sipec:tf2 segmentation.py --cv_folds 0 --gpu 0 --frames /home/user/data/mouse_segmentation_single/annotated_frames --annotations /home/user/data/mouse_segmentation_single/mouse_top_segmentation.json

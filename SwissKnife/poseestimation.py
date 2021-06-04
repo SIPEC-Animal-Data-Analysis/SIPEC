@@ -602,6 +602,16 @@ parser.add_argument(
     help="path to folder with annotated frames",
 )
 
+parser.add_argument(
+    "--output_path",
+    action="store",
+    dest="output_path",
+    type=str,
+    default=None,
+    help="Path to the folder where the ouput should be written"
+)
+
+
 
 def main():
     args = parser.parse_args()
@@ -610,6 +620,7 @@ def main():
     fraction = args.fraction
     annotations = args.annotations
     frames = args.frames
+    output_path = args.output_path
 
     setGPU(gpu_name)
 
@@ -617,9 +628,8 @@ def main():
     config = load_config("../configs/poseestimation/" + config_name)
     set_random_seed(config["random_seed"])
     
-    data_path = "/home/user/pose_estimation"
+    data_path = "/home/user/data/"
     
-    output_path = "/home/user/pose_estimation/poseestimation_test"
 
     
 

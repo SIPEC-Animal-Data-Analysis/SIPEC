@@ -621,10 +621,10 @@ def load_dict(filename):
 
 def check_directory(directory):
     if not os.path.exists(directory):
+        print("Creating directory {}".format(directory))
         os.makedirs(directory)
     else:
-        print("experiment already exists")
-        raise ValueError
+        raise ValueError("Raising value exception as the experiment/directory {} already exists".format(directory))
 
 
 def get_ax(rows=1, cols=1, size=8):
@@ -656,7 +656,7 @@ def setGPU_growth():
 def setGPU(gpu_name, growth=True):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
     #os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
-    tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[gpu_name], 'GPU')
+    tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[int(gpu_name)], 'GPU')
     if growth:
         setGPU_growth()
     pass
