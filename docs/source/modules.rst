@@ -6,4 +6,3 @@ SIPEC
 
    SwissKnife
    get-pip
-   test
