@@ -35,7 +35,7 @@ extensions = [
 extensions += ['sphinxarg.ext']
 
 extensions += [
-    'sphinx.ext.napoleon','sphinx.ext.autodoc'
+    'sphinx.ext.napoleon','sphinx.ext.autodoc', 'sphinx.ext.githubpages'
 ]
 
 
