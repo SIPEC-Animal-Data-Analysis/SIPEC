@@ -389,7 +389,7 @@ def run_experiment(
                 print("reducing to new learning rate" + str(new_lr))
                 return new_lr
 
-            lr_callback = tf.keras.callbacks.LearningRateSchebduler(scheduler)
+            lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
             CB_es, CB_lr = get_callbacks()
             my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
