@@ -14,7 +14,7 @@ from datetime import datetime
 from SwissKnife.architectures import classification_small
 
 from argparse import ArgumentParser
-import keras.backend as K
+import tensorflow.keras.backend as K
 import numpy as np
 
 from sklearn import metrics

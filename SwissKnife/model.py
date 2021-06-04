@@ -3,7 +3,9 @@
 # MODEL CLASS
 import numpy as np
 import tensorflow as tf
-from keras.engine.saving import load_model
+#from keras.engine.saving import load_model
+from tensorflow.keras.models import load_model
+
 
 from SwissKnife.architectures import (
     pretrained_recognition,
