@@ -2,6 +2,7 @@
 # MARKUS MARKS
 # COMPARISON OF DLC VS. END-TO-END
 
+
 import os
 
 from skimage.color import rgb2gray
@@ -18,10 +19,12 @@ import pandas as pd
 from imgaug import augmenters as iaa
 
 import tensorflow as tf
+
 from tensorflow.keras import Input
 from tensorflow.keras.models import Sequential, Model
 import tensorflow.keras as keras
 from tensorflow.keras.layers import Concatenate, Dense, Activation
+
 
 from SwissKnife.architectures import (
     dlc_model,
@@ -285,6 +288,7 @@ def run_experiment(
                 get_tensorbaord_callback,
             )
             import os
+
             # TODO: fix logging for TF2, call from utils
             # logdir = os.path.join("./logs/classifciation_comparison/dlc/", datetime.now().strftime("%Y%m%d-%H%M%S"))
             # file_writer = tf.compat.v1.summary.FileWriter(logdir + "/metrics")
@@ -298,6 +302,7 @@ def run_experiment(
             my_metrics.setModel(my_dlc_model_recurrent)
             my_metrics.validation_data = (dataloader.dlc_test_recurrent_flat,
                     dataloader.y_test_recurrent)
+
 
             my_dlc_model_recurrent, my_dlc_model_recurrent_history = train_model(
                 my_dlc_model_recurrent,
@@ -384,7 +389,7 @@ def run_experiment(
                 print("reducing to new learning rate" + str(new_lr))
                 return new_lr
 
-            lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
+            lr_callback = tf.keras.callbacks.LearningRateSchebduler(scheduler)
 
             CB_es, CB_lr = get_callbacks()
             my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
@@ -613,8 +618,10 @@ def run_experiment(
             lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
             CB_es, CB_lr = get_callbacks()
+
             my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
             #my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
+
             my_metrics.setModel(recognition_model)
 
             CB_train = [CB_lr, CB_es, my_metrics]
@@ -664,6 +671,9 @@ def run_experiment(
                     layer.trainable = False
 
 
+            print(recognition_model.summary())
+
+
             recurrent_input_shape = (
                 dataloader.x_train_recurrent.shape[1],
                 dataloader.x_train_recurrent.shape[2],
@@ -676,7 +686,9 @@ def run_experiment(
             )
 
             my_metrics.setModel(sequential_model)
+
             my_metrics.validation_data = (dataloader.x_test_recurrent, dataloader.y_test_recurrent)
+
 
             optim = get_optimizer(
                 config["sequential_model_optimizer"], config["sequential_model_lr"]
@@ -728,6 +740,9 @@ def run_experiment(
             for layer in sequential_model.layers:
                 layer.trainable = False
 
+            print(sequential_model.summary())
+
+
             # combine here end to end and pose
             my_dlc_model = dlc_model_sturman(
                 dataloader.dlc_train_flat.shape, num_classes
@@ -738,11 +753,13 @@ def run_experiment(
                 dataloader.dlc_train_recurrent_flat.shape, num_classes
             )
 
+
             optim = get_optimizer("adam", lr=0.0001)
 
             my_metrics.setModel(my_dlc_model_recurrent)
             my_metrics.validation_data = (dataloader.dlc_test_recurrent_flat,
                     dataloader.y_test_recurrent)
+
 
             my_dlc_model_recurrent, my_dlc_model_recurrent_history = train_model(
                 my_dlc_model_recurrent,
@@ -923,10 +940,12 @@ def main():
 
     # init stuff
 
+
     base_path = "/home/user/data/mouse_classification_comparison/"
     #mouse_data = MouseDataset(base_path)
     config = load_config("/home/user/SIPEC/configs/behavior/shared_config")
     exp_config = load_config("/home/user/SIPEC/configs/behavior/reproduce_configs/" + config_name)
+
 
     config.update(exp_config)
 
@@ -944,6 +963,7 @@ def main():
         num_classes = 2
 
     if config["train_dlc"]:
+
         output_dir = os.path.join(output_path, "dlc_{}_{}_{}/".format(
             config["experiment_name"], rnd, fraction_string
             ))
@@ -951,6 +971,7 @@ def main():
         output_dir = os.path.join(output_path, "ours_{}_{}_{}/".format(
             config["experiment_name"], rnd, fraction_string
             ))
+
 
     results_sink = (output_dir)
  
