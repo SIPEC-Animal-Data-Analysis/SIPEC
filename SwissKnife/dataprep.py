@@ -661,7 +661,10 @@ def get_individual_mouse_data():
     return x_train, y_train, x_test, y_test
 
 
-from scipy.misc import imresize
+#from scipy.misc import imresize
+# imresize from scipy has been removed: https://docs.scipy.org/doc/scipy-1.2.1/reference/generated/scipy.misc.imresize.html
+# The suggested way is to use Pillow
+from PIL import Image
 from skimage import color
 
 # mouse individual (60 mice)
@@ -781,7 +784,8 @@ def generate_individual_mouse_data(
 
                 el = color.rgb2gray(el)
 
-                el = imresize(el, 0.5)
+                #el = imresize(el, 0.5)
+                el = np.array(Image.fromarray(el).resize(0.5))
 
                 vid_new.append(el)
 

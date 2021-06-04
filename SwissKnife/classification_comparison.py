@@ -1,7 +1,10 @@
 # SIPEC
 # MARKUS MARKS
 # COMPARISON OF DLC VS. END-TO-END
-from keras.layers import Concatenate, Dense, Activation
+
+
+import os
+
 from skimage.color import rgb2gray
 from skimage.util import img_as_uint
 
@@ -16,10 +19,13 @@ import pandas as pd
 from imgaug import augmenters as iaa
 
 import tensorflow as tf
-from keras import backend as K, Input
-from keras.models import Sequential, Model
 
-from SwissKnife.datasets.mouse import MouseDataset
+from tensorflow.keras import Input
+from tensorflow.keras.models import Sequential, Model
+import tensorflow.keras as keras
+from tensorflow.keras.layers import Concatenate, Dense, Activation
+
+
 from SwissKnife.architectures import (
     dlc_model,
     classification_small,
@@ -27,6 +33,7 @@ from SwissKnife.architectures import (
     pretrained_recognition,
     dlc_model_sturman,
 )
+
 from SwissKnife.utils import (
     Metrics,
     train_model,
@@ -41,6 +48,7 @@ from SwissKnife.utils import (
     save_dict,
     load_dict,
 )
+
 from SwissKnife.dataloader import Dataloader
 
 def remove_layers(model, num_layers):
@@ -54,7 +62,8 @@ def run_experiment(
 ):
     # TODO: replace stuff
     # old path
-    videos = glob(base_path + "/inference/segmentation/individual/*.npy")
+    #videos = glob(base_path + "/inference/segmentation/individual/*.npy")
+    videos = glob(base_path + "/individual/*.npy")
     dlc_annot = glob(base_path + "/dlc_annotations/*.npy")
     labels = glob(base_path + "/labels/" + config["experimenter"] + "/*.npy")
 
@@ -251,7 +260,7 @@ def run_experiment(
         print("data prepared")
 
         # intialize metrics
-        my_metrics = Metrics()
+        my_metrics = Metrics(validation_data=None)
 
         if config["train_dlc"]:
             optim = get_optimizer(config["dlc_model_optimizer"], config["dlc_model_lr"])
@@ -279,19 +288,21 @@ def run_experiment(
                 get_tensorbaord_callback,
             )
             import os
-            logdir = os.path.join("./logs/classifciation_comparison/dlc/", datetime.now().strftime("%Y%m%d-%H%M%S"))
-            file_writer = tf.compat.v1.summary.FileWriter(logdir + "/metrics")
-            # file_writer.set_as_desfault()
-            tf_callback = get_tensorbaord_callback(logdir)
 
-            cbs.append(tf_callback)
+            # TODO: fix logging for TF2, call from utils
+            # logdir = os.path.join("./logs/classifciation_comparison/dlc/", datetime.now().strftime("%Y%m%d-%H%M%S"))
+            # file_writer = tf.compat.v1.summary.FileWriter(logdir + "/metrics")
+            # tf_callback = get_tensorbaord_callback(logdir)
+
+            # cbs.append(tf_callback)
 
 
-            optim = get_optimizer("adam", lr=0.000075)
-            # optim = get_optimizer("rmsprop", lr=0.0001)
+            optim = get_optimizer("adam", lr=0.0001)
 
-            config["dlc_model_recurrent_epochs"] = 50
-            config["dlc_model_recurrent_batch_size"] = 64
+            my_metrics.setModel(my_dlc_model_recurrent)
+            my_metrics.validation_data = (dataloader.dlc_test_recurrent_flat,
+                    dataloader.y_test_recurrent)
+
 
             my_dlc_model_recurrent, my_dlc_model_recurrent_history = train_model(
                 my_dlc_model_recurrent,
@@ -327,16 +338,16 @@ def run_experiment(
                 dataloader.x_train.shape[1],
                 dataloader.x_train.shape[2],
             )
-            input_shape = (img_rows, img_cols, dataloader.x_train.shape[3])
+            input_shape_recognition = (img_rows, img_cols, dataloader.x_train.shape[3])
 
             if config["backbone"] == "custom":
-                recognition_model = classification_small(input_shape, num_classes)
+                recognition_model = classification_small(input_shape_recognition, num_classes)
             # recognition_model.summary()
 
             # if config['backbone'] == 'resnet':
             else:
                 recognition_model = pretrained_recognition(
-                    config["backbone"], input_shape, num_classes, fix_layers=False
+                    config["backbone"], input_shape_recognition, num_classes, fix_layers=False
                 )
 
             # augmentation
@@ -381,7 +392,8 @@ def run_experiment(
             lr_callback = tf.keras.callbacks.LearningRateSchebduler(scheduler)
 
             CB_es, CB_lr = get_callbacks()
-            my_metrics = Metrics()
+            my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
+            #my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
             my_metrics.setModel(recognition_model)
 
             CB_train = [CB_lr, CB_es, my_metrics]
@@ -434,7 +446,6 @@ def run_experiment(
                 for layer in recognition_model.layers:
                     layer.trainable = False
 
-            print(recognition_model.summary())
 
             recurrent_input_shape = (
                 dataloader.x_train_recurrent.shape[1],
@@ -463,6 +474,9 @@ def run_experiment(
                 return new_lr
 
             lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
+
+            my_metrics = Metrics(validation_data=(dataloader.x_test_recurrent,dataloader.y_test_recurrent))
+
             if config["lrschedule_seq"]:
                 CB_train = [CB_lr, CB_es, my_metrics, lr_callback]
             else:
@@ -604,7 +618,10 @@ def run_experiment(
             lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
             CB_es, CB_lr = get_callbacks()
-            my_metrics = Metrics()
+
+            my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
+            #my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
+
             my_metrics.setModel(recognition_model)
 
             CB_train = [CB_lr, CB_es, my_metrics]
@@ -653,7 +670,9 @@ def run_experiment(
                 for layer in recognition_model.layers:
                     layer.trainable = False
 
+
             print(recognition_model.summary())
+
 
             recurrent_input_shape = (
                 dataloader.x_train_recurrent.shape[1],
@@ -667,6 +686,9 @@ def run_experiment(
             )
 
             my_metrics.setModel(sequential_model)
+
+            my_metrics.validation_data = (dataloader.x_test_recurrent, dataloader.y_test_recurrent)
+
 
             optim = get_optimizer(
                 config["sequential_model_optimizer"], config["sequential_model_lr"]
@@ -717,7 +739,9 @@ def run_experiment(
                 layer.trainable = False
             for layer in sequential_model.layers:
                 layer.trainable = False
+
             print(sequential_model.summary())
+
 
             # combine here end to end and pose
             my_dlc_model = dlc_model_sturman(
@@ -729,7 +753,13 @@ def run_experiment(
                 dataloader.dlc_train_recurrent_flat.shape, num_classes
             )
 
-            optim = get_optimizer("rmsprop")
+
+            optim = get_optimizer("adam", lr=0.0001)
+
+            my_metrics.setModel(my_dlc_model_recurrent)
+            my_metrics.validation_data = (dataloader.dlc_test_recurrent_flat,
+                    dataloader.y_test_recurrent)
+
 
             my_dlc_model_recurrent, my_dlc_model_recurrent_history = train_model(
                 my_dlc_model_recurrent,
@@ -900,6 +930,9 @@ def main():
     continuation = args.continuation
     random_seed = args.random_seed
     fraction = args.fraction
+    output_path = args.output_path
+    
+    
 
     fraction_string = ""
     if fraction is not None:
@@ -907,18 +940,16 @@ def main():
 
     # init stuff
 
-    base_path = "/media/nexus/storage5/swissknife_data/mouse"
-    mouse_data = MouseDataset(base_path)
-    config = load_config("./configs/behavior/shared_config")
-    exp_config = load_config("./configs/behavior/reproduce_configs/" + config_name)
+
+    base_path = "/home/user/data/mouse_classification_comparison/"
+    #mouse_data = MouseDataset(base_path)
+    config = load_config("/home/user/SIPEC/configs/behavior/shared_config")
+    exp_config = load_config("/home/user/SIPEC/configs/behavior/reproduce_configs/" + config_name)
+
 
     config.update(exp_config)
 
-    ### setting up sessions
-    # set gpu
-    keras_config = tf.ConfigProto()
-    keras_config.gpu_options.allow_growth = True
-    keras_config.gpu_options.visible_device_list = str(gpu_name)
+    setGPU(gpu_name)
 
     # set all the randomness according to
     # https://stackoverflow.com/questions/50659482/why-cant-i-get-reproducible-results-in-keras-even-though-i-set-the-random-seeds
@@ -927,38 +958,23 @@ def main():
         rnd = random_seed
     set_random_seed(rnd)
 
-    # double check this
-    # TODO:
-    # session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
-    sess = tf.Session(graph=tf.get_default_graph(), config=keras_config)
-    K.set_session(sess)
-
     num_classes = 4
     if config["reduced_behavior"]:
         num_classes = 2
 
     if config["train_dlc"]:
-        results_sink = (
-                "/media/nexus/storage4/swissknife_results/behavior/dlc_"
-                + config["experiment_name"]
-                + "_"
-                + str(rnd)
-                + "_"
-                + fraction_string
-                + "/"
-        )
-    else:
-        results_sink = (
-                "/media/nexus/storage4/swissknife_results/behavior/ours_"
-                + config["experiment_name"]
-                + "_"
-                + str(rnd)
-                + "_"
-                + fraction_string
-                + "/"
-        )
 
-    # FIXME: check for existence already before
+        output_dir = os.path.join(output_path, "dlc_{}_{}_{}/".format(
+            config["experiment_name"], rnd, fraction_string
+            ))
+    else:
+        output_dir = os.path.join(output_path, "ours_{}_{}_{}/".format(
+            config["experiment_name"], rnd, fraction_string
+            ))
+
+
+    results_sink = (output_dir)
+ 
     if not continuation:
         check_directory(results_sink)
 
@@ -1045,6 +1061,15 @@ parser.add_argument(
     type=float,
     default=None,
     help="fraction to use for training",
+)
+
+parser.add_argument(
+    "--output_path",
+    action="store",
+    dest="output_path",
+    type=str,
+    default=None,
+    help="Path to the folder where the ouput should be written"
 )
 
 if __name__ == "__main__":

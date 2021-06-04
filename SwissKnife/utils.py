@@ -27,10 +27,10 @@ import skvideo.io
 import tensorflow as tf
 from sklearn.metrics import balanced_accuracy_score, f1_score
 
-from keras import backend as K
-import keras
-from keras.preprocessing.image import ImageDataGenerator
-from keras.utils import multi_gpu_model
+from tensorflow.keras import backend as K
+import tensorflow.keras as keras
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+#from tensorflow.keras.utils import multi_gpu_model
 
 
 def masks_to_coords(masks):
@@ -197,8 +197,9 @@ def set_random_seed(random_seed):
     os.environ["PYTHONHASHSEED"] = str(random_seed)
     random.seed(random_seed)
     my_rnd_seed = np.random.seed(random_seed)
-    tf.set_random_seed(random_seed)
-    tf.random.set_random_seed(random_seed)
+    tf.random.set_seed(random_seed)
+    #tf.set_random_seed(random_seed)
+    #tf.random.set_random_seed(random_seed)
 
 
 def detect_primate(_img, _model, classes, threshold):
@@ -337,6 +338,9 @@ def categorical_focal_loss(gamma=2.0, alpha=0.25):
     def focal_loss(y_true, y_pred):
         # Define epsilon so that the backpropagation will not result in NaN
         # for 0 divisor case
+
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.cast(y_pred, tf.float32)
         epsilon = K.epsilon()
         # Add the epsilon to prediction value
         # y_pred = y_pred + epsilon
@@ -371,7 +375,7 @@ def f1(y_true, y_pred):
     r = tp / (tp + fn + K.epsilon())
 
     f1 = 2 * p * r / (p + r + K.epsilon())
-    f1 = tf.where(tf.is_nan(f1), tf.zeros_like(f1), f1)
+    f1 = tf.compat.v1.where(tf.math.is_nan(f1), tf.zeros_like(f1), f1)
     return K.mean(f1)
 
 
@@ -385,7 +389,7 @@ def f1_loss(y_true, y_pred):
     r = tp / (tp + fn + K.epsilon())
 
     f1 = 2 * p * r / (p + r + K.epsilon())
-    f1 = tf.where(tf.is_nan(f1), tf.zeros_like(f1), f1)
+    f1 = tf.compat.v1.where(tf.math.is_nan(f1), tf.zeros_like(f1), f1)
     return 1 - K.mean(f1)
 
 
@@ -397,7 +401,11 @@ def balanced_acc(y_true, y_pred):
 from sklearn.metrics import classification_report
 
 
-class Metrics(keras.callbacks.Callback):
+class Metrics(tf.keras.callbacks.Callback):
+    
+    def __init__(self, validation_data):
+        self.validation_data = validation_data
+
     def setModel(self, model):
         self.model = model
 
@@ -406,7 +414,7 @@ class Metrics(keras.callbacks.Callback):
 
     def on_epoch_end(self, batch, logs={}):
         X_val, y_val = self.validation_data[0], self.validation_data[1]
-        y_val = np.where(y_val == 1)[1].astype(int)
+        y_val = np.argmax(y_val, axis=-1)
 
         # old
         y_predict = self.model.predict(X_val)
@@ -415,7 +423,6 @@ class Metrics(keras.callbacks.Callback):
 
         self._data.append(
             {
-                # 'val_roc': roc_auc_score(y_val, y_predict, average='macro'),
                 "val_balanced_acc": balanced_accuracy_score(y_val, y_predict),
                 "val_sklearn_f1": f1_score(y_val, y_predict, average="macro"),
             }
@@ -470,7 +477,8 @@ def train_model(
     num_gpus=1,
 ):
     if num_gpus > 1:
-        model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
+        print("This part needs to be fixed!!!")
+        #model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
     if loss == "crossentropy":
         # TODO: integrate number of GPUs in config
         model.compile(
@@ -527,7 +535,7 @@ def train_model(
         #                                                                random_state=42)
 
         if class_weights is not None:
-            training_history = model.fit_generator(
+            training_history = model.fit(
                 batch_gen,
                 epochs=epochs,
                 steps_per_epoch=len(data_train[0]),
@@ -535,10 +543,10 @@ def train_model(
                 callbacks=callbacks,
                 class_weight=class_weights,
                 use_multiprocessing=True,
-                workers=40,
+                workers=8,
             )
         else:
-            training_history = model.fit_generator(
+            training_history = model.fit(
                 batch_gen,
                 epochs=epochs,
                 # TODO: check here, also multiprocessing
@@ -546,7 +554,7 @@ def train_model(
                 validation_data=(data_val[0], data_val[1]),
                 callbacks=callbacks,
                 use_multiprocessing=True,
-                workers=40,
+                workers=8,
             )
 
     else:
@@ -560,7 +568,7 @@ def train_model(
                 validation_data=(data_val[0], data_val[1]),
                 callbacks=callbacks,
                 shuffle=True,
-                class_weight=class_weights,
+                class_weight=class_weights
             )
         else:
             training_history = model.fit(
@@ -570,7 +578,7 @@ def train_model(
                 batch_size=batch_size,
                 validation_data=(data_val[0], data_val[1]),
                 callbacks=callbacks,
-                shuffle=True,
+                shuffle=True
             )
 
     return model, training_history
@@ -613,10 +621,10 @@ def load_dict(filename):
 
 def check_directory(directory):
     if not os.path.exists(directory):
+        print("Creating directory {}".format(directory))
         os.makedirs(directory)
     else:
-        print("experiment already exists")
-        raise ValueError
+        raise ValueError("Raising value exception as the experiment/directory {} already exists".format(directory))
 
 
 def get_ax(rows=1, cols=1, size=8):
@@ -635,15 +643,23 @@ def check_folder(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-
 ### set gpu backend
-def setGPU(backend, GPU):
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    config.gpu_options.visible_device_list = GPU
+def setGPU_growth():
+    physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    print(physical_devices)
+    for device in physical_devices:
+        tf.config.experimental.set_memory_growth(device, True)
     # session = tf.Session(config=config)
-    backend.tensorflow_backend.set_session(tf.Session(config=config))
+    # TODO: Replace the following by tf2 equivalent
+    ##backend.tensorflow_backend.set_session(tf.Session(config=config))
 
+def setGPU(gpu_name, growth=True):
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+    #os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
+    tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[int(gpu_name)], 'GPU')
+    if growth:
+        setGPU_growth()
+    pass
 
 def pathForFile(paths, filename):
     if "labels" in paths[0]:

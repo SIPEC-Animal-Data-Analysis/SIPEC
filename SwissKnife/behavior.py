@@ -9,7 +9,7 @@ from sklearn.externals._pilutil import imresize
 from tqdm import tqdm
 import pandas as pd
 import random
-import datetime
+from datetime import datetime
 
 from SwissKnife.architectures import classification_small
 
@@ -65,7 +65,7 @@ def train_behavior(
         our_model.add_callbacks([CB_es, CB_lr])
 
     # add sklearn metrics for tracking in training
-    my_metrics = Metrics()
+    my_metrics = Metrics(validation_data=(dataloader.x_test,dataloader.y_test))
     my_metrics.setModel(our_model.recognition_model)
     our_model.add_callbacks([my_metrics])
 
@@ -73,6 +73,7 @@ def train_behavior(
         our_model.recognition_model_epochs = config["recognition_model_epochs"]
         our_model.recognition_model_batch_size = config["recognition_model_batch_size"]
         print(config["recognition_model_batch_size"])
+        print(dataloader.y_test)
         our_model.train_recognition_network(dataloader=dataloader)
         print(config)
 
@@ -87,6 +88,7 @@ def train_behavior(
             input_shape=dataloader.get_input_shape(recurrent=True),
             num_classes=num_classes,
         )
+        my_metrics = Metrics(validation_data=(dataloader.x_test_recurrent,dataloader.y_test_recurrent))
         my_metrics.setModel(our_model.sequential_model)
         our_model.add_callbacks([my_metrics])
         our_model.set_optimizer(
@@ -326,17 +328,15 @@ def main():
     shuffle = args.shuffle
     annotations = args.annotations
     video = args.video
+    output_path = args.output_path
 
-    setGPU(K, gpu_name)
+    setGPU(gpu_name)
+
+    output_path = "/home/user/results"
 
     results_sink = (
-        "./results/primate/behavior"
-        + "_"
-        + network
-        + "_"
-        + datetime.now().strftime("%Y-%m-%d-%H_%M")
-        + "/"
-    )
+                os.path.join(output_path, "primate/behavior-{}-{}/".format(network, datetime.now().strftime("%Y-%m-%d-%H_%M")))
+            )
     check_directory(results_sink)
 
     if annotations:
@@ -372,7 +372,6 @@ def main():
         )
 
         dataloader.prepare_data()
-
         train_behavior(dataloader=dataloader, num_classes=num_classes, config=config)
     elif operation("train_primate"):
         config_name = "primate_final"
@@ -436,6 +435,16 @@ parser.add_argument(
 parser.add_argument(
     "--shuffle", action="store", dest="shuffle", type=bool, default=False,
 )
+
+parser.add_argument(
+    "--output_path",
+    action="store", 
+    dest="output_path", 
+    type=str, 
+    default=None, 
+    help="Path to the folder where the ouput should be written"
+)
+
 
 # example usage
 # python behavior.py --annotations "/media/nexus/storage5/swissknife_data/primate/behavior/20180124T113800-20180124T115800_0.csv" --video "/media/nexus/storage5/swissknife_data/primate/behavior/fullvids_20180124T113800-20180124T115800_%T1_0.mp4" --gpu 2
