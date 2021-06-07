@@ -1,0 +1,252 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Usage/Installation &#8212; SIPEC  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="SwissKnife package" href="SwissKnife.html" />
+    <link rel="prev" title="Welcome to SIPEC’s documentation!" href="../index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="usage-installation">
+<h1>Usage/Installation<a class="headerlink" href="#usage-installation" title="Permalink to this headline">¶</a></h1>
+<p><strong>For really making use of SIPEC, your machine should have a powerful
+GPU. We have tested the scripts with NVIDIA GTX 1080, NVIDIA GTX 2080 Ti
+and V100 GPUs.</strong></p>
+<section id="docker">
+<h2>Docker<a class="headerlink" href="#docker" title="Permalink to this headline">¶</a></h2>
+<p>We provide a docker image with the required environment to run the SIPEC
+scripts.</p>
+<p>In order to pull the docker image you would first need to install
+<code class="docutils literal notranslate"><span class="pre">docker</span></code> and <code class="docutils literal notranslate"><span class="pre">nvidia-docker2</span></code> following the instructions on:</p>
+<blockquote>
+<div><p><a class="reference external" href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html">https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html</a></p>
+</div></blockquote>
+<p>After installing <code class="docutils literal notranslate"><span class="pre">docker</span></code> and <code class="docutils literal notranslate"><span class="pre">nvidia-docker2</span></code> you can download the
+SIPEC image by executing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">pull</span> <span class="n">chadhat</span><span class="o">/</span><span class="n">sipec</span><span class="p">:</span><span class="n">tf2</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong> In order to run docker without <code class="docutils literal notranslate"><span class="pre">sudo</span></code> you would need to
+create a docker group and add your user to it. Please follow the
+instructions on:
+<a class="reference external" href="https://docs.docker.com/engine/install/linux-postinstall/">https://docs.docker.com/engine/install/linux-postinstall/</a></p>
+<p>The docker image contains the environment and SIPEC scripts.</p>
+</section>
+<section id="environment-installation">
+<h2>Environment installation<a class="headerlink" href="#environment-installation" title="Permalink to this headline">¶</a></h2>
+<p>If you do not want to use the docker container you can follow these
+installation instructions for <strong>Linux</strong>. These instructions have been
+tested on Ubuntu 18 and 20.04.</p>
+<section id="step-1-install-cuda-11-0-3">
+<h3>Step 1: Install Cuda 11.0.3<a class="headerlink" href="#step-1-install-cuda-11-0-3" title="Permalink to this headline">¶</a></h3>
+<p>Download and install Cuda 11. We have tested the setup with cuda 11.0.3.</p>
+<p>After the installation is finised run <code class="docutils literal notranslate"><span class="pre">nvcc</span> <span class="pre">--version</span></code> to check the
+installed cuda version.</p>
+</section>
+<section id="step-2-install-cudnn-8">
+<h3>Step 2: Install cuDNN 8<a class="headerlink" href="#step-2-install-cudnn-8" title="Permalink to this headline">¶</a></h3>
+<p>Download and install cuDNN 8. For this you would need to register for
+NVIDIA’s developer program (it is free):</p>
+<p><a class="reference external" href="https://developer.nvidia.com/cudnn-download-survey">https://developer.nvidia.com/cudnn-download-survey</a></p>
+</section>
+<section id="step-3">
+<h3>Step 3:<a class="headerlink" href="#step-3" title="Permalink to this headline">¶</a></h3>
+<p>After you have successfully installed cuda and cuDNN: * clone the SIPEC
+repository * open a terminal and go to the cloned SIPEC directory:
+<code class="docutils literal notranslate"><span class="pre">cd</span> <span class="pre">PATH_TO_SIPEC_ON_YOUR_MACHINE</span></code> * run the following commands</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">chmod</span> <span class="o">+</span><span class="n">x</span> <span class="n">setup</span><span class="o">.</span><span class="n">sh</span>
+<span class="o">./</span><span class="n">setup</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>The script will ask you for the root password.</p>
+</section>
+</section>
+</section>
+<section id="usage">
+<h1>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h1>
+<section id="predefined-pipelines">
+<h2>predefined pipelines<a class="headerlink" href="#predefined-pipelines" title="Permalink to this headline">¶</a></h2>
+<p>You can run these template pipelines for training or evaluation of SIPEC
+networks.</p>
+<p>If your system has multiple GPUs, the <code class="docutils literal notranslate"><span class="pre">--gpu</span></code> flag allows you to run a
+script on a specific GPU while keeping other GPUs free to run other
+scripts.</p>
+<p>Here are some example command line usages of the pipeline</p>
+<pre><code>
+docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2
+                     classification_comparison.py --gpu 0 --config_name behavior_config_final --random_seed 1 --output_path=/home/user/results
+
+docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2
+                      poseestimation.py --gpu 0 --operation train_mouse --output_path=/home/user/results/
+
+docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2
+                      behavior.py --gpu 0 --annotations /home/user/data/20180124T113800-20180124T115800_0.csv --video /home/user/data/fullvids_20180124T113800-20180124T115800_%T1_0.mp4 --output_path /home/user/results
+
+docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2
+                      full_inference.py --gpu 0 --species mouse --video /home/user/data/full_inference_and_vis_data/animal5678_day2.avi --segnet_path "/home/user/data/full_inference_and_vis_data/mask_rcnn_mouse_0095.h5" --max_ids 4 --results_sink /home/user/results/full_inference
+
+docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2
+                      segmentation.py --cv_folds 0 --gpu 0 --frames /home/user/data/mouse_segmentation_single/annotated_frames --annotations /home/user/data/mouse_segmentation_single/mouse_top_segmentation.json
+</pre><p>Where, <strong>RESULTS_PATH</strong> is the path on your machine where you would like
+to write the results.</p>
+<p>The output of these workflows are results files that quantify the
+network performance, and a .h5 file that are the network weights for
+subsequent use. Depending on modules to be trained, and the GPUs
+available the training can take multiple hours or days.</p>
+<p>In order to find all the arguments that can be passed to the scripts use
+the flag <code class="docutils literal notranslate"><span class="pre">--help</span></code>, e.g.,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">container</span> <span class="n">run</span> <span class="o">--</span><span class="n">runtime</span><span class="o">=</span><span class="n">nvidia</span> <span class="o">--</span><span class="n">rm</span> <span class="n">sipec</span><span class="p">:</span><span class="n">main_tf2</span> <span class="n">segmentation</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">help</span>
+</pre></div>
+</div>
+</section>
+<section id="own-pipline">
+<h2>own pipline<a class="headerlink" href="#own-pipline" title="Permalink to this headline">¶</a></h2>
+<p>You can build your own workflow by combining functions of the different
+SIPEC modules. To do so, you usually need to define a config file, that
+specifies parameters for the network and training to be used. Next, you
+will need to load your data via the dataloader module. This enables you
+to run the different SIPEC modules.</p>
+</section>
+</section>
+<section id="annotation-of-data">
+<h1>Annotation of Data<a class="headerlink" href="#annotation-of-data" title="Permalink to this headline">¶</a></h1>
+<p>For the annotation of segmentation as well as behavioral data we
+recommend the use of the VGG annotator, that can be found here:
+<a class="reference external" href="http://www.robots.ox.ac.uk/~vgg/software/via/">http://www.robots.ox.ac.uk/~vgg/software/via/</a> For the annotation of
+identification data we provide a GUI:
+<a class="reference external" href="https://github.com/damaggu/idtracking_gui">https://github.com/damaggu/idtracking_gui</a></p>
+</section>
+<section id="example-data">
+<h1>Example Data<a class="headerlink" href="#example-data" title="Permalink to this headline">¶</a></h1>
+<section id="mouse-oft-behavioral-videos">
+<h2>Mouse OFT behavioral videos<a class="headerlink" href="#mouse-oft-behavioral-videos" title="Permalink to this headline">¶</a></h2>
+<p>For open field (OFT) mouse behavioral analysis, you can use the
+exemplary data from Sturman et al. from zenedo.
+<a class="reference external" href="https://zenodo.org/record/3608658">https://zenodo.org/record/3608658</a> The corresponding labels can be
+accessed here.
+<a class="reference external" href="https://github.com/ETHZ-INS/DLCAnalyzer/tree/master/data/OFT/Labels">https://github.com/ETHZ-INS/DLCAnalyzer/tree/master/data/OFT/Labels</a></p>
+</section>
+</section>
+<section id="cite">
+<h1>Cite<a class="headerlink" href="#cite" title="Permalink to this headline">¶</a></h1>
+<p>If you use any part of this code for your work, please cite the
+following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SIPEC</span><span class="p">:</span> <span class="n">the</span> <span class="n">deep</span><span class="o">-</span><span class="n">learning</span> <span class="n">Swiss</span> <span class="n">knife</span> <span class="k">for</span> <span class="n">behavioral</span> <span class="n">data</span> <span class="n">analysis</span>
+<span class="n">Markus</span> <span class="n">Marks</span><span class="p">,</span> <span class="n">Jin</span> <span class="n">Qiuhan</span><span class="p">,</span> <span class="n">Oliver</span> <span class="n">Sturman</span><span class="p">,</span> <span class="n">Lukas</span> <span class="n">von</span> <span class="n">Ziegler</span><span class="p">,</span> <span class="n">Sepp</span> <span class="n">Kollmorgen</span><span class="p">,</span> <span class="n">Wolfger</span> <span class="n">von</span> <span class="n">der</span> <span class="n">Behrens</span><span class="p">,</span> <span class="n">Valerio</span> <span class="n">Mante</span><span class="p">,</span> <span class="n">Johannes</span> <span class="n">Bohacek</span><span class="p">,</span> <span class="n">Mehmet</span> <span class="n">Fatih</span> <span class="n">Yanik</span>
+<span class="n">bioRxiv</span> <span class="mf">2020.10.26.355115</span><span class="p">;</span> <span class="n">doi</span><span class="p">:</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">doi</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="mf">10.1101</span><span class="o">/</span><span class="mf">2020.10.26.355115</span>
+</pre></div>
+</div>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SIPEC</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage/Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#docker">Docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-installation">Environment installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#usage">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#predefined-pipelines">predefined pipelines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#own-pipline">own pipline</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#annotation-of-data">Annotation of Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#example-data">Example Data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#mouse-oft-behavioral-videos">Mouse OFT behavioral videos</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#cite">Cite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="SwissKnife.html">SwissKnife package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../index.html" title="previous chapter">Welcome to SIPEC’s documentation!</a></li>
+      <li>Next: <a href="SwissKnife.html" title="next chapter">SwissKnife package</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Dr Markus Marks.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/source/README.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
