@@ -19,8 +19,7 @@ We welcome feedback via GitHub issues.
 
 ## Usage/Installation
 
-**
-For really making use of SIPEC, your machine should have a powerful GPU.
+**For really making use of SIPEC, your machine should have a powerful GPU.
 We have tested the scripts with NVIDIA GTX 1080, NVIDIA GTX 2080 Ti and V100 GPUs.**
 
 ### Docker
@@ -33,11 +32,11 @@ In order to pull the docker image you would first need to install `docker` and `
 
 After installing `docker` and `nvidia-docker2` you can download the SIPEC image by executing:
 
-´´´
+```
 docker pull chadhat/sipec:tf2
-´´´
+```
 
-**Note:** In order to run docker without ´sudo´ you would need to create a docker group and add your user to it. Please follow the instructions on: [https://docs.docker.com/engine/install/linux-postinstall/](https://docs.docker.com/engine/install/linux-postinstall/) 
+**Note:** In order to run docker without `sudo` you would need to create a docker group and add your user to it. Please follow the instructions on: [https://docs.docker.com/engine/install/linux-postinstall/](https://docs.docker.com/engine/install/linux-postinstall/) 
 
 The docker image contains the environment and SIPEC scripts.
 
@@ -80,21 +79,22 @@ You can run these template pipelines for training or evaluation of SIPEC network
 If your system has multiple GPUs, the ```--gpu``` flag allows you to run a script on a specific GPU while keeping other GPUs free to run other scripts.
 
 Here are some example command line usages of the pipeline
-  
-```
-docker container run -v "**RESULTS_PATH**:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 classification_comparison.py   --gpu 0 --config_name behavior_config_final --random_seed 1 --output_path=/home/user/results
+<pre><code>
+docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 
+                     classification_comparison.py --gpu 0 --config_name behavior_config_final --random_seed 1 --output_path=/home/user/results
 
-docker container run -v "**RESULTS_PATH**:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 poseestimation.py   --gpu 0 --operation train_mouse --output_path=/home/user/results/
+docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 
+                      poseestimation.py --gpu 0 --operation train_mouse --output_path=/home/user/results/
 
+docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 
+                      behavior.py --gpu 0 --annotations /home/user/data/20180124T113800-20180124T115800_0.csv --video /home/user/data/fullvids_20180124T113800-20180124T115800_%T1_0.mp4 --output_path /home/user/results
 
-docker container run -v "**RESULTS_PATH**:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 behavior.py   --gpu 0 --annotations /home/user/data/20180124T113800-20180124T115800_0.csv --video /home/user/data/fullvids_20180124T113800-20180124T115800_%T1_0.mp4 --output_path /home/user/results
+docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 
+                      full_inference.py --gpu 0 --species mouse --video /home/user/data/full_inference_and_vis_data/animal5678_day2.avi --segnet_path "/home/user/data/full_inference_and_vis_data/mask_rcnn_mouse_0095.h5" --max_ids 4 --results_sink /home/user/results/full_inference
 
-
-docker container run -v "**RESULTS_PATH**:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 full_inference.py --gpu 0 --species mouse --video /home/user/data/full_inference_and_vis_data/animal5678_day2.avi --segnet_path "/home/user//data/full_inference_and_vis_data/mask_rcnn_mouse_0095.h5" --max_ids 4 --results_sink /home/user/results/full_inference
-
-docker container run -v "**RESULTS_PATH**:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 segmentation.py --cv_folds 0 --gpu 0 --frames /home/user/data/mouse_segmentation_single/annotated_frames --annotations /home/user/data/mouse_segmentation_single/mouse_top_segmentation.json
-
-```
+docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 
+                      segmentation.py --cv_folds 0 --gpu 0 --frames /home/user/data/mouse_segmentation_single/annotated_frames --annotations /home/user/data/mouse_segmentation_single/mouse_top_segmentation.json
+</pre></code>
 
 Where, **RESULTS_PATH** is the path on your machine where you would like to write the results.
 
