@@ -25,3 +25,7 @@ source ./env/bin/activate
 wget https://bootstrap.pypa.io/get-pip.py && python3.7 get-pip.py && rm get-pip.py
 
 python -m pip install --upgrade pip  && pip install -r requirements.txt
+
+echo export PYTHONPATH=$PWD:'$PYTHONPATH' >> ~/.bashrc
+
+echo export PATH=$PWD/SwissKnife:'$PATH' >> ~/.bashrc
