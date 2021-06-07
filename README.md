@@ -43,7 +43,7 @@ The docker image contains the environment and SIPEC scripts.
 ### Environment installation
 
 If you do not want to use the docker container you can follow these installation instructions for **Linux**. 
-These instructions have been tested on Ubuntu 18 and 20.04.
+These instructions have been tested on Ubuntu 20.04 but would most likely also work on Ubuntu 18.
 
 #### Step 1: Install Cuda 11.0.3
 
@@ -70,6 +70,19 @@ chmod +x setup.sh
 The script will ask you for the root password.
 
 
+#### Step 4:
+The script `setup.sh` has created a virtual environment named `env` in the repository folder.
+Activate the environment by executing:
+```
+source ./env/bin/activate
+```
+
+#### Step 5:
+
+To test your setup run one of the scripts in the folder `SwissKnife`, e.g.,
+```
+python segmentation.py --help
+```
 ## Usage
 
 ### predefined pipelines
