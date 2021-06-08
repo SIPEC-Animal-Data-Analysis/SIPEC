@@ -19,7 +19,7 @@ We welcome feedback via GitHub issues.
 
 ## Usage/Installation
 
-**For really making use of SIPEC, your machine should have a powerful GPU.
+**For using SIPEC, your machine should have a powerful GPU.
 We have tested the scripts with NVIDIA GTX 1080, NVIDIA GTX 2080 Ti and V100 GPUs.**
 
 ### Docker
@@ -38,7 +38,7 @@ docker pull chadhat/sipec:tf2
 
 **Note:** In order to run docker without `sudo` you would need to create a docker group and add your user to it. Please follow the instructions on: [https://docs.docker.com/engine/install/linux-postinstall/](https://docs.docker.com/engine/install/linux-postinstall/) 
 
-The docker image contains the environment and SIPEC scripts.
+The docker image contains the environment, sample data and SIPEC scripts.
 
 ### Environment installation
 
@@ -47,7 +47,7 @@ These instructions have been tested on Ubuntu 20.04 but would most likely also w
 
 #### Step 1: Install Cuda 11.0.3
 
-Download and install Cuda 11. We have tested the setup with cuda 11.0.3.
+Download and install Cuda 11.0.3 (We have tested the setup with this cuda version).
 
 After the installation is finised run `nvcc --version` to check the installed cuda version.
 
@@ -69,7 +69,6 @@ chmod +x setup.sh
 ```
 The script will ask you for the root password.
 
-
 #### Step 4:
 The script `setup.sh` has created a virtual environment named `env` in the repository folder.
 Activate the environment by executing:
@@ -89,7 +88,7 @@ python segmentation.py --help
 
 You can run these template pipelines for training or evaluation of SIPEC networks.
 
-If your system has multiple GPUs, the ```--gpu``` flag allows you to run a script on a specific GPU while keeping other GPUs free to run other scripts.
+If your system has multiple GPUs, the `--gpu` flag allows you to run a script on a specific GPU while keeping other GPUs free to run other scripts.
 
 Here are some example command line usages of the pipeline
 <pre><code>
