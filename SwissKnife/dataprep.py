@@ -3,9 +3,6 @@
 # DATA PREPARATION FOR DATA USED IN SIPEC PAPER
 import json
 import random
-import sys
-
-
 import os
 from argparse import ArgumentParser
 import skimage
@@ -13,34 +10,28 @@ import skimage.io
 import numpy as np
 import pickle
 from glob import glob
-
 from scipy.ndimage import center_of_mass
 from tqdm import tqdm
-
 import pandas as pd
 from scipy import misc
-
 from tensorflow.keras import backend as K
+import cv2
 
-# from SwissKnife.segmentation import mold_image, MouseConfig, SegModel
 from SwissKnife.dataloader import create_dataset
-from SwissKnife.poseestimation import (
+from SwissKnife.utils import (
     heatmaps_for_image_whole,
     bbox_mask,
+    heatmaps_to_locs,
+    heatmaps_for_images,
     heatmap_mask,
     dilate_mask,
+    setGPU,
+    loadVideo
 )
-
-# from SwissKnife.segmentation import SegModel, mold_image
-from SwissKnife.utils import setGPU, loadVideo
-
-## adapted from matterport Mask_RCNN implementation
 from SwissKnife.mrcnn import utils
 
 
 # adapted from mrcnn (Waleed Abdulla, (c) 2017 Matterport, Inc.)
-
-
 class Dataset(utils.Dataset):
     def __init__(self, species):
         super(Dataset, self).__init__()
@@ -810,6 +801,242 @@ def generate_individual_mouse_data(
     y_test = np.hstack(y_val)
     x_test = np.vstack(X_val)
     y_test = y_test.astype(int)
+
+    return x_train, y_train, x_test, y_test
+
+def get_primate_pose_data():
+    X = np.load(
+        "/media/nexus/storage5/swissknife_data/primate/pose_inputs/"
+        "pose_estimation_no_threshold_no_masked_X_128.npy",
+    )
+    y = np.load(
+        "/media/nexus/storage5/swissknife_data/primate/pose_inputs/"
+        "pose_estimation_no_threshold_no_masked_y_128.npy",
+    )
+
+    y = np.swapaxes(y, 1, 2)
+    y = np.swapaxes(y, 2, 3)
+
+    X = X.astype("uint8")
+
+    y_bac = heatmaps_to_locs(y)
+    img_shape = (X.shape[1], X.shape[2])
+    sigmas = [16.0, 6.0, 1.0, 1.0, 0.5]
+    y = heatmaps_for_images(
+        y_bac, img_shape=img_shape, sigma=sigmas[0], threshold=None
+    )
+
+    split = 25
+    x_train = X[split:]
+    y_train = y[split:]
+    x_test = X[:split]
+    y_test = y[:split]
+
+    return x_train, y_train, x_test, y_test
+
+def get_mouse_pose_data(fraction=1.0):
+    X = np.load(
+        "/home/markus/sipec_data/pose_inputs/"
+        "mouse_posedata_masked_X.npy"
+    )
+
+    y = np.load(
+        "/home/markus/sipec_data/pose_inputs/"
+        "mouse_posedata_masked_y.npy"
+    )
+
+    new_X = []
+    for el in X:
+        new_X.append(cv2.cvtColor(el, cv2.COLOR_GRAY2RGB).astype("uint8"))
+    X = np.asarray(new_X)
+    # y = y.astype("uint8")
+    y_bac = y[:, :, :, :]
+
+    ########
+
+    y = heatmaps_to_locs(y)
+    img_shape = (X.shape[1], X.shape[2])
+
+    sigmas = [5.0, 4.0, 1.0, 1.0, 0.5]
+
+    y = heatmaps_for_images(y, img_shape=img_shape, sigma=sigmas[0], threshold=None)
+
+    split = 50
+    x_train = X[split:]
+    y_train = y[split:]
+    x_test = X[:split]
+    y_test = y[:split]
+
+    num_labels = int(len(x_train) * fraction)
+    indices = np.arange(0, len(x_train))
+    random_idxs = np.random.choice(indices, size=num_labels, replace=False)
+    x_train = x_train[random_idxs]
+    y_train = y_train[random_idxs]
+
+    return x_train, y_train, x_test, y_test
+
+def get_mouse_pose_dlc_comparison_data(fold):
+    asgrey = False
+
+    base_path = "/media/nexus/storage5/swissknife_data/mouse/pose_estimation_comparison_data/OFT/"
+    folders = os.walk(base_path + "labeled-data/")
+
+    folders = folders.__next__()[1]
+
+    dlc_path = (
+            "/home/nexus/evaluation_results/evaluation-results/iteration-0/Blockcourse1May9-trainset"
+            + str(fold)
+            + "shuffle1/LabeledImages_DLC_resnet50_Blockcourse1May9shuffle1_1030000_snapshot-1030000/"
+    )
+    from glob import glob
+
+    dlc_files = glob(dlc_path + "*.png")
+
+    training_files = []
+    testing_files = []
+    for file in dlc_files:
+        suffix = "Training"
+        if "Test" in file:
+            suffix = "Test"
+        if suffix == "Training":
+            training_files.append(file.split(suffix + "-")[1])
+        else:
+            testing_files.append(file.split(suffix + "-")[1])
+
+    Xs = []
+    ys = []
+    for folder in folders:
+        path = (
+                base_path + "labeled-data/" + folder + "/CollectedData_BCstudent1.csv"
+        )
+        X, y = read_DLC_labels(
+            base_path=base_path,
+            label_file_path=path,
+            exclude_labels=["tl", "tr", "bl", "br", "centre"],
+            as_gray=asgrey,
+            file_list=training_files,
+        )
+        Xs.append(X)
+        ys.append(y)
+
+    x_train_bac = np.concatenate(Xs)
+    y_train_bac = np.concatenate(ys)
+
+    Xs = []
+    ys = []
+    folders = os.walk(base_path + "labeled-data/")
+    folders = folders.__next__()[1]
+    for folder in folders:
+        path = (
+                base_path + "labeled-data/" + folder + "/CollectedData_BCstudent1.csv"
+        )
+        X, y = read_DLC_labels(
+            base_path=base_path,
+            label_file_path=path,
+            exclude_labels=["tl", "tr", "bl", "br", "centre"],
+            as_gray=asgrey,
+            file_list=testing_files,
+        )
+        if not X.tostring() == b"":
+            Xs.append(X)
+            ys.append(y)
+
+    x_test_bac = np.concatenate(Xs)
+    y_test_bac = np.concatenate(ys)
+
+    SegNet = SegModel(species="mouse")
+    SegNet.inference_config.DETECTION_MIN_CONFIDENCE = 0.001
+    SegNet.set_inference(
+        model_path="/home/nexus/reviews/mouse_segmentation/mouse20210531T1038/mask_rcnn_mouse_0095.h5"
+    )
+
+    sigmas = [6.0, 4.0, 1.0, 1.0, 0.5]
+    img_shape = (x_test_bac.shape[1], x_test_bac.shape[2])
+    y_train = heatmaps_for_images(
+        y_train_bac, img_shape=img_shape, sigma=sigmas[0], threshold=None
+    )
+    y_test = heatmaps_for_images(
+        y_test_bac, img_shape=img_shape, sigma=sigmas[0], threshold=None
+    )
+
+    mask_size = 64
+    x_train, y_train, _ = segment_images_and_masks(
+        x_train_bac, y_train, SegNet=SegNet, mask_size=mask_size
+    )
+    x_test, y_test, coms_test = segment_images_and_masks(
+        x_test_bac, y_test, SegNet=SegNet, mask_size=mask_size
+    )
+
+    return x_train, y_train, x_test, y_test, img_shape
+
+def get_mouse_dlc_data():
+    # base_path = '/media/nexus/storage5/swissknife_data/mouse/pose_estimation_comparison_data/OFT/'
+    # path ='/media/nexus/storage5/swissknife_data/mouse/pose_estimation_comparison_data/OFT/labeled-data/1_01_A_190507114629/CollectedData_BCstudent1.csv',
+    # X, y = read_DLC_labels(base_path=base_path, label_file_path=path,
+    #                        exclude_labels=['tl', 'tr', 'bl', 'br', 'centre'])
+    asgrey = False
+
+    base_path = "/media/nexus/storage5/swissknife_data/mouse/pose_estimation_comparison_data/OFT/"
+    folders = os.walk(base_path + "labeled-data/")
+
+    folders = folders.__next__()[1]
+
+    Xs = []
+    ys = []
+    for folder in folders:
+        path = (
+                base_path + "labeled-data/" + folder + "/CollectedData_BCstudent1.csv"
+        )
+        X, y = read_DLC_labels(
+            base_path=base_path,
+            label_file_path=path,
+            exclude_labels=["tl", "tr", "bl", "br", "centre"],
+            as_gray=asgrey,
+        )
+        Xs.append(X)
+        ys.append(y)
+
+    X = np.concatenate(Xs)
+    y = np.concatenate(ys)
+
+    img_shape = (X.shape[1], X.shape[2])
+    y = heatmaps_for_images(y, img_shape=img_shape, sigma=3, threshold=None)
+
+    # mold images
+    mold_dimension = 1024
+    if asgrey:
+        X = np.expand_dims(X, axis=-1)
+    X = mold_video(video=X, dimension=mold_dimension)
+
+    resize_factor = 0.25
+
+    im_re = []
+    for el in tqdm(X):
+        im_re.append(imresize(el, resize_factor))
+    X = np.asarray(im_re)
+
+    out_dim = X.shape[2]
+
+    molded_maps = []
+    for el in y:
+        help = np.moveaxis(el, 2, 0)
+        maps = []
+        for map in help:
+            map = imresize(map, resize_factor)
+            new_map = np.zeros((out_dim, out_dim))
+            x_start = int((out_dim - map.shape[0]) / 2)
+            y_start = int((out_dim - map.shape[1]) / 2)
+            new_map[x_start:-x_start, y_start:-y_start] = map
+            maps.append(new_map)
+        maps = np.moveaxis(np.asarray(maps), 0, 2)
+        molded_maps.append(maps)
+    y = np.asarray(molded_maps)
+
+    split = 4
+    x_train = X[split:]
+    y_train = y[split:]
+    x_test = X[:split]
+    y_test = y[:split]
 
     return x_train, y_train, x_test, y_test
 
