@@ -3,8 +3,6 @@
 # SCRIPT FOR SMOOTHING SEGMENTATION RESULTS OVER TIME
 import sys
 
-sys.path.append("../")
-
 import pickle
 import time
 import numpy as np
@@ -13,7 +11,7 @@ import cv2
 
 from shapely.geometry import Polygon
 
-# from SwissKnife.segmentation import InferenceConfigPrimate, SegModel
+from SwissKnife.segmentation import InferenceConfigPrimate, SegModel
 from SwissKnife.utils import setGPU, rescale_img, detect_primate, masks_to_coms
 
 
@@ -142,12 +140,16 @@ class MaskMatcher:
             else:
                 # TODO: fix, hacky
                 for map_id in mapping.keys():
-                    new_id = self.ids[mapping[map_id][1]]
-                    if new_id == 0:
-                        new_id = list(left_nums)[0]
-                    new_ids[map_id] = new_id
-                    if new_id in left_nums:
-                        left_nums.remove(new_id)
+                    #TODO: catch somehow cleaner
+                    try:
+                        new_id = self.ids[mapping[map_id][1]]
+                        if new_id == 0:
+                            new_id = list(left_nums)[0]
+                        new_ids[map_id] = new_id
+                        if new_id in left_nums:
+                            left_nums.remove(new_id)
+                    except IndexError:
+                        continue
                 if len(left_nums) > 0:
                     for num in list(left_nums):
                         for el_idx, el in enumerate(new_ids):
