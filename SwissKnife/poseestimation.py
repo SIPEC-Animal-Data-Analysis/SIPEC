@@ -409,7 +409,15 @@ def revert_mold(img, padding, scale, dtype="uint8"):
     return rec
 
 
-def evaluate_pose_estimation(x_test, y_test, posenet, remold=False, y_test_orig=None, x_test_orig=None, coms_test=None):
+def evaluate_pose_estimation(
+    x_test,
+    y_test,
+    posenet,
+    remold=False,
+    y_test_orig=None,
+    x_test_orig=None,
+    coms_test=None,
+):
     rmses = []
     for idx, test_img in tqdm(enumerate(x_test)):
         heatmaps = posenet.predict(np.expand_dims(test_img, axis=0))
@@ -471,10 +479,10 @@ def train_on_data(
     original_img_shape=None,
     save=None,
 ):
-    remold=False
-    y_test_orig=None
-    x_test_orig=None
-    coms_test=None
+    remold = False
+    y_test_orig = None
+    x_test_orig = None
+    coms_test = None
     if segnet_path:
         SegNet = SegModel(species="mouse")
         SegNet.inference_config.DETECTION_MIN_CONFIDENCE = 0.001
@@ -489,22 +497,26 @@ def train_on_data(
         x_test, y_test, coms_test = segment_images_and_masks(
             x_test, y_test, SegNet=SegNet, mask_size=mask_size
         )
-        remold=True
+        remold = True
 
     img_rows, img_cols = x_train.shape[1], x_train.shape[2]
     input_shape = (img_rows, img_cols, 3)
 
     adam = tf.keras.optimizers.Adam(lr=0.001)
-    posenet = posenet_architecture(input_shape, num_classes=y_train.shape[-1], backbone=config['poseestimation_model_backbone'])
+    posenet = posenet_architecture(
+        input_shape,
+        num_classes=y_train.shape[-1],
+        backbone=config["poseestimation_model_backbone"],
+    )
     posenet.compile(
         loss=["binary_crossentropy"],
         optimizer=adam,
         metrics=["mse"],
     )
 
-    if config['poseestimation_model_augmentation'] == "primate":
+    if config["poseestimation_model_augmentation"] == "primate":
         augmentation_image = primate_poseestimation()
-    elif config['poseestimation_model_augmentation'] == 'mouse':
+    elif config["poseestimation_model_augmentation"] == "mouse":
         augmentation_image = mouse_poseestimation()
     else:
         raise NotImplementedError
@@ -544,8 +556,15 @@ def train_on_data(
             # workers=40,
         )
 
-    res = evaluate_pose_estimation(x_test, y_test, posenet, remold=remold, y_test_orig=y_test_orig,
-                                   x_test_orig=x_test_orig, coms_test=coms_test)
+    res = evaluate_pose_estimation(
+        x_test,
+        y_test,
+        posenet,
+        remold=remold,
+        y_test_orig=y_test_orig,
+        x_test_orig=x_test_orig,
+        coms_test=coms_test,
+    )
     if save:
         posenet.save(results_sink + "posenetNet" + ".h5")
         np.save(results_sink + "poseestimation_results_new.npy", res)
@@ -617,6 +636,7 @@ parser.add_argument(
     help="name of configuration file to use",
 )
 
+
 def main():
     args = parser.parse_args()
     operation = args.operation
@@ -653,15 +673,17 @@ def main():
     if operation == "mouse_dlc":
         x_train, y_train, x_test, y_test = get_mouse_dlc_data()
     if dlc_path:
-        #TODO: integrate exclude labels into cfg
-        X, y = read_dlc_labels_from_folder(dlc_path, exclude_labels = ["tl", "tr", "bl", "br", "centre"])
+        # TODO: integrate exclude labels into cfg
+        X, y = read_dlc_labels_from_folder(
+            dlc_path, exclude_labels=["tl", "tr", "bl", "br", "centre"]
+        )
         split = 4
         x_train = X[split:]
         y_train = y[split:]
         x_test = X[:split]
         y_test = y[:split]
 
-        #TODO: sigmas in config and test
+        # TODO: sigmas in config and test
         sigmas = [6.0, 4.0, 1.0, 1.0, 0.5]
         img_shape = (x_train.shape[1], x_train.shape[2])
         y_train = heatmaps_for_images(
@@ -681,6 +703,7 @@ def main():
         segnet_path=segnet_path,
         original_img_shape=original_img_shape,
     )
+
 
 # example usage
 # python poseestimation.py --gpu 0 --results_sink /home/markus/posetest/ --dlc_path /home/markus/OFT/labeled-data/ --segnet_path /home/markus/mask_rcnn_mouse_0095.h5 --config poseestimation_config_test

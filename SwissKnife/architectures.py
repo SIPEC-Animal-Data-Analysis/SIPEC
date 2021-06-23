@@ -39,13 +39,21 @@ from tensorflow.keras.layers import (
     Conv2DTranspose,
     UpSampling2D,
     Reshape,
-    LeakyReLU
+    LeakyReLU,
 )
 from tensorflow.keras.models import Sequential
 from tensorflow.python.keras.applications.efficientnet import EfficientNetB1
 
 
-def posenet(input_shape, num_classes, backbone='efficientnetb5', fix_backbone = False, gaussian_noise=0.05, features = 256, bias=False):
+def posenet(
+    input_shape,
+    num_classes,
+    backbone="efficientnetb5",
+    fix_backbone=False,
+    gaussian_noise=0.05,
+    features=256,
+    bias=False,
+):
     """Mouse pose estimation architecture.
     Extended description of function.
     Parameters
@@ -59,17 +67,26 @@ def posenet(input_shape, num_classes, backbone='efficientnetb5', fix_backbone = 
     keras.model
         model
     """
-    if backbone=='efficientnetb5':
+    if backbone == "efficientnetb5":
         recognition_model = EfficientNetB5(
-            include_top=False, input_shape=input_shape, pooling=None, weights="imagenet",
+            include_top=False,
+            input_shape=input_shape,
+            pooling=None,
+            weights="imagenet",
         )
-    elif backbone=='efficientnetb7':
+    elif backbone == "efficientnetb7":
         recognition_model = EfficientNetB7(
-            include_top=False, input_shape=input_shape, pooling=None, weights="imagenet",
+            include_top=False,
+            input_shape=input_shape,
+            pooling=None,
+            weights="imagenet",
         )
-    elif backbone=='efficientnetb1':
+    elif backbone == "efficientnetb1":
         recognition_model = EfficientNetB1(
-            include_top=False, input_shape=input_shape, pooling=None, weights="imagenet",
+            include_top=False,
+            input_shape=input_shape,
+            pooling=None,
+            weights="imagenet",
         )
     else:
         raise NotImplementedError
@@ -86,12 +103,16 @@ def posenet(input_shape, num_classes, backbone='efficientnetb5', fix_backbone = 
     x = recognition_model(x)
 
     for i in range(4):
-        x = Conv2DTranspose(features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias)(x)
+        x = Conv2DTranspose(
+            features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias
+        )(x)
         x = BatchNormalization()(x)
         x = Activation("relu")(x)
         x = GaussianNoise(gaussian_noise)(x)
 
-    x = Conv2DTranspose(features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias)(x)
+    x = Conv2DTranspose(
+        features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias
+    )(x)
     x = BatchNormalization()(x)
     x = Activation("relu")(x)
 
@@ -105,6 +126,7 @@ def posenet(input_shape, num_classes, backbone='efficientnetb5', fix_backbone = 
     model.summary()
 
     return model
+
 
 def classification_scratch(input_shape):
     """
@@ -424,7 +446,9 @@ def recurrent_model_old(
 
 
 def recurrent_model_tcn(
-    recognition_model, recurrent_input_shape, classes=4,
+    recognition_model,
+    recurrent_input_shape,
+    classes=4,
 ):
     """BehaviorNet architecture for behavioral classification based on temporal convolution architecture (TCN).
 
@@ -714,7 +738,11 @@ def idtracker_ai(input_shape, classes):
     )
     model.add(Activation("relu"))
 
-    model.add(MaxPooling2D(strides=(2, 2),))
+    model.add(
+        MaxPooling2D(
+            strides=(2, 2),
+        )
+    )
 
     model.add(
         Conv2D(
@@ -727,7 +755,11 @@ def idtracker_ai(input_shape, classes):
     )
     model.add(Activation("relu"))
 
-    model.add(MaxPooling2D(strides=(2, 2),))
+    model.add(
+        MaxPooling2D(
+            strides=(2, 2),
+        )
+    )
 
     model.add(
         Conv2D(

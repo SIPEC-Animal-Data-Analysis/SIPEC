@@ -5,6 +5,7 @@
 import imgaug as ia
 from imgaug import augmenters as iaa
 
+
 def primate_poseestimation():
     sometimes = lambda aug: iaa.Sometimes(0.4, aug)
 
@@ -24,16 +25,10 @@ def primate_poseestimation():
                 )
             ),
             iaa.Fliplr(0.5, name="Flipper"),
-            sometimes(
-                iaa.CoarseDropout(p=0.2, size_percent=0.5, per_channel=False)
-            ),
+            sometimes(iaa.CoarseDropout(p=0.2, size_percent=0.5, per_channel=False)),
             sometimes(iaa.GaussianBlur(sigma=(0, 1.0))),
-            sometimes(
-                iaa.CoarseDropout(p=0.2, size_percent=0.8, per_channel=False)
-            ),
-            sometimes(
-                iaa.CoarseDropout(p=0.05, size_percent=0.25, per_channel=False)
-            ),
+            sometimes(iaa.CoarseDropout(p=0.2, size_percent=0.8, per_channel=False)),
+            sometimes(iaa.CoarseDropout(p=0.05, size_percent=0.25, per_channel=False)),
         ],
         random_order=True,
     )
@@ -63,18 +58,15 @@ def mouse_poseestimation():
             ),
             # iaa.Fliplr(0.5, name="Flipper"),
             # sometimes(iaa.CoarseDropout(p=0.2, size_percent=0.8, per_channel=False)),
-            sometimes(
-                iaa.CoarseDropout(p=0.2, size_percent=0.8, per_channel=False)
-            ),
-            sometimes(
-                iaa.CoarseDropout(p=0.1, size_percent=0.4, per_channel=False)
-            ),
+            sometimes(iaa.CoarseDropout(p=0.2, size_percent=0.8, per_channel=False)),
+            sometimes(iaa.CoarseDropout(p=0.1, size_percent=0.4, per_channel=False)),
             sometimes(iaa.GaussianBlur(sigma=(0, 1.0))),
         ],
         random_order=True,
     )
 
     return augmentation_image
+
 
 def primate_identification(level=2):
     """Augmentation for primate identification.

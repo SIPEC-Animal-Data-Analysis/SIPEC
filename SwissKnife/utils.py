@@ -32,7 +32,8 @@ from skimage.filters import gaussian
 from tensorflow.keras import backend as K
 import tensorflow.keras as keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-#from tensorflow.keras.utils import multi_gpu_model
+
+# from tensorflow.keras.utils import multi_gpu_model
 
 ### pose estimation utils
 def heatmaps_for_images(labels, img_shape, sigma=3, threshold=None):
@@ -60,7 +61,6 @@ def heatmaps_to_locs(y):
     y = np.array(locs)
 
     return y
-
 
 
 def heatmap_mask(maps, mask):
@@ -130,6 +130,7 @@ def heatmap_to_scatter(heatmaps, threshold=0.6e-9):
 
     return np.asarray(coords)
 
+
 def dilate_mask(mask, factor=20):
     new_mask = binary_dilation(mask, iterations=factor)
 
@@ -171,12 +172,15 @@ def get_optimizer(optim_name, lr=0.01):
         optim = keras.optimizers.RMSprop(lr=lr)
     return optim
 
+
 ##callbacks
 
-def callbacks_tf_logging(path='./logs/'):
+
+def callbacks_tf_logging(path="./logs/"):
     logdir = os.path.join(path, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
     tf_callback = get_tensorbaord_callback(logdir)
     return tf_callback
+
 
 def get_tensorbaord_callback(path="./logs"):
     # Tensorflow board
@@ -184,6 +188,7 @@ def get_tensorbaord_callback(path="./logs"):
         log_dir=path, histogram_freq=0, write_graph=True, write_images=True
     )
     return tensorboard_callback
+
 
 def callbacks_learningRate_plateau():
     CB_lr = keras.callbacks.ReduceLROnPlateau(
@@ -226,19 +231,23 @@ def clearMemory(model, backend):
     del model
     backend.clear_session()
 
+
 def run_ai_cumulative_gradient(optimizer):
     import runai.ga.keras
+
     optim = runai.ga.keras.optimizers.Optimizer(optimizer, steps=8)
     return optim
+
 
 def fix_layers(network, with_backbone=True):
     for layer in network.layers:
         layer.trainable = True
         if with_backbone:
-            if 'layers' in dir(layer):
+            if "layers" in dir(layer):
                 for _layer in layer.layers:
                     _layer.trainable = True
     return network
+
 
 # helper class to keep track of results from different methods
 class ResultsTracker:
@@ -267,8 +276,6 @@ class ResultsTracker:
             print('Access on file "' + self.path + '" is not available!')
             print(str(e))
             return 0
-
-
 
 
 # TODO: include multi behavior
@@ -370,8 +377,8 @@ def set_random_seed(random_seed):
     random.seed(random_seed)
     my_rnd_seed = np.random.seed(random_seed)
     tf.random.set_seed(random_seed)
-    #tf.set_random_seed(random_seed)
-    #tf.random.set_random_seed(random_seed)
+    # tf.set_random_seed(random_seed)
+    # tf.random.set_random_seed(random_seed)
 
 
 def detect_primate(_img, _model, classes, threshold):
@@ -454,18 +461,27 @@ def extractCOM_only(image):
 
     return center_of_mass, weighted_center_of_mass
 
-def mask_to_original_image(orig_shape, mask, center_of_mass, mask_size):
 
+def mask_to_original_image(orig_shape, mask, center_of_mass, mask_size):
 
     img = np.zeros((orig_shape, orig_shape))
 
-    img[np.max([0, int(center_of_mass[0] - mask_size)]) : np.min([img.shape[0], int(center_of_mass[0] + mask_size)]),
-    np.max([0, int(center_of_mass[1] - mask_size)]) : np.min([img.shape[0], int(center_of_mass[1] + mask_size)])] = mask
+    img[
+        np.max([0, int(center_of_mass[0] - mask_size)]) : np.min(
+            [img.shape[0], int(center_of_mass[0] + mask_size)]
+        ),
+        np.max([0, int(center_of_mass[1] - mask_size)]) : np.min(
+            [img.shape[0], int(center_of_mass[1] + mask_size)]
+        ),
+    ] = mask
 
     return img
 
+
 def maskedImg(
-    img, center_of_mass, mask_size=74,
+    img,
+    center_of_mass,
+    mask_size=74,
 ):
     if len(img.shape) == 2:
         ret = np.zeros((int(mask_size * 2), int(mask_size * 2)))
@@ -624,7 +640,7 @@ def train_model(
 ):
     if num_gpus > 1:
         print("This part needs to be fixed!!!")
-        #model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
+        # model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
     if loss == "crossentropy":
         # TODO: integrate number of GPUs in config
         model.compile(
@@ -714,7 +730,7 @@ def train_model(
                 validation_data=(data_val[0], data_val[1]),
                 callbacks=callbacks,
                 shuffle=True,
-                class_weight=class_weights
+                class_weight=class_weights,
             )
         else:
             training_history = model.fit(
@@ -724,14 +740,20 @@ def train_model(
                 batch_size=batch_size,
                 validation_data=(data_val[0], data_val[1]),
                 callbacks=callbacks,
-                shuffle=True
+                shuffle=True,
             )
 
     return model, training_history
 
 
 def eval_model(
-    model, data, results_dict, results_array, filename, dataloader, model_name="",
+    model,
+    data,
+    results_dict,
+    results_array,
+    filename,
+    dataloader,
+    model_name="",
 ):
     true_confidence = model.predict(data)
     true_numerical = np.argmax(true_confidence, axis=-1).astype(int)
@@ -770,7 +792,11 @@ def check_directory(directory):
         print("Creating directory {}".format(directory))
         os.makedirs(directory)
     else:
-        raise ValueError("Raising value exception as the experiment/directory {} already exists".format(directory))
+        raise ValueError(
+            "Raising value exception as the experiment/directory {} already exists".format(
+                directory
+            )
+        )
 
 
 def get_ax(rows=1, cols=1, size=8):
@@ -789,9 +815,10 @@ def check_folder(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
+
 ### set gpu backend
 def setGPU_growth():
-    physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    physical_devices = tf.config.experimental.list_physical_devices("GPU")
     print(physical_devices)
     for device in physical_devices:
         tf.config.experimental.set_memory_growth(device, True)
@@ -799,13 +826,17 @@ def setGPU_growth():
     # TODO: Replace the following by tf2 equivalent
     ##backend.tensorflow_backend.set_session(tf.Session(config=config))
 
+
 def setGPU(gpu_name, growth=True):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-    #os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
-    tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[int(gpu_name)], 'GPU')
+    # os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
+    tf.config.set_visible_devices(
+        tf.config.list_physical_devices("GPU")[int(gpu_name)], "GPU"
+    )
     if growth:
         setGPU_growth()
     pass
+
 
 def pathForFile(paths, filename):
     if "labels" in paths[0]:
@@ -838,13 +869,13 @@ def load_config(path):
                 try:
                     params[line.split(" = ")[0]] = float(line.split(" = ")[1])
                 except ValueError:
-                    if ',' in str(line.split(" = ")[1]):
-                        if '.' in line.split(" = ")[1]:
-                            help = line.split(" = ")[1].split(',')
+                    if "," in str(line.split(" = ")[1]):
+                        if "." in line.split(" = ")[1]:
+                            help = line.split(" = ")[1].split(",")
                             entries = [float(el) for el in help]
                             params[line.split(" = ")[0]] = entries
                         else:
-                            help = line.split(" = ")[1].split(',')
+                            help = line.split(" = ")[1].split(",")
                             entries = [int(el) for el in help]
                             params[line.split(" = ")[0]] = entries
                     else:

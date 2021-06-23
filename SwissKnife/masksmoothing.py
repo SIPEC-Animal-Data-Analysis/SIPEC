@@ -97,7 +97,7 @@ class MaskMatcher:
     def assign_ids(
         self, frame_cur, _model, _classes, _threshold, bboxes_cur, bboxes_pre, ids_pre
     ):
-        """ Identify all bboxes in the current frame.
+        """Identify all bboxes in the current frame.
         Call IdNet for unmatched bboxes.
         In case of repeated ids, label the less probable ones as "Wrong".
         Output: a list of tuples, each tuple is (ID, confidence level).
@@ -140,7 +140,7 @@ class MaskMatcher:
             else:
                 # TODO: fix, hacky
                 for map_id in mapping.keys():
-                    #TODO: catch somehow cleaner
+                    # TODO: catch somehow cleaner
                     try:
                         new_id = self.ids[mapping[map_id][1]]
                         if new_id == 0:
