@@ -18,6 +18,7 @@ import os
 import pickle
 from distutils.version import LooseVersion
 import os.path
+import ast
 
 # import matplotlib.pyplot as plt
 import numpy as np
@@ -25,12 +26,179 @@ import skimage
 import skvideo
 import skvideo.io
 import tensorflow as tf
-from sklearn.metrics import balanced_accuracy_score, f1_score
+from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
+from skimage.filters import gaussian
 
 from tensorflow.keras import backend as K
 import tensorflow.keras as keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 #from tensorflow.keras.utils import multi_gpu_model
+
+### pose estimation utils
+def heatmaps_for_images(labels, img_shape, sigma=3, threshold=None):
+    heatmaps = []
+    for el in labels:
+        maps = heatmaps_for_image_whole(
+            img_shape=img_shape, labels=el, sigma=sigma, threshold=threshold
+        )
+        heatmaps.append(maps)
+    heatmaps = np.asarray(heatmaps)
+
+    return heatmaps.astype("float32")
+
+
+def heatmaps_to_locs(y):
+    locs = []
+    for maps in y:
+        map_locs = []
+        for map_id in range(y.shape[-1]):
+            map = maps[:, :, map_id]
+            loc = np.where(map == map.max())
+            map_locs.append([loc[1][0], loc[0][0]])
+        locs.append(np.array(map_locs))
+
+    y = np.array(locs)
+
+    return y
+
+
+
+def heatmap_mask(maps, mask):
+    ret = False
+    for mold in tqdm(maps):
+        a = mold * mask
+        if a.sum() > 10:
+            return True
+    return ret
+
+
+def heatmaps_for_image(labels, window=100, sigma=3):
+    heatmaps = []
+    for label in labels:
+        heatmap = np.zeros((window, window))
+        heatmap[int(label[1]), int(label[0])] = 1
+        heatmap = gaussian(heatmap, sigma=sigma)
+        heatmap[heatmap > 0.001] = 1
+        heatmaps.append(heatmap)
+
+    heatmaps = np.asarray(heatmaps)
+    heatmaps = np.moveaxis(heatmaps, 0, 2)
+
+    return heatmaps
+
+
+def heatmaps_for_image_whole(labels, img_shape, sigma=3, threshold=None):
+    heatmaps = []
+    for label in labels:
+        heatmap = np.zeros(img_shape)
+        if label[1] > -1:
+            heatmap[int(label[1]), int(label[0])] = 1
+            heatmap = gaussian(heatmap, sigma=sigma)
+            # threshold
+            if threshold:
+                heatmap[heatmap > threshold] = 1
+            else:
+                heatmap = heatmap / heatmap.max()
+        heatmaps.append(heatmap)
+    heatmaps = np.asarray(heatmaps)
+    heatmaps = np.moveaxis(heatmaps, 0, 2)
+    return heatmaps
+
+
+def keypoints_in_mask(mask, keypoints):
+    for point in keypoints:
+        keypoint = point.astype(int)
+
+        res = mask[keypoint[1], keypoint[0]]
+        if res == False:
+            return False
+    return True
+
+
+def heatmap_to_scatter(heatmaps, threshold=0.6e-9):
+    coords = []
+
+    for idx in range(0, heatmaps.shape[-1]):
+        heatmap = heatmaps[:, :, idx]
+        # heatmap = gaussian(heatmap, sigma=2)
+        val = max(heatmap.flatten())
+        if val > threshold:
+            _coord = np.where(heatmap == val)
+            coords.append([_coord[1][0], _coord[0][0]])
+        else:
+            coords.append([0, 0])
+
+    return np.asarray(coords)
+
+def dilate_mask(mask, factor=20):
+    new_mask = binary_dilation(mask, iterations=factor)
+
+    return new_mask
+
+
+def bbox_mask(model, img, verbose=0):
+    image, window, scale, padding, crop = utils.resize_image(
+        img,
+        # min_dim=config.IMAGE_MIN_DIM,
+        # min_scale=config.IMAGE_MIN_SCALE,
+        # max_dim=config.IMAGE_MAX_DIM,
+        # mode=config.IMAGE_RESIZE_MODE)
+        # TODO: nicer here
+        min_dim=2048,
+        max_dim=2048,
+        mode="square",
+    )
+    if verbose:
+        vid_results = model.detect([image], verbose=1)
+    else:
+        vid_results = model.detect([image], verbose=0)
+    r = vid_results[0]
+
+    return image, r["scores"], r["rois"], r["masks"]
+
+
+### END Poseestimation utils
+
+
+# TODO: maybe somewhere else?
+def get_optimizer(optim_name, lr=0.01):
+    optim = None
+    if optim_name == "adam":
+        optim = keras.optimizers.Adam(lr=lr, clipnorm=0.5)
+    if optim_name == "sgd":
+        optim = keras.optimizers.SGD(lr=lr, clipnorm=0.5, momentum=0.9)
+    if optim_name == "rmsprop":
+        optim = keras.optimizers.RMSprop(lr=lr)
+    return optim
+
+##callbacks
+
+def callbacks_tf_logging(path='./logs/'):
+    logdir = os.path.join(path, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    tf_callback = get_tensorbaord_callback(logdir)
+    return tf_callback
+
+def get_tensorbaord_callback(path="./logs"):
+    # Tensorflow board
+    tensorboard_callback = keras.callbacks.TensorBoard(
+        log_dir=path, histogram_freq=0, write_graph=True, write_images=True
+    )
+    return tensorboard_callback
+
+def callbacks_learningRate_plateau():
+    CB_lr = keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss", min_delta=0.0001, verbose=True, patience=8, min_lr=1e-7
+    )
+
+    CB_es = keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        min_delta=0.0001,
+        patience=8,
+        mode="min",
+        restore_best_weights=True,
+    )
+
+    return CB_es, CB_lr
 
 
 def masks_to_coords(masks):
@@ -58,14 +226,19 @@ def clearMemory(model, backend):
     del model
     backend.clear_session()
 
+def run_ai_cumulative_gradient(optimizer):
+    import runai.ga.keras
+    optim = runai.ga.keras.optimizers.Optimizer(optimizer, steps=8)
+    return optim
 
-def get_tensorbaord_callback(path="./logs"):
-    # Tensorflow board
-    tensorboard_callback = keras.callbacks.TensorBoard(
-        log_dir=path, histogram_freq=0, write_graph=True, write_images=True
-    )
-    return tensorboard_callback
-
+def fix_layers(network, with_backbone=True):
+    for layer in network.layers:
+        layer.trainable = True
+        if with_backbone:
+            if 'layers' in dir(layer):
+                for _layer in layer.layers:
+                    _layer.trainable = True
+    return network
 
 # helper class to keep track of results from different methods
 class ResultsTracker:
@@ -96,7 +269,6 @@ class ResultsTracker:
             return 0
 
 
-import ast
 
 
 # TODO: include multi behavior
@@ -282,6 +454,15 @@ def extractCOM_only(image):
 
     return center_of_mass, weighted_center_of_mass
 
+def mask_to_original_image(orig_shape, mask, center_of_mass, mask_size):
+
+
+    img = np.zeros((orig_shape, orig_shape))
+
+    img[np.max([0, int(center_of_mass[0] - mask_size)]) : np.min([img.shape[0], int(center_of_mass[0] + mask_size)]),
+    np.max([0, int(center_of_mass[1] - mask_size)]) : np.min([img.shape[0], int(center_of_mass[1] + mask_size)])] = mask
+
+    return img
 
 def maskedImg(
     img, center_of_mass, mask_size=74,
@@ -305,7 +486,7 @@ def maskedImg(
         ret.shape[1] - int(cutout.shape[1]) : ret.shape[1] + int(cutout.shape[1]),
     ] = cutout
 
-    return ret.astype("uint8")
+    return ret
 
 
 ### DL Utils
@@ -398,14 +579,7 @@ def balanced_acc(y_true, y_pred):
         return balanced_accuracy_score(y_true.eval(), y_pred.eval())
 
 
-from sklearn.metrics import classification_report
-
-
 class Metrics(tf.keras.callbacks.Callback):
-    
-    def __init__(self, validation_data):
-        self.validation_data = validation_data
-
     def setModel(self, model):
         self.model = model
 
@@ -433,34 +607,6 @@ class Metrics(tf.keras.callbacks.Callback):
 
     def get_data(self):
         return self._data
-
-
-# TODO: maybe somewhere else?
-def get_optimizer(optim_name, lr=0.01):
-    optim = None
-    if optim_name == "adam":
-        optim = keras.optimizers.Adam(lr=lr, clipnorm=0.5)
-    if optim_name == "sgd":
-        optim = keras.optimizers.SGD(lr=lr, clipnorm=0.5, momentum=0.9)
-    if optim_name == "rmsprop":
-        optim = keras.optimizers.RMSprop(lr=lr)
-    return optim
-
-
-def get_callbacks():
-    CB_lr = keras.callbacks.ReduceLROnPlateau(
-        monitor="val_loss", min_delta=0.0001, verbose=True, patience=8, min_lr=1e-7
-    )
-
-    CB_es = keras.callbacks.EarlyStopping(
-        monitor="val_loss",
-        min_delta=0.0001,
-        patience=8,
-        mode="min",
-        restore_best_weights=True,
-    )
-
-    return CB_es, CB_lr
 
 
 def train_model(
@@ -692,7 +838,17 @@ def load_config(path):
                 try:
                     params[line.split(" = ")[0]] = float(line.split(" = ")[1])
                 except ValueError:
-                    params[line.split(" = ")[0]] = str(line.split(" = ")[1])
+                    if ',' in str(line.split(" = ")[1]):
+                        if '.' in line.split(" = ")[1]:
+                            help = line.split(" = ")[1].split(',')
+                            entries = [float(el) for el in help]
+                            params[line.split(" = ")[0]] = entries
+                        else:
+                            help = line.split(" = ")[1].split(',')
+                            entries = [int(el) for el in help]
+                            params[line.split(" = ")[0]] = entries
+                    else:
+                        params[line.split(" = ")[0]] = str(line.split(" = ")[1])
     return params
 
 
