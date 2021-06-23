@@ -12,6 +12,8 @@ from tensorflow.keras.applications import (
     Xception,
     NASNetLarge,
     InceptionV3,
+    EfficientNetB2,
+    EfficientNetB3,
     EfficientNetB4,
     EfficientNetB5,
     EfficientNetB6,
@@ -40,6 +42,7 @@ from tensorflow.keras.layers import (
     LeakyReLU
 )
 from tensorflow.keras.models import Sequential
+from tensorflow.python.keras.applications.efficientnet import EfficientNetB1
 
 
 def posenet(input_shape, num_classes, backbone='efficientnetb5', fix_backbone = False, gaussian_noise=0.05, features = 256, bias=False):
@@ -64,6 +67,12 @@ def posenet(input_shape, num_classes, backbone='efficientnetb5', fix_backbone = 
         recognition_model = EfficientNetB7(
             include_top=False, input_shape=input_shape, pooling=None, weights="imagenet",
         )
+    elif backbone=='efficientnetb1':
+        recognition_model = EfficientNetB1(
+            include_top=False, input_shape=input_shape, pooling=None, weights="imagenet",
+        )
+    else:
+        raise NotImplementedError
 
     new_input = Input(
         batch_shape=(None, input_shape[0], input_shape[1], input_shape[2])
@@ -76,25 +85,11 @@ def posenet(input_shape, num_classes, backbone='efficientnetb5', fix_backbone = 
     x = Conv2D(3, kernel_size=(1, 1), strides=(1, 1))(new_input)
     x = recognition_model(x)
 
-    x = Conv2DTranspose(features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias)(x)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
-    x = GaussianNoise(gaussian_noise)(x)
-
-    x = Conv2DTranspose(features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias)(x)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
-    x = GaussianNoise(gaussian_noise)(x)
-
-    x = Conv2DTranspose(features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias)(x)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
-    x = GaussianNoise(gaussian_noise)(x)
-
-    x = Conv2DTranspose(features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias)(x)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
-    x = GaussianNoise(gaussian_noise)(x)
+    for i in range(4):
+        x = Conv2DTranspose(features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias)(x)
+        x = BatchNormalization()(x)
+        x = Activation("relu")(x)
+        x = GaussianNoise(gaussian_noise)(x)
 
     x = Conv2DTranspose(features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias)(x)
     x = BatchNormalization()(x)
