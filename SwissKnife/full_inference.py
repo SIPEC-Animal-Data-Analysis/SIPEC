@@ -65,7 +65,7 @@ def full_inference(
         # TODO: fixme
         try:
             masked_imgs, masked_masks = apply_all_masks(
-                masks, coms, molded_img, mask_size=128
+                masks, coms, molded_img, mask_size=mask_size
             )
         except ValueError:
             results.append(0)
