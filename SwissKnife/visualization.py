@@ -323,6 +323,7 @@ def main():
         "id_matching": False,
         "mask_matching": True,
         "display_coms": False,
+        "num_frames": 1000,
         "id_classes": {
             "0": 0,
             "1": 1,
@@ -332,7 +333,7 @@ def main():
         "networks": {"SegNet": None, "PoseNet": None},
     }
 
-    videodata = loadVideo(video, greyscale=False, num_frames=100)
+    videodata = loadVideo(video, greyscale=False, num_frames=viz_cfg["num_frames"])
     molded_video = mold_video(videodata, dimension=viz_cfg["mold_dimension"])
     results = np.load(results_path, allow_pickle=True)
 
