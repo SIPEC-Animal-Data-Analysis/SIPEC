@@ -206,11 +206,16 @@ def main():
     results_sink = args.results_sink
     output_video_name = args.output_video_name
 
+    #TODO: somehow nicer catch this
+    if not results_sink[-1] == '/':
+        results_sink+='/'
+
     # TODO: put me in cfg file
     inference_cfg = {
         "mold_dimension": 1024,
         "mask_size": 64,
         "lookback": 25,
+        "num_frames": 1000, # have only the first 1000 frames analyzed for testing
         "id_matching": False,
         "mask_matching": True,
         "display_coms": False,
@@ -226,7 +231,7 @@ def main():
     setGPU(gpu_name)
     check_directory(results_sink)
 
-    videodata = loadVideo(video, greyscale=False, num_frames=1000)
+    videodata = loadVideo(video, greyscale=False, num_frames=inference_cfg['num_frames'])
     molded_video = mold_video(
         videodata, dimension=inference_cfg["mold_dimension"], n_jobs=20
     )
