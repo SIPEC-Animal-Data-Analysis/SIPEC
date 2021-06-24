@@ -11,27 +11,21 @@ from tqdm import tqdm
 
 
 def create_dataset(dataset, look_back=5, oneD=False):
-    # """Create a recurrent dataset from array.
-    # Args:
-    #     dataset: Numpy/List of dataset.
-    #     look_back: Number of future/past timepoints to add to current timepoint.
-    #     oneD: Boolean flag whether data is one dimensional or not.
-    # """
-    """Summary line.
-
-    Extended description of function.
+    """Create a recurrent dataset from array.
 
     Parameters
     ----------
-    arg1 : int
-        Description of arg1
-    arg2 : str
-        Description of arg2
+    dataset : np.ndarray
+        numpy array of dataset to make recurrent
+    look_back : int
+        Number of timesteps to look into the past and future.
+    oneD : bool
+        Boolean that indicates if the current dataset is one dimensional.
 
     Returns
     -------
-    bool
-        dataset
+    np.ndarray
+        recurrent dataset
     """
     dataX = []
     print("creating recurrency")
@@ -196,7 +190,6 @@ class Dataloader:
         if recurrent_labels:
             self.create_recurrent_labels()
 
-
     def create_recurrent_data_dlc(self, recurrent_labels=True):
 
         self.dlc_train_recurrent = create_dataset(self.dlc_train, self.look_back)
@@ -208,7 +201,6 @@ class Dataloader:
 
         if recurrent_labels:
             self.create_recurrent_labels()
-
 
     # TODO: redo all like this, i.e. gettters instead of changing data
     def expand_dims(self):
@@ -250,7 +242,7 @@ class Dataloader:
             raise NotImplementedError
         if self.x_train_recurrent is not None:
             num_labels = int(len(self.x_train_recurrent) * percentage)
-            indices = np.arange(0, len(self.x_train_recurrent)-1)
+            indices = np.arange(0, len(self.x_train_recurrent) - 1)
             random_idxs = np.random.choice(indices, size=num_labels, replace=False)
             self.x_train = self.x_train[random_idxs]
             self.y_train = self.y_train[random_idxs]
@@ -391,7 +383,6 @@ class Dataloader:
         for el in tqdm(self.x_test):
             im_re.append(imresize(el, factor))
         self.x_test = np.asarray(im_re)
-
 
     def prepare_data(self, downscale=0.5, remove_behaviors=[], flatten=False):
         print("preparing data")
