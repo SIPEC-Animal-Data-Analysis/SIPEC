@@ -333,15 +333,19 @@ def main():
             "2": 2,
             "3": 3,
         },
-        "networks": ["segmentation"],
+        'networks': {'SegNet': None, 'PoseNet': None},
     }
 
     videodata = loadVideo(video, greyscale=False)
     molded_video = mold_video(videodata, dimension=viz_cfg["mold_dimension"])
     results = np.load(results_path, allow_pickle=True)
 
+    dir = ''
+    for el in results_path.split('/')[:-1]:
+        dir += el + '/'
+
     visualize_full_inference(
-        results_sink=results_path,
+        results_sink=dir,
         networks=viz_cfg["networks"],
         video=molded_video,
         results=results,
