@@ -98,7 +98,7 @@ def displayBoxes(frame, mask, color=(0, 0, 255), animal_id=None, mask_id=None):
 
 def displayScatter(frame, coords, color=(0, 0, 255)):
     # for coord in coords:
-    cv2.circle(frame, (int(coords[1]), int(coords[0])), 3, color, -1)
+    cv2.circle(frame, (int(coords[0]), int(coords[1])), 3, color, -1)
     return frame
 
 
@@ -299,10 +299,6 @@ def visualize_full_inference(
             # TODO: fix hack
             for pose_id, poses in enumerate(results[idx]["pose_coordinates"]):
                 try:
-                    poses[:, 0] += int(coms[pose_id][0])
-                    poses[:, 1] += int(coms[pose_id][1])
-                    poses[:, 0] -= 64
-                    poses[:, 1] -= 64
                     for pose in poses[:-1]:
                         frame = displayScatter(frame, pose)
                 except KeyError:
@@ -333,16 +329,16 @@ def main():
             "2": 2,
             "3": 3,
         },
-        'networks': {'SegNet': None, 'PoseNet': None},
+        "networks": {"SegNet": None, "PoseNet": None},
     }
 
-    videodata = loadVideo(video, greyscale=False)
+    videodata = loadVideo(video, greyscale=False, num_frames=100)
     molded_video = mold_video(videodata, dimension=viz_cfg["mold_dimension"])
     results = np.load(results_path, allow_pickle=True)
 
-    dir = ''
-    for el in results_path.split('/')[:-1]:
-        dir += el + '/'
+    dir = ""
+    for el in results_path.split("/")[:-1]:
+        dir += el + "/"
 
     visualize_full_inference(
         results_sink=dir,
