@@ -312,7 +312,6 @@ def visualize_full_inference(
     skvideo.io.vwrite(results_sink + output_video_name, resulting_frames, verbosity=1)
 
 
-@DeprecationWarning
 def main():
     args = parser.parse_args()
     output_video_name = args.output_video_name
