@@ -130,49 +130,38 @@ def prepareData(
     else:
         annotations = list(annotations.values())
 
-    # annotations = annotations[:20]
-
+    # if no CV do basically 80/20 train/test split via CV interface
     if cv_folds == 0:
+        cv_folds = 5
+        fold = 0
 
-        # Training dataset
-        dataset_train = Dataset(species)
-        dataset_train.load(frames_path, "train", annotations)
-        dataset_train.prepare()
-
-        # Validation dataset
-        dataset_val = Dataset(species)
-        dataset_val.load(frames_path, "val", annotations)
-        dataset_val.prepare()
-
+    num_imgs = len(annotations)
+    imgs_by_folds = int(float(num_imgs) / float(cv_folds))
+    if fold == cv_folds - 1:
+        annotations_val = annotations[int(fold * imgs_by_folds) :]
+        annotations_train = annotations[: int(fold * imgs_by_folds)]
     else:
+        annotations_val = annotations[
+            int(fold * imgs_by_folds) : int((fold + 1) * imgs_by_folds)
+        ]
+        annotations_train = (
+            annotations[: int(fold * imgs_by_folds)]
+            + annotations[int((fold + 1) * imgs_by_folds) :]
+        )
 
-        num_imgs = len(annotations)
-        imgs_by_folds = int(float(num_imgs) / float(cv_folds))
-        if fold == cv_folds - 1:
-            annotations_val = annotations[int(fold * imgs_by_folds) :]
-            annotations_train = annotations[: int(fold * imgs_by_folds)]
-        else:
-            annotations_val = annotations[
-                int(fold * imgs_by_folds) : int((fold + 1) * imgs_by_folds)
-            ]
-            annotations_train = (
-                annotations[: int(fold * imgs_by_folds)]
-                + annotations[int((fold + 1) * imgs_by_folds) :]
-            )
+    if fraction:
+        num_training_imgs = int(len(annotations_train) * fraction)
+        annotations_train = random.sample(annotations_train, num_training_imgs)
 
-        if fraction:
-            num_training_imgs = int(len(annotations_train) * fraction)
-            annotations_train = random.sample(annotations_train, num_training_imgs)
+    # Training dataset
+    dataset_train = Dataset(species)
+    dataset_train.load(frames_path, "all", annotations_train)
+    dataset_train.prepare()
 
-        # Training dataset
-        dataset_train = Dataset(species)
-        dataset_train.load(frames_path, "all", annotations_train)
-        dataset_train.prepare()
-
-        # Validation datasetss
-        dataset_val = Dataset(species)
-        dataset_val.load(frames_path, "all", annotations_val)
-        dataset_val.prepare()
+    # Validation datasetss
+    dataset_val = Dataset(species)
+    dataset_val.load(frames_path, "all", annotations_val)
+    dataset_val.prepare()
 
     return dataset_train, dataset_val
 
