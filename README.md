@@ -92,16 +92,16 @@ If your system has multiple GPUs, the `--gpu` flag allows you to run a script on
 
 Here are some example command line usages of the pipeline
 <pre><code>
-docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:tf2_v1 
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec:tf2_v1 
                       segmentation.py --cv_folds 0 --gpu 0 --frames /home/user/data/mouse_segmentation_4plex_merged/frames --annotations /home/user/data/mouse_segmentation_4plex_merged/merged.json
 
-docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:tf2_v1 
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec:tf2_v1 
                      classification_comparison.py --gpu 0 --config_name behavior_config_final --random_seed 1 --output_path=/home/user/results
 
-docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:tf2_v1 
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec:tf2_v1 
                       poseestimation.py --gpu 0 --results_sink /home/user/results --dlc_path /home/user/data/mouse_pose/OFT/labeled-data/ --segnet_path /home/user/data/pretrained_networks/mask_rcnn_mouse_0095.h5 --config poseestimation_config_test
 
-docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:tf2_v1 
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec:tf2_v1 
                       full_inference.py --gpu 0 --species mouse --video /home/user/data/full_inference_posenet_25_June/animal1234_day1.avi --posenet_path /home/user/data/pretrained_networks/posenet_mouse.h5  --segnet_path /home/user/data/pretrained_networks/mask_rcnn_mouse_0095.h5 --max_ids 4 --results_sink /home/user/results/full_inference     
 
 <b>Coming soon</b>: behavior.py
