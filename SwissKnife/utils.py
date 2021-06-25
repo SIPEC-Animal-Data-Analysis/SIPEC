@@ -611,6 +611,10 @@ def balanced_acc(y_true, y_pred):
 
 
 class Metrics(tf.keras.callbacks.Callback):
+
+    def __init__(self, validation_data):
+        self.validation_data = validation_data
+
     def setModel(self, model):
         self.model = model
 
