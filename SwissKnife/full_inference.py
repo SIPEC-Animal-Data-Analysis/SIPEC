@@ -11,7 +11,7 @@ import numpy as np
 from SwissKnife.visualization import visualize_full_inference
 from SwissKnife.masksmoothing import MaskMatcher
 from SwissKnife.poseestimation import heatmap_to_scatter, custom_binary_crossentropy
-from SwissKnife.segmentation import SegModel, mold_video
+from SwissKnife.segmentation import SegModel, mold_video, mold_image
 from SwissKnife.utils import (
     setGPU,
     loadVideo,
@@ -21,6 +21,7 @@ from SwissKnife.utils import (
     check_directory,
     rescale_img,
     masks_to_coords,
+    mask_to_original_image,
 )
 
 # TODO: save molded imgs?
@@ -30,11 +31,13 @@ def full_inference(
     videodata,
     results_sink,
     networks,
+    example_frame,
     id_classes,
     mask_matching=False,
     id_matching=False,
     mask_size=256,
     lookback=100,
+    mold_dimension=1024,
     max_ids=4,
 ):
     maskmatcher = MaskMatcher()
@@ -65,7 +68,7 @@ def full_inference(
         # TODO: fixme
         try:
             masked_imgs, masked_masks = apply_all_masks(
-                masks, coms, molded_img, mask_size=128
+                masks, coms, molded_img, mask_size=mask_size
             )
         except ValueError:
             results.append(0)
@@ -140,10 +143,26 @@ def full_inference(
 
         if "PoseNet" in networks.keys():
             maps = []
-            for img in masked_imgs:
+            for mask_id, img in enumerate(masked_imgs):
                 heatmaps = networks["PoseNet"].predict(np.expand_dims(img, axis=0))
                 heatmaps = heatmaps[0, :, :, :]
-                coords_predict = heatmap_to_scatter(heatmaps)
+                # TODO: merge with section in posestimation.py and make common util fcn
+                image, window, scale, padding, crop = mold_image(
+                    example_frame, dimension=mold_dimension, return_all=True
+                )
+                unmolded_maps = []
+                for map_id in range(heatmaps.shape[-1]):
+                    map = heatmaps[:, :, map_id]
+                    a = mask_to_original_image(
+                        mold_dimension, map, coms[mask_id], mask_size
+                    )
+                    a = np.expand_dims(a, axis=-1)
+                    # b = revert_mold(a, padding, scale, dtype='float32')
+                    unmolded_maps.append(a)
+                unmolded_maps = np.array(unmolded_maps)
+                unmolded_maps = np.swapaxes(unmolded_maps, 0, -1)
+                unmolded_maps = unmolded_maps[0]
+                coords_predict = heatmap_to_scatter(unmolded_maps)
                 maps.append(coords_predict)
             results_per_frame["pose_coordinates"] = maps
 
@@ -184,12 +203,6 @@ def full_inference(
                 results[idx]["smoothed_ids"] = corrected_ids
 
     np.save(results_sink + "inference_results.npy", results, allow_pickle=True)
-    # save_dict(
-    #     results_sink + "inference_resulting_masks.pkl", resulting_masks,
-    # )
-    # save_dict(
-    #     results_sink + "/inference_resulting_frames.pkl", resulting_frames,
-    # )
 
     return results
 
@@ -206,11 +219,16 @@ def main():
     results_sink = args.results_sink
     output_video_name = args.output_video_name
 
+    # TODO: somehow nicer catch this
+    if not results_sink[-1] == "/":
+        results_sink += "/"
+
     # TODO: put me in cfg file
     inference_cfg = {
         "mold_dimension": 1024,
         "mask_size": 64,
         "lookback": 25,
+        "num_frames": 1000,  # have only the first 1000 frames analyzed for testing
         "id_matching": False,
         "mask_matching": True,
         "display_coms": False,
@@ -226,7 +244,9 @@ def main():
     setGPU(gpu_name)
     check_directory(results_sink)
 
-    videodata = loadVideo(video, greyscale=False, num_frames=1000)
+    videodata = loadVideo(
+        video, greyscale=False, num_frames=inference_cfg["num_frames"]
+    )
     molded_video = mold_video(
         videodata, dimension=inference_cfg["mold_dimension"], n_jobs=20
     )
@@ -249,12 +269,14 @@ def main():
         videodata=molded_video,
         results_sink=results_sink,
         networks=networks,
+        example_frame=videodata[0],
         id_classes=inference_cfg["id_classes"],
         max_ids=max_ids,
         id_matching=inference_cfg["id_matching"],
         mask_matching=inference_cfg["mask_matching"],
         mask_size=inference_cfg["mask_size"],
         lookback=inference_cfg["lookback"],
+        mold_dimension=inference_cfg["mold_dimension"],
     )
     if do_visualization:
         visualize_full_inference(

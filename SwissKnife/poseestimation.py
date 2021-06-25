@@ -1,41 +1,43 @@
 # SIPEC
 # MARKUS MARKS
 # POSE ESTIMATION
+import matplotlib.pyplot as plt
+import pandas as pd
+import skimage.io
 import json
-from datetime import datetime
-
 import numpy as np
 from tqdm import tqdm
 from argparse import ArgumentParser
-from skimage.filters import gaussian
-from scipy.ndimage.morphology import binary_dilation
-import cv2
-
-import tensorflow as tf
-import tensorflow.keras.backend as K
-from tensorflow import keras
-
+from glob import glob
 import os
 
-tf.compat.v1.disable_eager_execution()
+import tensorflow as tf
+from tensorflow.keras import backend as K
+from tensorflow import keras as keras
 
-import imgaug.augmenters as iaa
+from SwissKnife.architectures import posenet as posenet_architecture
+from SwissKnife.augmentations import primate_poseestimation, mouse_poseestimation
+from SwissKnife.dataprep import (
+    get_primate_pose_data,
+    get_mouse_pose_data,
+    get_mouse_pose_dlc_comparison_data,
+    get_mouse_dlc_data,
+)
+from SwissKnife.segmentation import mold_video, mold_image, SegModel
+from SwissKnife.mrcnn.utils import resize
 
-from SwissKnife.architectures import posenet_primate, posenet_mouse
-from SwissKnife.mrcnn import utils
 from SwissKnife.utils import (
     setGPU,
     load_config,
     set_random_seed,
     check_directory,
-    get_tensorbaord_callback,
+    heatmap_to_scatter,
+    masks_to_coms,
+    apply_all_masks,
+    callbacks_tf_logging,
+    heatmaps_for_images,
+    mask_to_original_image,
 )
-from SwissKnife.augmentations import primate_identification
-
-import numpy as np
-from imgaug.augmentables.segmaps import SegmentationMapsOnImage
-
-import matplotlib.pyplot as plt
 
 # adapted from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 class DataGenerator(keras.utils.Sequence):
@@ -92,58 +94,38 @@ class DataGenerator(keras.utils.Sequence):
 
         # Generate data
         for i, ID in enumerate(list_IDs_temp):
-
             image = self.imgs[ID]
-            segmaps = self.masks[ID].astype("bool")
+            # segmaps = self.masks[ID].astype("bool")
+            segmaps = self.masks[ID]
 
             maps_augment = []
             seq_det = self.augmentation.to_deterministic()
 
-            for segmap_idx in range(segmaps.shape[-1]):
-                segmap = segmaps[:, :, segmap_idx]
-                segmap = SegmentationMapsOnImage(segmap, shape=image.shape)
-                image_aug, segmap_aug = seq_det(image=image, segmentation_maps=segmap)
-                #                 print(segmap_aug.shape)
-                segmap_aug = (
-                    segmap_aug.draw()[0][:, :, 0].astype("bool").astype("uint8")
-                )
-                maps_augment.append(segmap_aug)
-            # Store sample
-            X.append(image_aug)
+            # segmaps = np.moveaxis(segmaps,2,0)
+            segmaps = np.expand_dims(segmaps, axis=0)
 
+            # TODO: adjust for batch
+            image_aug, aug_maps = seq_det(image=image, heatmaps=segmaps)
+
+            # for segmap_idx in range(segmaps.shape[-1]):
+            #     segmap = segmaps[:, :, segmap_idx]
+            #     # segmap = SegmentationMapsOnImage(segmap, shape=image.shape)
+            #     image_aug, _ = seq_det(image=image, hea=segmap)
+            #     segmap_aug, _ = seq_det(image=segmap, segmentation_maps=segmap)
+            #     #                 print(segmap_aug.shape)
+            #     # segmap_aug = (
+            #     #     segmap_aug.draw()[0][:, :, 0].astype("bool").astype("uint8")
+            #     # )
+            #     maps_augment.append(segmap_aug)
+            # Store sample
+
+            X.append(image_aug)
             # Store class
-            y.append(maps_augment)
+            y.append(aug_maps[0])
 
         maps = np.asarray(y)
-        maps = np.swapaxes(maps, 1, 2)
-        maps = np.swapaxes(maps, 2, 3)
+        # maps = np.moveaxis(maps, 1, 3)
         return np.asarray(X), np.asarray(maps)
-
-
-def keypoints_in_mask(mask, keypoints):
-    for point in keypoints:
-        keypoint = point.astype(int)
-
-        res = mask[keypoint[1], keypoint[0]]
-        if res == False:
-            return False
-    return True
-
-
-def heatmap_to_scatter(heatmaps, threshold=0.6e-9):
-    coords = []
-
-    for idx in range(0, heatmaps.shape[-1]):
-        heatmap = heatmaps[:, :, idx]
-        heatmap = gaussian(heatmap, sigma=2)
-        val = max(heatmap.flatten())
-        if val > threshold:
-            _coord = np.where(heatmap == val)
-            coords.append([_coord[0][0], _coord[1][0]])
-        else:
-            coords.append([0, 0])
-
-    return np.asarray(coords)
 
 
 def calculate_rmse(pred, true):
@@ -166,11 +148,13 @@ def calculate_rmse(pred, true):
     rmses = []
 
     for idx, el in enumerate(pred):
-        point_gt = pred[idx]
-        point_pred = true[idx]
+        point_pred = pred[idx]
+        point_gt = true[idx]
+        if point_gt[0] == 0:
+            continue
         dist = (point_gt[0] - point_pred[0]) ** 2 + (point_gt[1] - point_pred[1]) ** 2
         rmses.append(np.sqrt(dist))
-    return np.array(rmses).mean()
+    return np.nanmean(np.array(rmses))
 
 
 class rmse_metric(keras.callbacks.Callback):
@@ -203,91 +187,8 @@ class rmse_metric(keras.callbacks.Callback):
         return self._data
 
 
-def dilate_mask(mask, factor=20):
-    new_mask = binary_dilation(mask, iterations=factor)
-
-    return new_mask
-
-
-def bbox_mask(model, img, verbose=0):
-    image, window, scale, padding, crop = utils.resize_image(
-        img,
-        # min_dim=config.IMAGE_MIN_DIM,
-        # min_scale=config.IMAGE_MIN_SCALE,
-        # max_dim=config.IMAGE_MAX_DIM,
-        # mode=config.IMAGE_RESIZE_MODE)
-        # TODO: nicer here
-        min_dim=2048,
-        max_dim=2048,
-        mode="square",
-    )
-    if verbose:
-        vid_results = model.detect([image], verbose=1)
-    else:
-        vid_results = model.detect([image], verbose=0)
-    r = vid_results[0]
-
-    return image, r["scores"], r["rois"], r["masks"]
-
-
-def heatmap_mask(maps, mask):
-    ret = False
-    for mold in tqdm(maps):
-        a = mold * mask
-        if a.sum() > 10:
-            return True
-
-    return ret
-
-
-def heatmaps_for_image(labels, window=100, sigma=3):
-    heatmaps = []
-    for label in labels:
-        heatmap = np.zeros((window, window))
-        heatmap[int(label[1]), int(label[0])] = 1
-        heatmap = gaussian(heatmap, sigma=sigma)
-
-        # threshold
-
-        heatmap[heatmap > 0.001] = 1
-
-        heatmaps.append(heatmap)
-
-    heatmaps = np.asarray(heatmaps)
-    heatmaps = np.moveaxis(heatmaps, 0, 2)
-
-    return heatmaps
-
-
-def heatmaps_for_image_whole(labels, img_shape, sigma=3, threshold=None):
-    heatmaps = []
-    for label in labels:
-        heatmap = np.zeros(img_shape)
-        if label[1] > -1:
-            heatmap[int(label[1]), int(label[0])] = 1
-            heatmap = gaussian(heatmap, sigma=sigma)
-            # threshold
-            if threshold:
-                heatmap[heatmap > threshold] = 1
-            else:
-                heatmap = heatmap / heatmap.max()
-        heatmaps.append(heatmap)
-    heatmaps = np.asarray(heatmaps)
-    heatmaps = np.moveaxis(heatmaps, 0, 2)
-
-    return heatmaps
-
-
-class PoseModel:
-    def __init__(self, species):
-        self.species = species
-
-    def set_inference(self):
-        pass
-
-
 class Metrics(keras.callbacks.Callback):
-    def __init__(self, writer=None):
+    def __init__(self, writer=None, unmold=None):
         super(Metrics, self).__init__()
         self.writer = writer
 
@@ -300,6 +201,7 @@ class Metrics(keras.callbacks.Callback):
     def on_epoch_end(self, batch, logs={}):
         X_val, y_val = self.validation_data[0], self.validation_data[1]
         rmses = []
+
         for idx, test_img in tqdm(enumerate(X_val)):
             heatmaps = self.model.predict(np.expand_dims(test_img, axis=0))
             # set upper left to 0
@@ -309,10 +211,12 @@ class Metrics(keras.callbacks.Callback):
             coords_predict = heatmap_to_scatter(heatmaps)[:-1]
             rmses.append(calculate_rmse(coords_predict, coords_gt))
         rmses = np.asarray(rmses)
-        rmse_mean = rmses.mean()
+        rmse_mean = np.nanmean(rmses)
 
         self._data.append(
-            {"rmse": rmse_mean,}
+            {
+                "rmse": rmse_mean,
+            }
         )
         self._data.append(rmse_mean)
         print("rmse ::: ", rmse_mean)
@@ -337,12 +241,12 @@ def custom_binary_crossentropy(y_true, y_pred, from_logits=False, label_smoothin
     y_pred = tf.constant(y_pred) if not tf.is_tensor(y_pred) else y_pred
     y_true = tf.cast(y_true, y_pred.dtype)
 
-    return tf.reduce_mean(
-        input_tensor=tf.keras.losses.binary_crossentropy(y_true, y_pred, from_logits=from_logits), axis=-1
+    return K.mean(
+        K.binary_crossentropy(y_true, y_pred, from_logits=from_logits), axis=-1
     )
 
 
-class VIZ(keras.callbacks.Callback):
+class callbacks_viz_poseestimation(keras.callbacks.Callback):
     def setModel(self, model):
         self.model = model
 
@@ -352,212 +256,318 @@ class VIZ(keras.callbacks.Callback):
     def on_epoch_end(self, batch, logs={}):
         X_val, y_val = self.validation_data[0], self.validation_data[1]
 
-        id = 5
-        y_true = y_val[id : id + 1]
-        y_predict = self.model.predict(X_val[id : id + 1])
-        y_predict[:20, :20, :] = 0
-        y_predict = y_predict[0, :, :, :]
-        coords_gt = y_true[0, :, :, :]
-        coords_gt = heatmap_to_scatter(coords_gt)[:-1]
-        # coords_gt = y_true[0, :, :, :]
-        coords_predict = heatmap_to_scatter(y_predict)[:-1]
-        plt.imshow(X_val[id][:, :, 0])
-        for map_id, map in enumerate(coords_predict):
-            true = coords_gt[map_id]
-            plt.scatter(map[1], map[0], c="red")
-            plt.scatter(true[1], true[0], c="blue")
-        plt.show()
-        print("plotted")
+        for id in range(1, 3):
+            fig, ax = plt.subplots()
+            y_true = y_val[id : id + 1]
+            y_predict = self.model.predict(X_val[id : id + 1])
+            y_predict[:20, :20, :] = 0
+            y_predict = y_predict[0, :, :, :]
+            coords_gt = y_true[0, :, :, :]
+            coords_gt = heatmap_to_scatter(coords_gt)[:-1]
+            # coords_gt = y_true[0, :, :, :]
+            coords_predict = heatmap_to_scatter(y_predict)[:-1]
+            ax.imshow(X_val[id][:, :, 0], cmap="Greys_r")
+            for map_id, map in enumerate(coords_predict):
+                true = coords_gt[map_id]
+                # plt.scatter(map[1], map[0], c="red")
+                ax.scatter(map[1], map[0], s=50)
+                # plt.scatter(true[1], true[0], c="blue")
+            #
+            # print("plotted")
+            fig.savefig("viz_primate" + str(id) + ".png")
+            # plt.show()
         return
 
 
-def train_on_data(species, config, results_sink, percentage, data_path, output_path, save=False):
-    global posenet
-    if species == "primate":
-        X = np.load(
-            os.path.join(data_path,"pose_estimation_no_threshold_no_masked_X_128.npy")
+def read_DLC_data(dlc_path, folder, label_file_path, exclude_labels=[], as_gray=False):
+    frame = pd.read_csv(label_file_path, header=[1, 2])
+
+    # on oliver's dataset exclude arena keypoints for DLC comparison
+    kps = frame.columns.values
+    keypoints = []
+    for kp in kps:
+        if kp[0] in exclude_labels:
+            continue
+        keypoints.append(kp[0])
+    keypoints = np.unique(keypoints)
+    coords = ["x", "y"]
+
+    y = []
+    X = []
+    for id in range(len(frame)):
+        frame_part = frame.iloc[id]
+        if "\\" in frame_part[0]:
+            image_path = frame_part[0].split("\\")
+        elif "/" in frame_part[0]:
+            image_path = frame_part[0].split("/")
+        else:
+            raise ValueError
+        # image = image_path[1] + "-" + image_path[2]
+        # if file_list:
+        #     if not image in file_list:
+        #         continue
+
+        all_pts = []
+        for keypoint_id, keypoint in enumerate(keypoints):
+            kps = []
+            for coord_id, coord in enumerate(coords):
+                try:
+                    kps.append(frame_part[keypoint][coord])
+                except KeyError:
+                    kps.append(np.nan)
+            all_pts.append(np.array(kps))
+        y.append(np.array(all_pts))
+        # path = ""
+        # for el in image_path:
+        #     path += el + "/"
+        # path = path[:-1]
+        # path = base_path + path
+        path = dlc_path + folder + "/" + image_path[2]
+        image = skimage.io.imread(path, as_gray=as_gray).astype("uint8")
+        X.append(image)
+    X = np.asarray(X)
+    y = np.asarray(y)
+
+    return X, y
+
+
+def read_dlc_labels_from_folder(dlc_path, exclude_labels=[]):
+    folders = os.walk(dlc_path)
+    folders = folders.__next__()[1]
+    asgrey = False
+
+    Xs = []
+    ys = []
+    for folder in folders:
+        path = dlc_path + folder + "/"
+        csv_file = glob(path + "*.csv")
+        X, y = read_DLC_data(
+            dlc_path,
+            folder,
+            label_file_path=csv_file[0],
+            exclude_labels=exclude_labels,
+            as_gray=asgrey,
         )
-        y = np.load(
-            os.path.join(data_path,"pose_estimation_no_threshold_no_masked_y_128.npy")
+        Xs.append(X)
+        ys.append(y)
+    Xs = np.concatenate(Xs)
+    ys = np.concatenate(ys)
+
+    return Xs, ys
+
+
+def segment_images_and_masks(X, y, SegNet, asgrey=False, mask_size=64):
+    ### mold images
+    mold_dimension = 1024
+    if asgrey:
+        X = np.expand_dims(X, axis=-1)
+    X = mold_video(video=X, dimension=mold_dimension, n_jobs=1)
+    y = mold_video(video=y, dimension=mold_dimension, n_jobs=1)
+
+    masked_X = []
+    masked_maps = []
+    meta_coms = []
+    for img_idx, img in enumerate(X):
+        molded_img, masks, boxes, mask_scores = SegNet.detect_image(
+            img, verbose=0, mold=False
         )
-
-        y = np.swapaxes(y, 1, 2)
-        y = np.swapaxes(y, 2, 3)
-
-        gauss_thresh = 0.05
-        y[y > gauss_thresh] = 1
-        y[y <= gauss_thresh] = 0
-        X = X.astype("uint8")
-
-        split = 25
-        x_train = X[split:]
-        y_train = y[split:]
-        x_test = X[:split]
-        y_test = y[:split]
-
-    if species == "mouse":
-        X = np.load(
-            os.path.join(data_path,"mouse_posedata_masked_X.npy")
+        coms = masks_to_coms(masks)
+        masked_imgs, masked_masks = apply_all_masks(
+            masks, coms, molded_img, mask_size=64
         )
+        masked_heatmaps, _ = apply_all_masks(masks, coms, y[img_idx], mask_size=64)
+        masked_X.append(masked_imgs[0].astype("uint8"))
+        masked_maps.append(masked_heatmaps[0].astype("float32"))
+        meta_coms.append(coms)
+        print("img")
 
-        y = np.load(
-            os.path.join(data_path,"mouse_posedata_masked_y.npy")
-        )
+    X = np.asarray(masked_X)
+    y = np.asarray(masked_maps)
 
-        new_X = []
-        for el in X:
-            new_X.append(cv2.cvtColor(el, cv2.COLOR_GRAY2RGB).astype("uint8"))
-        X = np.asarray(new_X)
-        # y = y.astype("uint8")
-        y = y[:, :, :, :]
+    return X, y, meta_coms
 
-        gauss_thresh = 0.5
-        y[y > gauss_thresh] = 1
-        y[y <= gauss_thresh] = 0
 
-        split = 50
-        x_train = X[split:]
-        y_train = y[split:]
-        x_test = X[:split]
-        y_test = y[:split]
+def vis_locs(X, y):
+    plt.imshow(X)
+    for i in range(y.shape[1]):
+        plt.scatter(y[i, 0], y[i, 1])
+    plt.show()
 
-        num_labels = int(len(x_train) * percentage)
-        indices = np.arange(0, len(x_train))
-        random_idxs = np.random.choice(indices, size=num_labels, replace=False)
-        x_train = x_train[random_idxs]
-        y_train = y_train[random_idxs]
 
-    num_classes = y.shape
+def vis_maps(X, y):
+    plt.imshow(X[0])
+    for i in range(y.shape[-1]):
+        plt.imshow(y[0][:, :, i], alpha=0.1)
+    plt.show()
 
-    img_rows, img_cols = x_train.shape[1], x_train.shape[2]
-    input_shape = (img_rows, img_cols, 3)
 
-    adam = keras.optimizers.Adam(lr=0.0005)
+def revert_mold(img, padding, scale, dtype="uint8"):
+    unpad = img[padding[0][0] : -padding[0][1], :, :]
+    rec = resize(
+        unpad, (unpad.shape[0] // scale, unpad.shape[1] // scale), preserve_range=True
+    ).astype(dtype)
+    return rec
 
-    if species == "primate":
-        posenet = posenet_primate(input_shape, num_classes=14)
-    if species == "mouse":
-        posenet = posenet_mouse(input_shape, num_classes=12)
-    posenet.compile(
-        loss=custom_binary_crossentropy,
-        optimizer=adam,
-        metrics=["binary_crossentropy"],
-    )
 
-    sometimes = lambda aug: iaa.Sometimes(0.1, aug)
-
-    augmentation_image = iaa.Sequential(
-        [
-            sometimes(iaa.CoarseDropout(p=0.2, size_percent=0.8, per_channel=False)),
-            sometimes(iaa.CoarseDropout(p=0.05, size_percent=0.25, per_channel=False)),
-            sometimes(iaa.GaussianBlur(sigma=(0, 1.0))),
-        ],
-        random_order=True,
-    )
-
-    #### primate
-    batch_size = 1
-    epochs = 20
-
-    # mouse
-    batch_size = 8
-    epochs = 30
-
-    logdir = os.path.join(output_path, "/logs/posenet/", datetime.now().strftime("%Y%m%d-%H%M%S"))
-    file_writer = tf.compat.v1.summary.FileWriter(logdir + "/metrics")
-    #file_writer = tf.summary.create_file_writer(logdir + "/metrics")
-
-    # file_writer.set_as_desfault()
-    tf_callback = get_tensorbaord_callback(logdir)
-
-    my_metrics = Metrics(writer=file_writer)
-    my_metrics.validation_data = (np.asarray(x_test), np.asarray(y_test))
-    my_metrics.setModel(posenet)
-
-    viz_cb = VIZ()
-    viz_cb.validation_data = (np.asarray(x_test), np.asarray(y_test))
-    viz_cb.setModel(posenet)
-
-    # callbacks = [my_metrics, tf_callback, viz_cb, lr_callback]
-    callbacks = [viz_cb]
-
-    augmentation_image = primate_identification(level=1)
-
-    training_generator = DataGenerator(
-        x_train, y_train, augmentation=augmentation_image, batch_size=batch_size
-    )
-
-    # training_generator.set_sgima(....)
-
-    dense_history_1 = posenet.fit(
-        training_generator,
-        epochs=epochs,
-        validation_data=(x_test, y_test),
-        callbacks=callbacks,
-        shuffle=True,
-        use_multiprocessing=True,
-        workers=8
-    )
-
-    K.set_value(posenet.optimizer.lr, 0.0001)
-    epochs = 50
-
-    dense_history_2 = posenet.fit(
-        training_generator,
-        epochs=epochs,
-        validation_data=(x_test, y_test),
-        callbacks=callbacks,
-        shuffle=True,
-        use_multiprocessing=True,
-        workers=8
-    )
-
-    K.set_value(posenet.optimizer.lr, 0.00001)
-    epochs = 50
-
-    dense_history_2 = posenet.fit(
-        training_generator,
-        epochs=epochs,
-        validation_data=(x_test, y_test),
-        callbacks=callbacks,
-        shuffle=True,
-        use_multiprocessing=True,
-        workers=8,
-    )
-
-    K.set_value(posenet.optimizer.lr, 0.000005)
-    epochs = 100
-
-    dense_history_2 = posenet.fit(
-        training_generator,
-        epochs=epochs,
-        validation_data=(x_test, y_test),
-        callbacks=callbacks,
-        shuffle=True,
-        use_multiprocessing=True,
-        workers=8,
-    )
-
-    # skip tail for now
+def evaluate_pose_estimation(
+    x_test,
+    y_test,
+    posenet,
+    remold=False,
+    y_test_orig=None,
+    x_test_orig=None,
+    coms_test=None,
+):
     rmses = []
     for idx, test_img in tqdm(enumerate(x_test)):
         heatmaps = posenet.predict(np.expand_dims(test_img, axis=0))
         # set upper left to 0
         heatmaps = heatmaps[0, :, :, :]
         heatmaps[:20, :20, :] = 0
-        coords_gt = heatmap_to_scatter(y[idx])[:-1]
-        coords_predict = heatmap_to_scatter(heatmaps)[:-1]
-        rmses.append(calculate_rmse(coords_predict, coords_gt))
+        # TODO: dont incorporate rmse if heatmap in upper left corner
+
+        if remold:
+            image, window, scale, padding, crop = mold_image(
+                x_test_orig[0], dimension=1024, return_all=True
+            )
+
+            unmolded_maps = []
+            for map_id in range(heatmaps.shape[-1]):
+                map = heatmaps[:, :, map_id]
+                a = mask_to_original_image(1024, map, coms_test[idx][0], 64)
+                a = np.expand_dims(a, axis=-1)
+                b = revert_mold(a, padding, scale, dtype="float32")
+                unmolded_maps.append(b)
+            unmolded_maps = np.array(unmolded_maps)
+            unmolded_maps = np.swapaxes(unmolded_maps, 0, -1)
+            unmolded_maps = unmolded_maps[0]
+
+            coords_predict = heatmap_to_scatter(unmolded_maps)[:-1]
+            coords_gt = heatmap_to_scatter(y_test_orig[idx])[:-1]
+            rmses.append(calculate_rmse(coords_predict, coords_gt))
+        else:
+            coords_gt = heatmap_to_scatter(y_test[idx])[:-1]
+            coords_predict = heatmap_to_scatter(heatmaps)[:-1]
+            rmses.append(calculate_rmse(coords_predict, coords_gt))
+
     rmses = np.asarray(rmses)
     # overall rmse
     print("overall result RMSE")
     print(str(rmses))
     print("\n")
-    print(str(np.mean(rmses)))
-    res = np.mean(rmses)
+    print(str(np.nanmean(rmses)))
+    res = np.nanmean(rmses)
+
+    return res
+
+
+def treshold_maps(y, threshold=0.9):
+    y[y > threshold] = 1
+    y[y <= threshold] = 0
+    return y
+
+
+def train_on_data(
+    x_train,
+    y_train,
+    x_test,
+    y_test,
+    config,
+    results_sink,
+    segnet_path=None,
+    augmentation="primate",
+    original_img_shape=None,
+    save=None,
+):
+    remold = False
+    y_test_orig = None
+    x_test_orig = None
+    coms_test = None
+    if segnet_path:
+        SegNet = SegModel(species="mouse")
+        SegNet.inference_config.DETECTION_MIN_CONFIDENCE = 0.001
+        SegNet.set_inference(model_path=segnet_path)
+
+        mask_size = 64
+        x_test_orig = x_test
+        y_test_orig = y_test
+        x_train, y_train, _ = segment_images_and_masks(
+            x_train, y_train, SegNet=SegNet, mask_size=mask_size
+        )
+        x_test, y_test, coms_test = segment_images_and_masks(
+            x_test, y_test, SegNet=SegNet, mask_size=mask_size
+        )
+        remold = True
+
+    img_rows, img_cols = x_train.shape[1], x_train.shape[2]
+    input_shape = (img_rows, img_cols, 3)
+
+    adam = tf.keras.optimizers.Adam(lr=0.001)
+    posenet = posenet_architecture(
+        input_shape,
+        num_classes=y_train.shape[-1],
+        backbone=config["poseestimation_model_backbone"],
+    )
+    posenet.compile(
+        loss=["binary_crossentropy"],
+        optimizer=adam,
+        metrics=["mse"],
+    )
+
+    if config["poseestimation_model_augmentation"] == "primate":
+        augmentation_image = primate_poseestimation()
+    elif config["poseestimation_model_augmentation"] == "mouse":
+        augmentation_image = mouse_poseestimation()
+    else:
+        raise NotImplementedError
+
+    tf_callback = callbacks_tf_logging(path="./logs/posenet/")
+
+    # TODO: model checkpoint callbacks
+    my_metrics = Metrics(unmold=original_img_shape)
+    my_metrics.validation_data = (np.asarray(x_test), np.asarray(y_test))
+    my_metrics.setModel(posenet)
+    viz_cb = callbacks_viz_poseestimation()
+    viz_cb.validation_data = (np.asarray(x_test), np.asarray(y_test))
+    viz_cb.setModel(posenet)
+    callbacks = [my_metrics, viz_cb, tf_callback]
+
+    training_generator = DataGenerator(
+        x_train,
+        y_train,
+        augmentation=augmentation_image,
+        batch_size=config["poseestimation_batch_size"],
+    )
+
+    for epoch_id, epoch in enumerate(config["poseestimation_model_epochs"]):
+        K.set_value(
+            posenet.optimizer.lr,
+            config["poseestimation_model_learning_rates"][epoch_id],
+        )
+
+        dense_history_1 = posenet.fit(
+            training_generator,
+            epochs=epoch,
+            validation_data=(x_test, y_test),
+            callbacks=callbacks,
+            shuffle=True,
+            use_multiprocessing=False,
+            steps_per_epoch=config["poseestimation_model_steps_per_epochs"][epoch_id],
+            # workers=40,
+        )
+
+    res = evaluate_pose_estimation(
+        x_test,
+        y_test,
+        posenet,
+        remold=remold,
+        y_test_orig=y_test_orig,
+        x_test_orig=x_test_orig,
+        coms_test=coms_test,
+    )
     if save:
         posenet.save(results_sink + "posenetNet" + ".h5")
-        np.save(results_sink + "results" + ".npy", res)
+        np.save(results_sink + "poseestimation_results_new.npy", res)
 
 
 parser = ArgumentParser()
@@ -586,31 +596,45 @@ parser.add_argument(
     help="fraction to use for training",
 )
 parser.add_argument(
-    "--annotations",
+    "--dlc_path",
     action="store",
-    dest="annotations",
+    dest="dlc_path",
     type=str,
     default=None,
-    help="path for annotations from VGG annotator",
+    help="path for labeled-data path of deeplabcut labelled data",
 )
 parser.add_argument(
-    "--frames",
+    "--fold",
     action="store",
-    dest="frames",
-    type=str,
+    dest="fold",
+    type=int,
     default=None,
-    help="path to folder with annotated frames",
+    help="fold for crossvalidation",
 )
-
 parser.add_argument(
-    "--output_path",
+    "--results_sink",
     action="store",
-    dest="output_path",
+    dest="results_sink",
     type=str,
     default=None,
-    help="Path to the folder where the ouput should be written"
+    help="path to results",
 )
-
+parser.add_argument(
+    "--segnet_path",
+    action="store",
+    dest="segnet_path",
+    type=str,
+    default=None,
+    help="path to segmentation model",
+)
+parser.add_argument(
+    "--config",
+    action="store",
+    dest="config",
+    type=str,
+    default=None,
+    help="name of configuration file to use",
+)
 
 
 def main():
@@ -618,41 +642,70 @@ def main():
     operation = args.operation
     gpu_name = args.gpu
     fraction = args.fraction
-    annotations = args.annotations
-    frames = args.frames
-    output_path = args.output_path
+    dlc_path = args.dlc_path
+    fold = args.fold
+    results_sink = args.results_sink
+    segnet_path = args.segnet_path
+    config = args.config
 
     setGPU(gpu_name)
 
-    config_name = "poseestimation_config"
-    config = load_config("../configs/poseestimation/" + config_name)
+    config = load_config("../configs/poseestimation/" + config)
     set_random_seed(config["random_seed"])
-    
-    data_path = "/home/user/data/"
-    
+    # check_directory(results_sink)
+    with open(results_sink + "config.json", "w") as f:
+        json.dump(config, f)
+    f.close()
 
-    
+    original_img_shape = None
+    if operation == "primate":
+        x_train, y_train, x_test, y_test = get_primate_pose_data()
+    if operation == "mouse":
+        x_train, y_train, x_test, y_test = get_mouse_pose_data(fraction=fraction)
+    if operation == "dlc_comparison":
+        (
+            x_train,
+            y_train,
+            x_test,
+            y_test,
+            original_img_shape,
+        ) = get_mouse_pose_dlc_comparison_data(fold=fold)
+    if operation == "mouse_dlc":
+        x_train, y_train, x_test, y_test = get_mouse_dlc_data()
+    if dlc_path:
+        # TODO: integrate exclude labels into cfg
+        X, y = read_dlc_labels_from_folder(
+            dlc_path, exclude_labels=["tl", "tr", "bl", "br", "centre"]
+        )
+        split = 4
+        x_train = X[split:]
+        y_train = y[split:]
+        x_test = X[:split]
+        y_test = y[:split]
 
-    results_sink = (
-            os.path.join(output_path, "{}-{}-{}/".format(config["experiment_name"], fraction, datetime.now().strftime("%Y-%m-%d-%H_%M")))
-    )
-    check_directory(results_sink)
-    # with open(results_sink + "config.json", "w") as f:
-    #     json.dump(config, f)
-    # f.close()
-
-    if operation == "train_primate":
-        train_on_data(species="primate", config=config, results_sink=results_sink, data_path=data_path, output_path=output_path)
-    if operation == "train_mouse":
-        train_on_data(
-            species="mouse",
-            config=config,
-            results_sink=results_sink,
-            percentage=fraction,
-            data_path = data_path,
-            output_path=output_path
+        # TODO: sigmas in config and test
+        sigmas = [6.0, 4.0, 1.0, 1.0, 0.5]
+        img_shape = (x_train.shape[1], x_train.shape[2])
+        y_train = heatmaps_for_images(
+            y_train, img_shape=img_shape, sigma=sigmas[0], threshold=None
+        )
+        y_test = heatmaps_for_images(
+            y_test, img_shape=img_shape, sigma=sigmas[0], threshold=None
         )
 
+    train_on_data(
+        x_train,
+        y_train,
+        x_test,
+        y_test,
+        config=config,
+        results_sink=results_sink,
+        segnet_path=segnet_path,
+        original_img_shape=original_img_shape,
+    )
 
+
+# example usage
+# python poseestimation.py --gpu 0 --results_sink /home/markus/posetest/ --dlc_path /home/markus/OFT/labeled-data/ --segnet_path /home/markus/mask_rcnn_mouse_0095.h5 --config poseestimation_config_test
 if __name__ == "__main__":
     main()

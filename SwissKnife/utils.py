@@ -18,6 +18,7 @@ import os
 import pickle
 from distutils.version import LooseVersion
 import os.path
+import ast
 
 # import matplotlib.pyplot as plt
 import numpy as np
@@ -25,12 +26,184 @@ import skimage
 import skvideo
 import skvideo.io
 import tensorflow as tf
-from sklearn.metrics import balanced_accuracy_score, f1_score
+from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
+from skimage.filters import gaussian
 
 from tensorflow.keras import backend as K
 import tensorflow.keras as keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-#from tensorflow.keras.utils import multi_gpu_model
+
+# from tensorflow.keras.utils import multi_gpu_model
+
+### pose estimation utils
+def heatmaps_for_images(labels, img_shape, sigma=3, threshold=None):
+    heatmaps = []
+    for el in labels:
+        maps = heatmaps_for_image_whole(
+            img_shape=img_shape, labels=el, sigma=sigma, threshold=threshold
+        )
+        heatmaps.append(maps)
+    heatmaps = np.asarray(heatmaps)
+
+    return heatmaps.astype("float32")
+
+
+def heatmaps_to_locs(y):
+    locs = []
+    for maps in y:
+        map_locs = []
+        for map_id in range(y.shape[-1]):
+            map = maps[:, :, map_id]
+            loc = np.where(map == map.max())
+            map_locs.append([loc[1][0], loc[0][0]])
+        locs.append(np.array(map_locs))
+
+    y = np.array(locs)
+
+    return y
+
+
+def heatmap_mask(maps, mask):
+    ret = False
+    for mold in tqdm(maps):
+        a = mold * mask
+        if a.sum() > 10:
+            return True
+    return ret
+
+
+def heatmaps_for_image(labels, window=100, sigma=3):
+    heatmaps = []
+    for label in labels:
+        heatmap = np.zeros((window, window))
+        heatmap[int(label[1]), int(label[0])] = 1
+        heatmap = gaussian(heatmap, sigma=sigma)
+        heatmap[heatmap > 0.001] = 1
+        heatmaps.append(heatmap)
+
+    heatmaps = np.asarray(heatmaps)
+    heatmaps = np.moveaxis(heatmaps, 0, 2)
+
+    return heatmaps
+
+
+def heatmaps_for_image_whole(labels, img_shape, sigma=3, threshold=None):
+    heatmaps = []
+    for label in labels:
+        heatmap = np.zeros(img_shape)
+        if label[1] > -1:
+            heatmap[int(label[1]), int(label[0])] = 1
+            heatmap = gaussian(heatmap, sigma=sigma)
+            # threshold
+            if threshold:
+                heatmap[heatmap > threshold] = 1
+            else:
+                heatmap = heatmap / heatmap.max()
+        heatmaps.append(heatmap)
+    heatmaps = np.asarray(heatmaps)
+    heatmaps = np.moveaxis(heatmaps, 0, 2)
+    return heatmaps
+
+
+def keypoints_in_mask(mask, keypoints):
+    for point in keypoints:
+        keypoint = point.astype(int)
+
+        res = mask[keypoint[1], keypoint[0]]
+        if res == False:
+            return False
+    return True
+
+
+def heatmap_to_scatter(heatmaps, threshold=0.6e-9):
+    coords = []
+
+    for idx in range(0, heatmaps.shape[-1]):
+        heatmap = heatmaps[:, :, idx]
+        # heatmap = gaussian(heatmap, sigma=2)
+        val = max(heatmap.flatten())
+        if val > threshold:
+            _coord = np.where(heatmap == val)
+            coords.append([_coord[1][0], _coord[0][0]])
+        else:
+            coords.append([0, 0])
+
+    return np.asarray(coords)
+
+
+def dilate_mask(mask, factor=20):
+    new_mask = binary_dilation(mask, iterations=factor)
+
+    return new_mask
+
+
+def bbox_mask(model, img, verbose=0):
+    image, window, scale, padding, crop = utils.resize_image(
+        img,
+        # min_dim=config.IMAGE_MIN_DIM,
+        # min_scale=config.IMAGE_MIN_SCALE,
+        # max_dim=config.IMAGE_MAX_DIM,
+        # mode=config.IMAGE_RESIZE_MODE)
+        # TODO: nicer here
+        min_dim=2048,
+        max_dim=2048,
+        mode="square",
+    )
+    if verbose:
+        vid_results = model.detect([image], verbose=1)
+    else:
+        vid_results = model.detect([image], verbose=0)
+    r = vid_results[0]
+
+    return image, r["scores"], r["rois"], r["masks"]
+
+
+### END Poseestimation utils
+
+
+# TODO: maybe somewhere else?
+def get_optimizer(optim_name, lr=0.01):
+    optim = None
+    if optim_name == "adam":
+        optim = keras.optimizers.Adam(lr=lr, clipnorm=0.5)
+    if optim_name == "sgd":
+        optim = keras.optimizers.SGD(lr=lr, clipnorm=0.5, momentum=0.9)
+    if optim_name == "rmsprop":
+        optim = keras.optimizers.RMSprop(lr=lr)
+    return optim
+
+
+##callbacks
+
+
+def callbacks_tf_logging(path="./logs/"):
+    logdir = os.path.join(path, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    tf_callback = get_tensorbaord_callback(logdir)
+    return tf_callback
+
+
+def get_tensorbaord_callback(path="./logs"):
+    # Tensorflow board
+    tensorboard_callback = keras.callbacks.TensorBoard(
+        log_dir=path, histogram_freq=0, write_graph=True, write_images=True
+    )
+    return tensorboard_callback
+
+
+def callbacks_learningRate_plateau():
+    CB_lr = keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss", min_delta=0.0001, verbose=True, patience=8, min_lr=1e-7
+    )
+
+    CB_es = keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        min_delta=0.0001,
+        patience=8,
+        mode="min",
+        restore_best_weights=True,
+    )
+
+    return CB_es, CB_lr
 
 
 def masks_to_coords(masks):
@@ -59,12 +232,21 @@ def clearMemory(model, backend):
     backend.clear_session()
 
 
-def get_tensorbaord_callback(path="./logs"):
-    # Tensorflow board
-    tensorboard_callback = keras.callbacks.TensorBoard(
-        log_dir=path, histogram_freq=0, write_graph=True, write_images=True
-    )
-    return tensorboard_callback
+def run_ai_cumulative_gradient(optimizer):
+    import runai.ga.keras
+
+    optim = runai.ga.keras.optimizers.Optimizer(optimizer, steps=8)
+    return optim
+
+
+def fix_layers(network, with_backbone=True):
+    for layer in network.layers:
+        layer.trainable = True
+        if with_backbone:
+            if "layers" in dir(layer):
+                for _layer in layer.layers:
+                    _layer.trainable = True
+    return network
 
 
 # helper class to keep track of results from different methods
@@ -94,9 +276,6 @@ class ResultsTracker:
             print('Access on file "' + self.path + '" is not available!')
             print(str(e))
             return 0
-
-
-import ast
 
 
 # TODO: include multi behavior
@@ -198,8 +377,8 @@ def set_random_seed(random_seed):
     random.seed(random_seed)
     my_rnd_seed = np.random.seed(random_seed)
     tf.random.set_seed(random_seed)
-    #tf.set_random_seed(random_seed)
-    #tf.random.set_random_seed(random_seed)
+    # tf.set_random_seed(random_seed)
+    # tf.random.set_random_seed(random_seed)
 
 
 def detect_primate(_img, _model, classes, threshold):
@@ -283,8 +462,41 @@ def extractCOM_only(image):
     return center_of_mass, weighted_center_of_mass
 
 
+# TODO: remove hack
+def mask_to_original_image(orig_shape, mask, center_of_mass, mask_size):
+
+    img = np.zeros((orig_shape, orig_shape))
+
+    if (
+        np.min([img.shape[0], int(center_of_mass[0] + mask_size)])
+        - np.max([0, int(center_of_mass[0] - mask_size)])
+        < mask.shape[0]
+    ):
+        img[
+            np.max([0, int(center_of_mass[0] - mask_size)]) : np.min(
+                [img.shape[0], int(center_of_mass[0] + mask_size)]
+            ),
+            np.max([0, int(center_of_mass[1] - mask_size)]) : np.min(
+                [img.shape[0], int(center_of_mass[1] + mask_size)]
+            ),
+        ] = mask[mask_size:, mask_size:]
+    else:
+        img[
+            np.max([0, int(center_of_mass[0] - mask_size)]) : np.min(
+                [img.shape[0], int(center_of_mass[0] + mask_size)]
+            ),
+            np.max([0, int(center_of_mass[1] - mask_size)]) : np.min(
+                [img.shape[0], int(center_of_mass[1] + mask_size)]
+            ),
+        ] = mask
+
+    return img
+
+
 def maskedImg(
-    img, center_of_mass, mask_size=74,
+    img,
+    center_of_mass,
+    mask_size=74,
 ):
     if len(img.shape) == 2:
         ret = np.zeros((int(mask_size * 2), int(mask_size * 2)))
@@ -305,7 +517,7 @@ def maskedImg(
         ret.shape[1] - int(cutout.shape[1]) : ret.shape[1] + int(cutout.shape[1]),
     ] = cutout
 
-    return ret.astype("uint8")
+    return ret
 
 
 ### DL Utils
@@ -398,11 +610,8 @@ def balanced_acc(y_true, y_pred):
         return balanced_accuracy_score(y_true.eval(), y_pred.eval())
 
 
-from sklearn.metrics import classification_report
-
-
 class Metrics(tf.keras.callbacks.Callback):
-    
+
     def __init__(self, validation_data):
         self.validation_data = validation_data
 
@@ -435,34 +644,6 @@ class Metrics(tf.keras.callbacks.Callback):
         return self._data
 
 
-# TODO: maybe somewhere else?
-def get_optimizer(optim_name, lr=0.01):
-    optim = None
-    if optim_name == "adam":
-        optim = keras.optimizers.Adam(lr=lr, clipnorm=0.5)
-    if optim_name == "sgd":
-        optim = keras.optimizers.SGD(lr=lr, clipnorm=0.5, momentum=0.9)
-    if optim_name == "rmsprop":
-        optim = keras.optimizers.RMSprop(lr=lr)
-    return optim
-
-
-def get_callbacks():
-    CB_lr = keras.callbacks.ReduceLROnPlateau(
-        monitor="val_loss", min_delta=0.0001, verbose=True, patience=8, min_lr=1e-7
-    )
-
-    CB_es = keras.callbacks.EarlyStopping(
-        monitor="val_loss",
-        min_delta=0.0001,
-        patience=8,
-        mode="min",
-        restore_best_weights=True,
-    )
-
-    return CB_es, CB_lr
-
-
 def train_model(
     model,
     optimizer,
@@ -478,7 +659,7 @@ def train_model(
 ):
     if num_gpus > 1:
         print("This part needs to be fixed!!!")
-        #model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
+        # model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
     if loss == "crossentropy":
         # TODO: integrate number of GPUs in config
         model.compile(
@@ -568,7 +749,7 @@ def train_model(
                 validation_data=(data_val[0], data_val[1]),
                 callbacks=callbacks,
                 shuffle=True,
-                class_weight=class_weights
+                class_weight=class_weights,
             )
         else:
             training_history = model.fit(
@@ -578,14 +759,20 @@ def train_model(
                 batch_size=batch_size,
                 validation_data=(data_val[0], data_val[1]),
                 callbacks=callbacks,
-                shuffle=True
+                shuffle=True,
             )
 
     return model, training_history
 
 
 def eval_model(
-    model, data, results_dict, results_array, filename, dataloader, model_name="",
+    model,
+    data,
+    results_dict,
+    results_array,
+    filename,
+    dataloader,
+    model_name="",
 ):
     true_confidence = model.predict(data)
     true_numerical = np.argmax(true_confidence, axis=-1).astype(int)
@@ -624,7 +811,11 @@ def check_directory(directory):
         print("Creating directory {}".format(directory))
         os.makedirs(directory)
     else:
-        raise ValueError("Raising value exception as the experiment/directory {} already exists".format(directory))
+        raise ValueError(
+            "Raising value exception as the experiment/directory {} already exists".format(
+                directory
+            )
+        )
 
 
 def get_ax(rows=1, cols=1, size=8):
@@ -643,9 +834,10 @@ def check_folder(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
+
 ### set gpu backend
 def setGPU_growth():
-    physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    physical_devices = tf.config.experimental.list_physical_devices("GPU")
     print(physical_devices)
     for device in physical_devices:
         tf.config.experimental.set_memory_growth(device, True)
@@ -653,13 +845,17 @@ def setGPU_growth():
     # TODO: Replace the following by tf2 equivalent
     ##backend.tensorflow_backend.set_session(tf.Session(config=config))
 
+
 def setGPU(gpu_name, growth=True):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-    #os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
-    tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[int(gpu_name)], 'GPU')
+    # os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
+    tf.config.set_visible_devices(
+        tf.config.list_physical_devices("GPU")[int(gpu_name)], "GPU"
+    )
     if growth:
         setGPU_growth()
     pass
+
 
 def pathForFile(paths, filename):
     if "labels" in paths[0]:
@@ -692,7 +888,17 @@ def load_config(path):
                 try:
                     params[line.split(" = ")[0]] = float(line.split(" = ")[1])
                 except ValueError:
-                    params[line.split(" = ")[0]] = str(line.split(" = ")[1])
+                    if "," in str(line.split(" = ")[1]):
+                        if "." in line.split(" = ")[1]:
+                            help = line.split(" = ")[1].split(",")
+                            entries = [float(el) for el in help]
+                            params[line.split(" = ")[0]] = entries
+                        else:
+                            help = line.split(" = ")[1].split(",")
+                            entries = [int(el) for el in help]
+                            params[line.split(" = ")[0]] = entries
+                    else:
+                        params[line.split(" = ")[0]] = str(line.split(" = ")[1])
     return params
 
 
