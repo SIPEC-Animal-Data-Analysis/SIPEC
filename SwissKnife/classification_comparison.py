@@ -43,7 +43,7 @@ from SwissKnife.utils import (
     check_directory,
     setGPU,
     get_optimizer,
-    get_callbacks,
+    callbacks_learningRate_plateau,
     set_random_seed,
     save_dict,
     load_dict,
@@ -391,7 +391,7 @@ def run_experiment(
 
             lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
-            CB_es, CB_lr = get_callbacks()
+            CB_es, CB_lr = callbacks_learningRate_plateau()
             my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
             #my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
             my_metrics.setModel(recognition_model)
@@ -617,7 +617,7 @@ def run_experiment(
 
             lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
-            CB_es, CB_lr = get_callbacks()
+            CB_es, CB_lr = callbacks_learningRate_plateau()
 
             my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
             #my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)

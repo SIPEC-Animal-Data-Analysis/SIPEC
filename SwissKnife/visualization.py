@@ -98,7 +98,7 @@ def displayBoxes(frame, mask, color=(0, 0, 255), animal_id=None, mask_id=None):
 
 def displayScatter(frame, coords, color=(0, 0, 255)):
     # for coord in coords:
-    cv2.circle(frame, (int(coords[1]), int(coords[0])), 3, color, -1)
+    cv2.circle(frame, (int(coords[0]), int(coords[1])), 3, color, -1)
     return frame
 
 
@@ -299,10 +299,6 @@ def visualize_full_inference(
             # TODO: fix hack
             for pose_id, poses in enumerate(results[idx]["pose_coordinates"]):
                 try:
-                    poses[:, 0] += int(coms[pose_id][0])
-                    poses[:, 1] += int(coms[pose_id][1])
-                    poses[:, 0] -= 64
-                    poses[:, 1] -= 64
                     for pose in poses[:-1]:
                         frame = displayScatter(frame, pose)
                 except KeyError:
@@ -312,7 +308,6 @@ def visualize_full_inference(
     skvideo.io.vwrite(results_sink + output_video_name, resulting_frames, verbosity=1)
 
 
-@DeprecationWarning
 def main():
     args = parser.parse_args()
     output_video_name = args.output_video_name
@@ -328,21 +323,26 @@ def main():
         "id_matching": False,
         "mask_matching": True,
         "display_coms": False,
+        "num_frames": 1000,
         "id_classes": {
             "0": 0,
             "1": 1,
             "2": 2,
             "3": 3,
         },
-        "networks": ["segmentation"],
+        "networks": {"SegNet": None, "PoseNet": None},
     }
 
-    videodata = loadVideo(video, greyscale=False)
+    videodata = loadVideo(video, greyscale=False, num_frames=viz_cfg["num_frames"])
     molded_video = mold_video(videodata, dimension=viz_cfg["mold_dimension"])
     results = np.load(results_path, allow_pickle=True)
 
+    dir = ""
+    for el in results_path.split("/")[:-1]:
+        dir += el + "/"
+
     visualize_full_inference(
-        results_sink=results_path,
+        results_sink=dir,
         networks=viz_cfg["networks"],
         video=molded_video,
         results=results,

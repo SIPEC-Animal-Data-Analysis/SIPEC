@@ -12,6 +12,12 @@ from tensorflow.keras.applications import (
     Xception,
     NASNetLarge,
     InceptionV3,
+    EfficientNetB2,
+    EfficientNetB3,
+    EfficientNetB4,
+    EfficientNetB5,
+    EfficientNetB6,
+    EfficientNetB7,
 )
 from tensorflow.keras.layers import (
     Conv2D,
@@ -33,290 +39,86 @@ from tensorflow.keras.layers import (
     Conv2DTranspose,
     UpSampling2D,
     Reshape,
-    LeakyReLU
+    LeakyReLU,
 )
 from tensorflow.keras.models import Sequential
+from tensorflow.python.keras.applications.efficientnet import EfficientNetB1
 
 
-def posenet_mouse(input_shape, num_classes):
+def posenet(
+    input_shape,
+    num_classes,
+    backbone="efficientnetb5",
+    fix_backbone=False,
+    gaussian_noise=0.05,
+    features=256,
+    bias=False,
+):
     """Mouse pose estimation architecture.
-
     Extended description of function.
-
     Parameters
     ----------
     arg1 : np.ndarray
         Input shape for mouse pose estimation network.
     arg2 : int
         Number of classes/landmarks.
-
     Returns
     -------
     keras.model
         model
     """
-    recognition_model = Xception(
-        include_top=False, input_shape=input_shape, pooling="avg", weights="imagenet",
-    )
+    if backbone == "efficientnetb5":
+        recognition_model = EfficientNetB5(
+            include_top=False,
+            input_shape=input_shape,
+            pooling=None,
+            weights="imagenet",
+        )
+    elif backbone == "efficientnetb7":
+        recognition_model = EfficientNetB7(
+            include_top=False,
+            input_shape=input_shape,
+            pooling=None,
+            weights="imagenet",
+        )
+    elif backbone == "efficientnetb1":
+        recognition_model = EfficientNetB1(
+            include_top=False,
+            input_shape=input_shape,
+            pooling=None,
+            weights="imagenet",
+        )
+    else:
+        raise NotImplementedError
 
     new_input = Input(
         batch_shape=(None, input_shape[0], input_shape[1], input_shape[2])
     )
 
-    #### mouse w resnet
-
-    gaussian_noise = 0.01
+    if fix_backbone:
+        for layer in recognition_model.layers:
+            layer.trainable = False
 
     x = Conv2D(3, kernel_size=(1, 1), strides=(1, 1))(new_input)
-
     x = recognition_model(x)
-    # x = Flatten()(x)
-    x = Dense(1024)(x)
-    x = Reshape((2, 2, 256))(x)
-    u_7 = UpSampling2D(size=(64, 64))(x)
 
-    x = Conv2DTranspose(256, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
+    for i in range(4):
+        x = Conv2DTranspose(
+            features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias
+        )(x)
+        x = BatchNormalization()(x)
+        x = Activation("relu")(x)
+        x = GaussianNoise(gaussian_noise)(x)
 
-    x = Activation("relu")(x)
+    x = Conv2DTranspose(
+        features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias
+    )(x)
     x = BatchNormalization()(x)
-
-    ###
-    # x = Dropout(0.2)(x)
-    u_6 = UpSampling2D(size=(32, 32))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(256, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-
     x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_5 = UpSampling2D(size=(16, 16))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(256, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_4 = UpSampling2D(size=(8, 8))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(256, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_3 = UpSampling2D(size=(4, 4))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(256, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_2 = UpSampling2D(size=(2, 2))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(512, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    x = concatenate([x, u_2, u_3, u_4, u_5, u_6, u_7], axis=-1)
-
-    x = Conv2DTranspose(256, kernel_size=(1, 1), strides=(1, 1), padding="valid")(x)
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    x = Conv2DTranspose(128, kernel_size=(1, 1), strides=(1, 1), padding="valid")(x)
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    x = Conv2DTranspose(64, kernel_size=(1, 1), strides=(1, 1), padding="valid")(x)
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
 
     x = Conv2DTranspose(
         num_classes, kernel_size=(1, 1), strides=(1, 1), padding="valid"
     )(x)
-
-    # x = Conv3DTranspose(3, kernel_size=(1,1,1), strides=(1,1,1))(x)
-
-    x = Activation("sigmoid")(x)
-
-    model = Model(inputs=new_input, outputs=x)
-    model.summary()
-
-    return model
-
-
-def posenet_primate(input_shape, num_classes):  # recognition_model = DenseNet201(
-    """Primate pose estimation architecture.
-    Args:
-        input_shape:Input shape for the network.
-        num_classes:Number of classes for recognition or number of landmarks.
-    """
-    recognition_model = ResNet101(
-        include_top=False, input_shape=input_shape, pooling="avg", weights="imagenet",
-    )
-
-    new_input = Input(
-        batch_shape=(None, input_shape[0], input_shape[1], input_shape[2])
-    )
-
-    #### primate
-
-    gaussian_noise = 0.3
-
-    mask_size = 128
-
-    x = Conv2D(3, kernel_size=(1, 1), strides=(1, 1))(new_input)
-
-    x = recognition_model(x)
-    x = Dropout(0.1)(x)
-    # x = Reshape((2, 2, 512))(x)
-    x = Dense(int(mask_size * 2 * 2 * 2))(x)
-    x = Reshape((2, 2, int(mask_size * 2)))(x)
-    u_7 = UpSampling2D(size=(mask_size, mask_size))(x)
-
-    kernel_size = (2, 2)
-    strides = (2, 2)
-
-    filters = int(mask_size / 2)
-
-    x = Conv2DTranspose(
-        filters, kernel_size=kernel_size, strides=strides, padding="valid"
-    )(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    ###
-    # x = Dropout(0.2)(x)
-    u_6 = UpSampling2D(size=(int(mask_size / 2), int(mask_size / 2)))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(
-        filters, kernel_size=kernel_size, strides=strides, padding="valid"
-    )(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_5 = UpSampling2D(size=(int(mask_size / 4), int(mask_size / 4)))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(
-        filters, kernel_size=kernel_size, strides=strides, padding="valid"
-    )(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_4 = UpSampling2D(size=(int(mask_size / 8), int(mask_size / 8)))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(
-        filters, kernel_size=kernel_size, strides=strides, padding="valid"
-    )(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_3 = UpSampling2D(size=(int(mask_size / 16), int(mask_size / 16)))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(
-        filters, kernel_size=kernel_size, strides=strides, padding="valid"
-    )(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # x = Dropout(0.2)(x)
-
-    ###
-    u_2 = UpSampling2D(size=(int(mask_size / 32), int(mask_size / 32)))(x)
-    x = GaussianNoise(gaussian_noise)(x)
-    ###
-
-    x = Conv2DTranspose(
-        filters, kernel_size=kernel_size, strides=strides, padding="valid"
-    )(x)
-
-    x = Activation("relu")(x)
-    x = BatchNormalization()(x)
-
-    # for primates
-    # x = Dropout(0.2)(x)
-
-    u_1 = UpSampling2D(size=(int(mask_size / 64), int(mask_size / 64)))(x)
-    # x = GaussianNoise(0.5)(x)
-
-    x = Conv2DTranspose(filters, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
-
-    u_0 = UpSampling2D(size=(int(mask_size / 128), int(mask_size / 128)))(x)
-    # x = GaussianNoise(0.5)(x)
-
-    # x = Conv2DTranspose(filters, kernel_size=(2, 2), strides=(2, 2), padding="valid")(x)
-    # x = BatchNormalization()(x)
-    # x = Activation("relu")(x)
-
-    # x = concatenate([x, u_0, u_1, u_2, u_3, u_4, u_5, u_6, u_7], axis=-1)
-
-    # x = Conv2DTranspose(256, kernel_size=(1, 1), strides=(1, 1), padding="valid")(x)
-    # x = Activation("relu")(x)
-    # x = BatchNormalization()(x)
-
-    # x = Conv2DTranspose(128, kernel_size=(1, 1), strides=(1, 1), padding="valid")(x)
-    # x = Activation("relu")(x)
-    # x = BatchNormalization()(x)
-    #
-    # x = Conv2DTranspose(64, kernel_size=(1, 1), strides=(1, 1), padding="valid")(x)
-    # x = Activation("relu")(x)
-    # x = BatchNormalization()(x)
-    #
-    # x = Conv2DTranspose(32, kernel_size=(1, 1), strides=(1, 1), padding="valid")(x)
-    # x = Activation("relu")(x)
-    # x = BatchNormalization()(x)
-
-    x = Conv2DTranspose(
-        num_classes, kernel_size=(1, 1), strides=(1, 1), padding="valid"
-    )(x)
-
-    # x = Conv3DTranspose(3, kernel_size=(1,1,1), strides=(1,1,1))(x)
 
     x = Activation("sigmoid")(x)
 
@@ -644,7 +446,9 @@ def recurrent_model_old(
 
 
 def recurrent_model_tcn(
-    recognition_model, recurrent_input_shape, classes=4,
+    recognition_model,
+    recurrent_input_shape,
+    classes=4,
 ):
     """BehaviorNet architecture for behavioral classification based on temporal convolution architecture (TCN).
 
@@ -934,7 +738,11 @@ def idtracker_ai(input_shape, classes):
     )
     model.add(Activation("relu"))
 
-    model.add(MaxPooling2D(strides=(2, 2),))
+    model.add(
+        MaxPooling2D(
+            strides=(2, 2),
+        )
+    )
 
     model.add(
         Conv2D(
@@ -947,7 +755,11 @@ def idtracker_ai(input_shape, classes):
     )
     model.add(Activation("relu"))
 
-    model.add(MaxPooling2D(strides=(2, 2),))
+    model.add(
+        MaxPooling2D(
+            strides=(2, 2),
+        )
+    )
 
     model.add(
         Conv2D(

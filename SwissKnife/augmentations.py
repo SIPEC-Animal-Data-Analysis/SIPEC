@@ -6,6 +6,68 @@ import imgaug as ia
 from imgaug import augmenters as iaa
 
 
+def primate_poseestimation():
+    sometimes = lambda aug: iaa.Sometimes(0.4, aug)
+
+    often = lambda aug: iaa.Sometimes(1.0, aug)
+    medium = lambda aug: iaa.Sometimes(0.4, aug)
+    rare = lambda aug: iaa.Sometimes(0.4, aug)
+    augmentation_image = iaa.Sequential(
+        [
+            often(
+                iaa.Affine(
+                    scale=(
+                        0.6,
+                        1.4,
+                    ),  # scale images to 80-120% of their size, individually per axis
+                    #                 translate_percent={"x": (-0.1, 0.1), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
+                    rotate=(-40, 40),  # rotate by -45 to +45 degrees
+                )
+            ),
+            iaa.Fliplr(0.5, name="Flipper"),
+            sometimes(iaa.CoarseDropout(p=0.2, size_percent=0.5, per_channel=False)),
+            sometimes(iaa.GaussianBlur(sigma=(0, 1.0))),
+            sometimes(iaa.CoarseDropout(p=0.2, size_percent=0.8, per_channel=False)),
+            sometimes(iaa.CoarseDropout(p=0.05, size_percent=0.25, per_channel=False)),
+        ],
+        random_order=True,
+    )
+
+    return augmentation_image
+
+
+def mouse_poseestimation():
+    sometimes = lambda aug: iaa.Sometimes(0.5, aug)
+
+    often = lambda aug: iaa.Sometimes(0.95, aug)
+    medium = lambda aug: iaa.Sometimes(0.05, aug)
+    rare = lambda aug: iaa.Sometimes(0.05, aug)
+    augmentation_image = iaa.Sequential(
+        [
+            often(
+                iaa.Affine(
+                    #                 scale={("x": (0.75, 1.25), "y": (0.75, 1.25))}, # scale images to 80-120% of their size, individually per axis
+                    scale=(
+                        0.9,
+                        1.1,
+                    ),  # scale images to 80-120% of their size, individually per axis
+                    #                 translate_percent={"x": (-0.1, 0.1), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
+                    rotate=(-180, 180),  # rotate by -45 to +45 degrees
+                    # #                 translate_percent={"x": (-0.1, 0.1), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
+                )
+            ),
+            # iaa.Fliplr(0.5, name="Flipper"),
+            # sometimes(iaa.CoarseDropout(p=0.2, size_percent=0.8, per_channel=False)),
+            sometimes(iaa.CoarseDropout(p=0.2, size_percent=0.8, per_channel=False)),
+            sometimes(iaa.CoarseDropout(p=0.1, size_percent=0.4, per_channel=False)),
+            sometimes(iaa.GaussianBlur(sigma=(0, 1.0))),
+        ],
+        random_order=True,
+    )
+
+    return augmentation_image
+
+
 def primate_identification(level=2):
     """Augmentation for primate identification.
 
