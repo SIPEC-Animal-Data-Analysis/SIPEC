@@ -554,7 +554,7 @@ def train_on_data_once(
     species=None,
     fold=0,
     fraction=None,
-    perform_evaluation=False,
+    perform_evaluation=True,
     debug=0,
 ):
 
