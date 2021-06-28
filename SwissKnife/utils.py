@@ -462,33 +462,31 @@ def extractCOM_only(image):
     return center_of_mass, weighted_center_of_mass
 
 
-# TODO: remove hack
 def mask_to_original_image(orig_shape, mask, center_of_mass, mask_size):
 
     img = np.zeros((orig_shape, orig_shape))
 
-    if (
-        np.min([img.shape[0], int(center_of_mass[0] + mask_size)])
-        - np.max([0, int(center_of_mass[0] - mask_size)])
-        < mask.shape[0]
-    ):
-        img[
-            np.max([0, int(center_of_mass[0] - mask_size)]) : np.min(
-                [img.shape[0], int(center_of_mass[0] + mask_size)]
-            ),
-            np.max([0, int(center_of_mass[1] - mask_size)]) : np.min(
-                [img.shape[0], int(center_of_mass[1] + mask_size)]
-            ),
-        ] = mask[mask_size:, mask_size:]
-    else:
-        img[
-            np.max([0, int(center_of_mass[0] - mask_size)]) : np.min(
-                [img.shape[0], int(center_of_mass[0] + mask_size)]
-            ),
-            np.max([0, int(center_of_mass[1] - mask_size)]) : np.min(
-                [img.shape[0], int(center_of_mass[1] + mask_size)]
-            ),
-        ] = mask
+    x_min = np.max([0, int(center_of_mass[0] - mask_size)])
+    x_max = np.min([img.shape[0], int(center_of_mass[0] + mask_size)])
+    y_min = np.max([0, int(center_of_mass[1] - mask_size)])
+    y_max = np.min([img.shape[0], int(center_of_mass[1] + mask_size)])
+
+    x_dim = x_max - x_min
+    y_dim = y_max - y_min
+
+    if int(center_of_mass[0] + mask_size) > img.shape[0]:
+        mask = mask[-x_dim:,:]
+    if int(center_of_mass[1] + mask_size) > img.shape[1]:
+        mask = mask[:, -y_dim:]
+    if 0 > int(center_of_mass[0] - mask_size):
+        mask = mask[:x_dim,:]
+    if 0 > int(center_of_mass[1] - mask_size):
+        mask = mask[:, :y_dim]
+
+    img[
+        x_min : x_max,
+        y_min : y_max,
+    ] = mask
 
     return img
 
