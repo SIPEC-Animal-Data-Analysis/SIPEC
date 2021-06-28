@@ -33,7 +33,7 @@ In order to pull the docker image you would first need to install `docker` and `
 After installing `docker` and `nvidia-docker2` you can download the SIPEC image by executing:
 
 ```
-docker pull sipec/sipec:tf2_v1
+docker pull sipec/sipec:latest
 ```
 
 **Note:** In order to run docker without `sudo` you would need to create a docker group and add your user to it. Please follow the instructions on: [https://docs.docker.com/engine/install/linux-postinstall/](https://docs.docker.com/engine/install/linux-postinstall/) 
@@ -92,16 +92,16 @@ If your system has multiple GPUs, the `--gpu` flag allows you to run a script on
 
 Here are some example command line usages of the pipeline
 <pre><code>
-docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec:tf2_v1 
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
                       segmentation.py --cv_folds 0 --gpu 0 --frames /home/user/data/mouse_segmentation_4plex_merged/frames --annotations /home/user/data/mouse_segmentation_4plex_merged/merged.json
 
-docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec:tf2_v1 
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
                      classification_comparison.py --gpu 0 --config_name behavior_config_final --random_seed 1 --output_path=/home/user/results
 
-docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec:tf2_v1 
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
                       poseestimation.py --gpu 0 --results_sink /home/user/results --dlc_path /home/user/data/mouse_pose/OFT/labeled-data/ --segnet_path /home/user/data/pretrained_networks/mask_rcnn_mouse_0095.h5 --config poseestimation_config_test
 
-docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec:tf2_v1 
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
                       full_inference.py --gpu 0 --species mouse --video /home/user/data/full_inference_posenet_25_June/animal1234_day1.avi --posenet_path /home/user/data/pretrained_networks/posenet_mouse.h5  --segnet_path /home/user/data/pretrained_networks/mask_rcnn_mouse_0095.h5 --max_ids 4 --results_sink /home/user/results/full_inference     
 
 <b>Coming soon</b>: behavior.py
@@ -116,7 +116,7 @@ Depending on modules to be trained, and the GPUs available the training can take
 In order to find all the arguments that can be passed to the scripts use the flag `--help`, e.g.,
 
 ```
-docker container run --runtime=nvidia --rm sipec:main_tf2 segmentation.py --help
+docker container run --runtime=nvidia --rm sipec/sipec segmentation.py --help
 ```
 
 
