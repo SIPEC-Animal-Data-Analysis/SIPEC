@@ -142,6 +142,12 @@ https://zenodo.org/record/3608658
 The corresponding labels can be accessed here.
 https://github.com/ETHZ-INS/DLCAnalyzer/tree/master/data/OFT/Labels
 
+##### Primate, Mouse data for different SIPEC modules (incomplete, being updated at the moment)
+https://www.dropbox.com/sh/dpkswv0j3l3j38r/AABwHUdL6XYvrhDLDSlyPFzZa?dl=0
+
+##### Pretrained Networks
+https://www.dropbox.com/sh/bp7vw5snatqtpr5/AACr_gXFK_CF9CjB4-Z4EF8ea?dl=0
+
 ## Cite
 
 If you use any part of this code for your work, please cite the following:
