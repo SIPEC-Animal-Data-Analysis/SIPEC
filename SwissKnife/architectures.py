@@ -54,18 +54,30 @@ def posenet(
     features=256,
     bias=False,
 ):
-    """Mouse pose estimation architecture.
-    Extended description of function.
+    """Model that implements SIPEC:PoseNet architecture.
+
+    This model uses an EfficientNet backbone and deconvolves generated features into landmarks in imagespace.
+    It operates on single images and can be used in conjuntion with SIPEC:SegNet to perform top-down pose estimation.
+
     Parameters
     ----------
-    arg1 : np.ndarray
-        Input shape for mouse pose estimation network.
-    arg2 : int
-        Number of classes/landmarks.
+    input_shape : keras compatible input shape (W,H,Channels)
+        keras compatible input shape (features,)
+    num_classes : int
+        Number of joints/landmarks to detect.
+    backbone : str
+        Backbone/feature detector to use, default is EfficientNet5. Choose smaller/bigger backbone depending on GPU memory.
+    gaussian_noise : float
+        Kernel size of gaussian noise layers to use.
+    features : int
+        Number of feature maps to generate at each level.
+    bias : bool
+        Use bias for deconvolutional layers.
+
     Returns
     -------
     keras.model
-        model
+        SIPEC:PoseNet
     """
     if backbone == "efficientnetb5":
         recognition_model = EfficientNetB5(
@@ -334,9 +346,20 @@ def classification_small(input_shape, num_classes):
 
 def dlc_model_sturman(input_shape, num_classes):
     """Model that implements behavioral classification based on Deeplabcut generated features as in Sturman et al.
-    Args:
-        input_shape:
-        num_classes:Number of behaviors to classify.
+
+    Reimplementation of the model used in the publication Sturman et al. that performs action recognition on top of pose estimation
+
+    Parameters
+    ----------
+    input_shape : keras compatible input shape (W,H,Channels)
+        keras compatible input shape (features,)
+    num_classes : int
+        Number of behaviors to classify.
+
+    Returns
+    -------
+    keras.model
+        Sturman et al. model
     """
     model = Sequential()
 
@@ -360,10 +383,21 @@ def dlc_model_sturman(input_shape, num_classes):
 
 
 def dlc_model(input_shape, num_classes):
-    """
-    Args:
-        input_shape:
-        num_classes:
+    """Model for classification on top of pose estimation.
+
+    Classification model for behavior, operating on pose estimation. This model has more free parameters than Sturman et al.
+
+    Parameters
+    ----------
+    input_shape : keras compatible input shape (W,H,Channels)
+        keras compatible input shape (features,)
+    num_classes : int
+        Number of behaviors to classify.
+
+    Returns
+    -------
+    keras.model
+        behavior (from pose estimates) model
     """
     dropout = 0.3
 
@@ -450,14 +484,15 @@ def recurrent_model_tcn(
     recurrent_input_shape,
     classes=4,
 ):
-    """BehaviorNet architecture for behavioral classification based on temporal convolution architecture (TCN).
+    """Recurrent architecture for classification of temporal sequences of images based on temporal convolution architecture (TCN).
+    This architecture is used for BehaviorNet in SIPEC.
 
     Parameters
     ----------
     recognition_model : keras.model
         Pretrained recognition model that extracts features for individual frames.
-    recurrent_input_shape : np.ndarray
-        Number of classes/landmarks.
+    recurrent_input_shape : np.ndarray - (Time, Width, Height, Channels)
+        Shape of the images over time.
     classes : int
         Number of behaviors to recognise.
 
@@ -547,12 +582,24 @@ def recurrent_model_tcn(
 def recurrent_model_lstm(
     recognition_model, recurrent_input_shape, classes=4, recurrent_dropout=None
 ):
-    """
-    Args:
-        recognition_model:
-        recurrent_input_shape:
-        classes:
-        recurrent_dropout:
+    """Recurrent architecture for classification of temporal sequences of images based on LSTMs or GRUs.
+    This architecture is used for IdNet in SIPEC.
+
+    Parameters
+    ----------
+    recognition_model : keras.model
+        Pretrained recognition model that extracts features for individual frames.
+    recurrent_input_shape : np.ndarray - (Time, Width, Height, Channels)
+        Shape of the images over time.
+    classes : int
+        Number of behaviors to recognise.
+    recurrent_dropout : float
+        Recurrent dropout factor to use.
+
+    Returns
+    -------
+    keras.model
+        IdNet
     """
     input_sequences = Input(shape=recurrent_input_shape)
     sequential_model_helper = TimeDistributed(recognition_model)(input_sequences)
@@ -599,14 +646,26 @@ def recurrent_model_lstm(
     return sequential_model
 
 
+# TODO: adaptiv size
 def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True):
-    # TODO: adaptiv size
-    """
-    Args:
-        model_name:
-        input_shape:
-        num_classes:
-        fix_layers:
+    """This returns the model architecture for a model that operates on images and is pretrained with imagenet weights.
+    This architecture is used for IdNet and BehaviorNet as backbone in SIPEC and is referred to as RecognitionNet.
+
+    Parameters
+    ----------
+    model_name : keras.model
+        Name of the pretrained recognition model to use (names include: "xception, "resnet", "densenet")
+    input_shape : np.ndarray - (Time, Width, Height, Channels)
+        Shape of the images over time.
+    num_classes : int
+        Number of behaviors to recognise.
+    fix_layers : bool
+        Recurrent dropout factor to use.
+
+    Returns
+    -------
+    keras.model
+        RecognitionNet
     """
     if model_name == "xception":
         recognition_model = Xception(
@@ -716,11 +775,21 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
 
 
 def idtracker_ai(input_shape, classes):
+    """Implementation of the idtracker.ai identification module as described in the supplementary of Romero-Ferrero et al.
+
+    Parameters
+    ----------
+    input_shape : keras compatible input shape (W,H,Channels)
+        keras compatible input shape (features,)
+    num_classes : int
+        Number of behaviors to classify..
+
+    Returns
+    -------
+    keras.model
+        idtracker.ai identification module
     """
-    Args:
-        input_shape:
-        classes:
-    """
+
     activation = "tanh"
     dropout = 0.2
     # conv model

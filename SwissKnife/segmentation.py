@@ -9,8 +9,9 @@ The core module of my example project
 # SEGMENTATION PART
 # This code is optimized from the Mask RCNN (Waleed Abdulla, (c) 2017 Matterport, Inc.) repository
 
-#TODO: Look at the warnings and resolve them
+# TODO: Look at the warnings and resolve them
 import warnings
+
 warnings.filterwarnings("ignore")
 
 import sys
@@ -546,6 +547,7 @@ def evaluate_network(model_path, species, filter_masks=False, cv_folds=0):
 
 
 # TODO: change cv folds to None default
+# TODO: make default species
 def train_on_data_once(
     model_path,
     cv_folds=0,
@@ -557,17 +559,36 @@ def train_on_data_once(
     perform_evaluation=True,
     debug=0,
 ):
+    """Performs training for the segmentation moduel of SIPEC (SIPEC:SegNet).
 
-    """
-    Args:
-        model_path:
-        cv_folds:
-        frames_path:
-        annotations_path:
-        species:
-        fold:
-        fraction:
-        debug:
+    Parameters
+    ----------
+    model_path : str
+        Path to model, can be either where a new model should be stored or a path to an existing model to be retrained.
+    cv_folds : int
+        Number of cross_validation folds, use 0 for a normal train/test split.
+    frames_path : str
+        Path to the frames used for training.
+    annotations_path : str
+        Path to the annotations used for training.
+    species : str
+        Species to perform segmentation on (can be any species, but "mouse" or "primate" have more specialised parameters). If your species is neither "mouse" nor "primate", use "default".
+    fold : int
+        If cv_folds > 1, fold is the number of fold to be tested on.
+    fraction : float
+        Factor by which to decimate the training data points.
+    perform_evaluation : bool
+        Perform subsequent evaluation of the model
+    debug : bool
+        Debug verbosity.
+
+
+    Returns
+    -------
+    model
+        SIPEC:SegNet model
+    mean_ap
+        Mean average precision score achieved by this model
     """
     dataset_train, dataset_val = get_segmentation_data(
         frames_path=frames_path,

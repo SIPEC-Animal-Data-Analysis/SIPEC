@@ -40,6 +40,33 @@ def full_inference(
     mold_dimension=1024,
     max_ids=4,
 ):
+    """Performs full inference on a given video using available SIPEC modules.
+
+    Parameters
+    ----------
+    videodata : np.ndarray
+        numpy array of read-in videodata.
+    results_sink : str
+        Path to where data will be saved.
+    networks : dict
+        Dictionary containing SIPEC modules to be used for full inference ("SegNet", "PoseNet", "BehaveNet", IdNet")
+    mask_matching : bool
+        Use greedy-mask-matching
+    id_matching : bool
+        Correct/smooth SIPEC:IdNet identity using identities based on temporal tracking (greedy-mask-matching)
+    mask_size : int
+        Mask size used for the cutout of animals.
+    lookback : int
+        Number of timesteps to look back into the past for id_matching.
+    max_ids : int
+        Number of maximum ids / maximum number of animals in any FOV.
+
+
+    Returns
+    -------
+    list
+        Outputs of all the provided SIPEC modules for each video frame.
+    """
     maskmatcher = MaskMatcher()
     maskmatcher.max_ids = max_ids
     classes = id_classes
