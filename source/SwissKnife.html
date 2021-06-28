@@ -15,7 +15,7 @@
     <script src="../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="prev" title="Usage/Installation" href="README.html" />
+    <link rel="prev" title="SIPEC" href="README.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
@@ -109,35 +109,24 @@ classes:</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.architectures.posenet_mouse">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.architectures.</span></span><span class="sig-name descname"><span class="pre">posenet_mouse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_classes</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.architectures.posenet_mouse" title="Permalink to this definition">¶</a></dt>
-<dd><p>Mouse pose estimation architecture.</p>
-<p>Extended description of function.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>arg1</strong> (<em>np.ndarray</em>) – Input shape for mouse pose estimation network.</p></li>
+<dt class="sig sig-object py" id="SwissKnife.architectures.posenet">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.architectures.</span></span><span class="sig-name descname"><span class="pre">posenet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_classes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backbone</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'efficientnetb5'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fix_backbone</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaussian_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.architectures.posenet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mouse pose estimation architecture.
+Extended description of function.
+:Parameters: * <strong>arg1</strong> (<em>np.ndarray</em>) – Input shape for mouse pose estimation network.</p>
+<blockquote>
+<div><ul class="simple">
 <li><p><strong>arg2</strong> (<em>int</em>) – Number of classes/landmarks.</p></li>
 </ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>model</p>
 </dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>model</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>keras.model</p>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>keras.model</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.architectures.posenet_primate">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.architectures.</span></span><span class="sig-name descname"><span class="pre">posenet_primate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_classes</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.architectures.posenet_primate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Primate pose estimation architecture.
-Args:</p>
-<blockquote>
-<div><p>input_shape:Input shape for the network.
-num_classes:Number of classes for recognition or number of landmarks.</p>
-</div></blockquote>
 </dd></dl>
 
 <dl class="py function">
@@ -219,6 +208,11 @@ recurrent_dropout:</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.augmentations.mouse_poseestimation">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.augmentations.</span></span><span class="sig-name descname"><span class="pre">mouse_poseestimation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.augmentations.mouse_poseestimation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.augmentations.primate_identification">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.augmentations.</span></span><span class="sig-name descname"><span class="pre">primate_identification</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.augmentations.primate_identification" title="Permalink to this definition">¶</a></dt>
 <dd><p>Augmentation for primate identification.</p>
@@ -236,24 +230,14 @@ recurrent_dropout:</p>
 </dl>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.augmentations.primate_poseestimation">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.augmentations.</span></span><span class="sig-name descname"><span class="pre">primate_poseestimation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.augmentations.primate_poseestimation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </section>
-<section id="module-SwissKnife.behavior">
-<span id="swissknife-behavior-module"></span><h2>SwissKnife.behavior module<a class="headerlink" href="#module-SwissKnife.behavior" title="Permalink to this headline">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.behavior.main">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.behavior.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.behavior.main" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.behavior.train_behavior">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.behavior.</span></span><span class="sig-name descname"><span class="pre">train_behavior</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataloader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_classes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encode_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.behavior.train_behavior" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.behavior.train_primate">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.behavior.</span></span><span class="sig-name descname"><span class="pre">train_primate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results_sink</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.behavior.train_primate" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<section id="swissknife-behavior-module">
+<h2>SwissKnife.behavior module<a class="headerlink" href="#swissknife-behavior-module" title="Permalink to this headline">¶</a></h2>
 </section>
 <section id="module-SwissKnife.classification_comparison">
 <span id="swissknife-classification-comparison-module"></span><h2>SwissKnife.classification_comparison module<a class="headerlink" href="#module-SwissKnife.classification_comparison" title="Permalink to this headline">¶</a></h2>
@@ -501,8 +485,28 @@ Returns:</p>
 <dd></dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.dataprep.get_mouse_dlc_data">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.dataprep.</span></span><span class="sig-name descname"><span class="pre">get_mouse_dlc_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.dataprep.get_mouse_dlc_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.dataprep.get_mouse_pose_data">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.dataprep.</span></span><span class="sig-name descname"><span class="pre">get_mouse_pose_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.dataprep.get_mouse_pose_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.dataprep.get_mouse_pose_dlc_comparison_data">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.dataprep.</span></span><span class="sig-name descname"><span class="pre">get_mouse_pose_dlc_comparison_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fold</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.dataprep.get_mouse_pose_dlc_comparison_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.dataprep.get_primate_identification_data">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.dataprep.</span></span><span class="sig-name descname"><span class="pre">get_primate_identification_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scaled</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.dataprep.get_primate_identification_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.dataprep.get_primate_pose_data">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.dataprep.</span></span><span class="sig-name descname"><span class="pre">get_primate_pose_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.dataprep.get_primate_pose_data" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
@@ -521,24 +525,14 @@ Returns:</p>
 <dd></dd></dl>
 
 </section>
-<section id="module-SwissKnife.extract_videos">
-<span id="swissknife-extract-videos-module"></span><h2>SwissKnife.extract_videos module<a class="headerlink" href="#module-SwissKnife.extract_videos" title="Permalink to this headline">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.extract_videos.detect_social">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.extract_videos.</span></span><span class="sig-name descname"><span class="pre">detect_social</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dilation_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.extract_videos.detect_social" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.extract_videos.detect_social_parallel">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.extract_videos.</span></span><span class="sig-name descname"><span class="pre">detect_social_parallel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masks</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.extract_videos.detect_social_parallel" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<section id="swissknife-extract-videos-module">
+<h2>SwissKnife.extract_videos module<a class="headerlink" href="#swissknife-extract-videos-module" title="Permalink to this headline">¶</a></h2>
 </section>
 <section id="module-SwissKnife.full_inference">
 <span id="swissknife-full-inference-module"></span><h2>SwissKnife.full_inference module<a class="headerlink" href="#module-SwissKnife.full_inference" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.full_inference.full_inference">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.full_inference.</span></span><span class="sig-name descname"><span class="pre">full_inference</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">videodata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results_sink</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">networks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id_classes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_matching</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id_matching</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lookback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.full_inference.full_inference" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.full_inference.</span></span><span class="sig-name descname"><span class="pre">full_inference</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">videodata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results_sink</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">networks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">example_frame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id_classes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_matching</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id_matching</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lookback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mold_dimension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.full_inference.full_inference" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
@@ -826,7 +820,7 @@ num_classes:</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="SwissKnife.poseestimation.Metrics">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">Metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">writer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.Metrics" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">Metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">writer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unmold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.Metrics" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tensorflow.python.keras.callbacks.Callback</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="SwissKnife.poseestimation.Metrics.get_data">
@@ -874,67 +868,6 @@ are prefixed with <cite>val_</cite>. For training epoch, the values of the</p>
 
 </dd></dl>
 
-<dl class="py class">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.PoseModel">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">PoseModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">species</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.PoseModel" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.PoseModel.set_inference">
-<span class="sig-name descname"><span class="pre">set_inference</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.PoseModel.set_inference" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.VIZ">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">VIZ</span></span><a class="headerlink" href="#SwissKnife.poseestimation.VIZ" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tensorflow.python.keras.callbacks.Callback</span></code></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.VIZ.on_epoch_end">
-<span class="sig-name descname"><span class="pre">on_epoch_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.VIZ.on_epoch_end" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called at the end of an epoch.</p>
-<p>Subclasses should override for any actions to run. This function should only
-be called during TRAIN mode.</p>
-<dl>
-<dt>Arguments:</dt><dd><p>epoch: Integer, index of epoch.
-logs: Dict, metric results for this training epoch, and for the</p>
-<blockquote>
-<div><blockquote>
-<div><p>validation epoch if validation is performed. Validation result keys
-are prefixed with <cite>val_</cite>. For training epoch, the values of the</p>
-</div></blockquote>
-<p><cite>Model</cite>’s metrics are returned. Example : <cite>{‘loss’: 0.2, ‘acc’: 0.7}</cite>.</p>
-</div></blockquote>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.VIZ.on_train_begin">
-<span class="sig-name descname"><span class="pre">on_train_begin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.VIZ.on_train_begin" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called at the beginning of training.</p>
-<p>Subclasses should override for any actions to run.</p>
-<dl class="simple">
-<dt>Arguments:</dt><dd><dl class="simple">
-<dt>logs: Dict. Currently no data is passed to this argument for this method</dt><dd><p>but that may change in the future.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.VIZ.setModel">
-<span class="sig-name descname"><span class="pre">setModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.VIZ.setModel" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.bbox_mask">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">bbox_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.bbox_mask" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
 <dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.poseestimation.calculate_rmse">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">calculate_rmse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pred</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">true</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.calculate_rmse" title="Permalink to this definition">¶</a></dt>
@@ -956,44 +889,79 @@ are prefixed with <cite>val_</cite>. For training epoch, the values of the</p>
 </dl>
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.callbacks_viz_poseestimation">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">callbacks_viz_poseestimation</span></span><a class="headerlink" href="#SwissKnife.poseestimation.callbacks_viz_poseestimation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tensorflow.python.keras.callbacks.Callback</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.callbacks_viz_poseestimation.on_epoch_end">
+<span class="sig-name descname"><span class="pre">on_epoch_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.callbacks_viz_poseestimation.on_epoch_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the end of an epoch.</p>
+<p>Subclasses should override for any actions to run. This function should only
+be called during TRAIN mode.</p>
+<dl>
+<dt>Arguments:</dt><dd><p>epoch: Integer, index of epoch.
+logs: Dict, metric results for this training epoch, and for the</p>
+<blockquote>
+<div><blockquote>
+<div><p>validation epoch if validation is performed. Validation result keys
+are prefixed with <cite>val_</cite>. For training epoch, the values of the</p>
+</div></blockquote>
+<p><cite>Model</cite>’s metrics are returned. Example : <cite>{‘loss’: 0.2, ‘acc’: 0.7}</cite>.</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.callbacks_viz_poseestimation.on_train_begin">
+<span class="sig-name descname"><span class="pre">on_train_begin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.callbacks_viz_poseestimation.on_train_begin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the beginning of training.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><dl class="simple">
+<dt>logs: Dict. Currently no data is passed to this argument for this method</dt><dd><p>but that may change in the future.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.callbacks_viz_poseestimation.setModel">
+<span class="sig-name descname"><span class="pre">setModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.callbacks_viz_poseestimation.setModel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.poseestimation.custom_binary_crossentropy">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">custom_binary_crossentropy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_logits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_smoothing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.custom_binary_crossentropy" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.dilate_mask">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">dilate_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.dilate_mask" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.heatmap_mask">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">heatmap_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.heatmap_mask" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.heatmap_to_scatter">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">heatmap_to_scatter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">heatmaps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6e-10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.heatmap_to_scatter" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.heatmaps_for_image">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">heatmaps_for_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.heatmaps_for_image" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.heatmaps_for_image_whole">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">heatmaps_for_image_whole</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.heatmaps_for_image_whole" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.poseestimation.keypoints_in_mask">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">keypoints_in_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keypoints</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.keypoints_in_mask" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.evaluate_pose_estimation">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">evaluate_pose_estimation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_test</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">posenet</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test_orig</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_test_orig</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coms_test</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.evaluate_pose_estimation" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.poseestimation.main">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.read_DLC_data">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">read_DLC_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dlc_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_gray</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.read_DLC_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.read_dlc_labels_from_folder">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">read_dlc_labels_from_folder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dlc_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.read_dlc_labels_from_folder" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.revert_mold">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">revert_mold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'uint8'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.revert_mold" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py class">
@@ -1047,8 +1015,28 @@ are prefixed with <cite>val_</cite>. For training epoch, the values of the</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.segment_images_and_masks">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">segment_images_and_masks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">SegNet</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">asgrey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.segment_images_and_masks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.poseestimation.train_on_data">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">train_on_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">species</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results_sink</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percentage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.train_on_data" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">train_on_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_train</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_test</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results_sink</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">segnet_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">augmentation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'primate'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">original_img_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.train_on_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.treshold_maps">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">treshold_maps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.9</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.treshold_maps" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.vis_locs">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">vis_locs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.vis_locs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.poseestimation.vis_maps">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.poseestimation.</span></span><span class="sig-name descname"><span class="pre">vis_maps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.poseestimation.vis_maps" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </section>
@@ -1549,7 +1537,7 @@ cv_folds:</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.segmentation.mold_image">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.segmentation.</span></span><span class="sig-name descname"><span class="pre">mold_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.segmentation.mold_image" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.segmentation.</span></span><span class="sig-name descname"><span class="pre">mold_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_dimension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_all</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.segmentation.mold_image" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="simple">
 <dt>Args:</dt><dd><p>img:
 config:
@@ -1585,7 +1573,7 @@ fold:</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.segmentation.train_on_data_once">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.segmentation.</span></span><span class="sig-name descname"><span class="pre">train_on_data_once</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cv_folds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotations_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">species</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perform_evaluation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.segmentation.train_on_data_once" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.segmentation.</span></span><span class="sig-name descname"><span class="pre">train_on_data_once</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cv_folds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotations_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">species</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perform_evaluation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.segmentation.train_on_data_once" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="simple">
 <dt>Args:</dt><dd><p>model_path:
 cv_folds:
@@ -1706,8 +1694,23 @@ are prefixed with <cite>val_</cite>. For training epoch, the values of the</p>
 <dd></dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.bbox_mask">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">bbox_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.bbox_mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.utils.calculate_speed">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">calculate_speed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">distances</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.calculate_speed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.callbacks_learningRate_plateau">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">callbacks_learningRate_plateau</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.callbacks_learningRate_plateau" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.callbacks_tf_logging">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">callbacks_tf_logging</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./logs/'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.callbacks_tf_logging" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
@@ -1759,6 +1762,11 @@ alpha – 0.25 as mentioned in the paper</p>
 <dd></dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.dilate_mask">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">dilate_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.dilate_mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.utils.distance">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_prev</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_prev</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.distance" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -1789,6 +1797,11 @@ alpha – 0.25 as mentioned in the paper</p>
 <dd></dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.fix_layers">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">fix_layers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">network</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_backbone</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.fix_layers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.utils.get_ax">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">get_ax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rows</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.get_ax" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a Matplotlib Axes array to be used in
@@ -1799,11 +1812,6 @@ of rendered images</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="SwissKnife.utils.get_callbacks">
-<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">get_callbacks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.get_callbacks" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.utils.get_optimizer">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">get_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optim_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.get_optimizer" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -1811,6 +1819,41 @@ of rendered images</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.utils.get_tensorbaord_callback">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">get_tensorbaord_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./logs'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.get_tensorbaord_callback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.heatmap_mask">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">heatmap_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.heatmap_mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.heatmap_to_scatter">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">heatmap_to_scatter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">heatmaps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6e-10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.heatmap_to_scatter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.heatmaps_for_image">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">heatmaps_for_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.heatmaps_for_image" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.heatmaps_for_image_whole">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">heatmaps_for_image_whole</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.heatmaps_for_image_whole" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.heatmaps_for_images">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">heatmaps_for_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.heatmaps_for_images" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.heatmaps_to_locs">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">heatmaps_to_locs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.heatmaps_to_locs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.keypoints_in_mask">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">keypoints_in_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keypoints</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.keypoints_in_mask" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
@@ -1831,6 +1874,11 @@ of rendered images</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.utils.load_vgg_labels">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">load_vgg_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">annotations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video_length</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">framerate_video</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">behavior</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.load_vgg_labels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.mask_to_original_image">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">mask_to_original_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">orig_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_of_mass</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.mask_to_original_image" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
@@ -1876,6 +1924,11 @@ version. And it provides a central place to control resizing defaults.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.utils.resize_image">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">resize_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'square'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.resize_image" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.utils.run_ai_cumulative_gradient">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.utils.</span></span><span class="sig-name descname"><span class="pre">run_ai_cumulative_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optimizer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.utils.run_ai_cumulative_gradient" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
@@ -1933,6 +1986,11 @@ version. And it provides a central place to control resizing defaults.</p>
 <dd></dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="SwissKnife.visualization.main">
+<span class="sig-prename descclassname"><span class="pre">SwissKnife.visualization.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.visualization.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="SwissKnife.visualization.visualize_full_inference">
 <span class="sig-prename descclassname"><span class="pre">SwissKnife.visualization.</span></span><span class="sig-name descname"><span class="pre">visualize_full_inference</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results_sink</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">networks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_video_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_coms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SwissKnife.visualization.visualize_full_inference" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -1972,20 +2030,16 @@ version. And it provides a central place to control resizing defaults.</p>
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="README.html">Usage/Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="README.html#usage">Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="README.html#annotation-of-data">Annotation of Data</a></li>
-<li class="toctree-l1"><a class="reference internal" href="README.html#example-data">Example Data</a></li>
-<li class="toctree-l1"><a class="reference internal" href="README.html#cite">Cite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html">SIPEC</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">SwissKnife package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-SwissKnife.architectures">SwissKnife.architectures module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-SwissKnife.augmentations">SwissKnife.augmentations module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-SwissKnife.behavior">SwissKnife.behavior module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#swissknife-behavior-module">SwissKnife.behavior module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-SwissKnife.classification_comparison">SwissKnife.classification_comparison module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-SwissKnife.dataloader">SwissKnife.dataloader module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-SwissKnife.dataprep">SwissKnife.dataprep module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-SwissKnife.extract_videos">SwissKnife.extract_videos module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#swissknife-extract-videos-module">SwissKnife.extract_videos module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-SwissKnife.full_inference">SwissKnife.full_inference module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#swissknife-identification-module">SwissKnife.identification module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-SwissKnife.job_runner">SwissKnife.job_runner module</a></li>
@@ -2006,7 +2060,7 @@ version. And it provides a central place to control resizing defaults.</p>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="README.html" title="previous chapter">Usage/Installation</a></li>
+      <li>Previous: <a href="README.html" title="previous chapter">SIPEC</a></li>
   </ul></li>
 </ul>
 </div>

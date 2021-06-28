@@ -1,9 +1,34 @@
+SIPEC
+=====
+
+|Code style: black|
+
+SIPEC: the deep-learning Swiss knife for behavioral data analysis
+
+This is the repository accompanying the `SIPEC
+publication\* <https://doi.org/10.1101/2020.10.26.355115>`__, which is a
+pipeline that enables all-round behavioral analysis through the usage of
+state-of-the-art neural networks. You can use SIPEC by either combining
+its modules in your own workflow, or using template workflows, that have
+been used in the paper, which can be accessed via command line. We will
+be providing more detailed and illustrated instructions soon. Moreover,
+extensive documentation and more exemplary data will be made available.
+
+We welcome feedback via GitHub issues.
+
+-  Markus Marks, Jin Qiuhan, Oliver Sturman, Lukas von Ziegler, Sepp
+   Kollmorgen, Wolfger von der Behrens, Valerio Mante, Johannes Bohacek,
+   Mehmet Fatih Yanik bioRxiv 2020.10.26.355115; doi:
+   https://doi.org/10.1101/2020.10.26.355115
+
+|image1|
+
 Usage/Installation
 ------------------
 
-**For really making use of SIPEC, your machine should have a powerful
-GPU. We have tested the scripts with NVIDIA GTX 1080, NVIDIA GTX 2080 Ti
-and V100 GPUs.**
+**For using SIPEC, your machine should have a powerful GPU. We have
+tested the scripts with NVIDIA GTX 1080, NVIDIA GTX 2080 Ti and V100
+GPUs.**
 
 Docker
 ~~~~~~
@@ -21,26 +46,28 @@ SIPEC image by executing:
 
 ::
 
-   docker pull chadhat/sipec:tf2
+   docker pull sipec/sipec:latest
 
 **Note:** In order to run docker without ``sudo`` you would need to
 create a docker group and add your user to it. Please follow the
 instructions on:
 https://docs.docker.com/engine/install/linux-postinstall/
 
-The docker image contains the environment and SIPEC scripts.
+The docker image contains the environment, sample data and SIPEC
+scripts.
 
 Environment installation
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you do not want to use the docker container you can follow these
 installation instructions for **Linux**. These instructions have been
-tested on Ubuntu 18 and 20.04.
+tested on Ubuntu 20.04 but would most likely also work on Ubuntu 18.
 
 Step 1: Install Cuda 11.0.3
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Download and install Cuda 11. We have tested the setup with cuda 11.0.3.
+Download and install Cuda 11.0.3 (We have tested the setup with this
+cuda version).
 
 After the installation is finised run ``nvcc --version`` to check the
 installed cuda version.
@@ -67,6 +94,26 @@ repository \* open a terminal and go to the cloned SIPEC directory:
 
 The script will ask you for the root password.
 
+Step 4:
+^^^^^^^
+
+The script ``setup.sh`` has created a virtual environment named ``env``
+in the repository folder. Activate the environment by executing:
+
+::
+
+   source ./env/bin/activate
+
+Step 5:
+^^^^^^^
+
+To test your setup run one of the scripts in the folder ``SwissKnife``,
+e.g.,
+
+::
+
+   python segmentation.py --help
+
 Usage
 -----
 
@@ -85,20 +132,20 @@ Here are some example command line usages of the pipeline
 .. raw:: html
 
    <pre><code>
-   docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 
+   docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
+                         segmentation.py --cv_folds 0 --gpu 0 --frames /home/user/data/mouse_segmentation_4plex_merged/frames --annotations /home/user/data/mouse_segmentation_4plex_merged/merged.json
+
+   docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
                         classification_comparison.py --gpu 0 --config_name behavior_config_final --random_seed 1 --output_path=/home/user/results
 
-   docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 
-                         poseestimation.py --gpu 0 --operation train_mouse --output_path=/home/user/results/
+   docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
+                         poseestimation.py --gpu 0 --results_sink /home/user/results --dlc_path /home/user/data/mouse_pose/OFT/labeled-data/ --segnet_path /home/user/data/pretrained_networks/mask_rcnn_mouse_0095.h5 --config poseestimation_config_test
 
-   docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 
-                         behavior.py --gpu 0 --annotations /home/user/data/20180124T113800-20180124T115800_0.csv --video /home/user/data/fullvids_20180124T113800-20180124T115800_%T1_0.mp4 --output_path /home/user/results
+   docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
+                         full_inference.py --gpu 0 --species mouse --video /home/user/data/full_inference_posenet_25_June/animal1234_day1.avi --posenet_path /home/user/data/pretrained_networks/posenet_mouse.h5  --segnet_path /home/user/data/pretrained_networks/mask_rcnn_mouse_0095.h5 --max_ids 4 --results_sink /home/user/results/full_inference     
 
-   docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 
-                         full_inference.py --gpu 0 --species mouse --video /home/user/data/full_inference_and_vis_data/animal5678_day2.avi --segnet_path "/home/user/data/full_inference_and_vis_data/mask_rcnn_mouse_0095.h5" --max_ids 4 --results_sink /home/user/results/full_inference
+   <b>Coming soon</b>: behavior.py
 
-   docker container run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec:main_tf2 
-                         segmentation.py --cv_folds 0 --gpu 0 --frames /home/user/data/mouse_segmentation_single/annotated_frames --annotations /home/user/data/mouse_segmentation_single/mouse_top_segmentation.json
    </pre>
 
 Where, **RESULTS_PATH** is the path on your machine where you would like
@@ -114,7 +161,7 @@ the flag ``--help``, e.g.,
 
 ::
 
-   docker container run --runtime=nvidia --rm sipec:main_tf2 segmentation.py --help
+   docker container run --runtime=nvidia --rm sipec/sipec segmentation.py --help
 
 own pipline
 ~~~~~~~~~~~
@@ -138,13 +185,23 @@ Example Data
 ------------
 
 Mouse OFT behavioral videos
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+'''''''''''''''''''''''''''
 
 For open field (OFT) mouse behavioral analysis, you can use the
 exemplary data from Sturman et al. from zenedo.
 https://zenodo.org/record/3608658 The corresponding labels can be
 accessed here.
 https://github.com/ETHZ-INS/DLCAnalyzer/tree/master/data/OFT/Labels
+
+Primate, Mouse data for different SIPEC modules (incomplete, being updated at the moment)
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+https://www.dropbox.com/sh/dpkswv0j3l3j38r/AABwHUdL6XYvrhDLDSlyPFzZa?dl=0
+
+Pretrained Networks
+'''''''''''''''''''
+
+https://www.dropbox.com/sh/y387kik9mwuszl3/AABBVWALEimW-hrbXvdfjHQSa?dl=0
 
 Cite
 ----
@@ -157,3 +214,8 @@ following:
    SIPEC: the deep-learning Swiss knife for behavioral data analysis
    Markus Marks, Jin Qiuhan, Oliver Sturman, Lukas von Ziegler, Sepp Kollmorgen, Wolfger von der Behrens, Valerio Mante, Johannes Bohacek, Mehmet Fatih Yanik
    bioRxiv 2020.10.26.355115; doi: https://doi.org/10.1101/2020.10.26.355115
+
+.. |Code style: black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/psf/black
+.. |image1| image:: supp_files/Supplementary%20Video%201.gif
+
