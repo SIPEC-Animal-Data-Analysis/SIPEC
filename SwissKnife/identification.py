@@ -22,7 +22,7 @@ from SwissKnife.architectures import idtracker_ai
 from SwissKnife.utils import (
     Metrics,
     setGPU,
-    get_callbacks,
+    callbacks_learningRate_plateau,
     check_directory,
     set_random_seed,
     load_config,
@@ -336,7 +336,7 @@ def train_on_data(
             our_model.set_lr_scheduler()
         else:
             # use standard training callback
-            CB_es, CB_lr = get_callbacks()
+            CB_es, CB_lr = callbacks_learningRate_plateau()
             our_model.add_callbacks([CB_es, CB_lr])
 
         # add sklearn metrics for tracking in training
@@ -410,7 +410,7 @@ def train_on_data(
                 "sequential_model_batch_size"
             ]
 
-            CB_es, CB_lr = get_callbacks()
+            CB_es, CB_lr = callbacks_learningRate_plateau()
             CB_train = [CB_lr, CB_es]
             # our_model.add_callbacks(CB_train)
 

@@ -52,7 +52,7 @@ from dataprep import get_segmentation_data
 
 
 # TODO: include validation image that network detects new Ground truth!!
-def mold_image(img, config=None, dimension=None):
+def mold_image(img, config=None, dimension=None, min_dimension=None, return_all=False):
     """
     Args:
         img:
@@ -68,15 +68,20 @@ def mold_image(img, config=None, dimension=None):
             mode=config.IMAGE_RESIZE_MODE,
         )
     elif dimension:
-        image, window, scale, padding, crop = utils.resize_image(
-            img[:, :, :],
-            min_dim=dimension,
-            max_dim=dimension,
-            mode="square",
-        )
+        if min_dimension:
+            image, window, scale, padding, crop = utils.resize_image(
+                img[:, :, :], min_dim=min_dimension, max_dim=dimension, mode="pad64",
+            )
+        else:
+            image, window, scale, padding, crop = utils.resize_image(
+                img[:, :, :], min_dim=dimension, max_dim=dimension, mode="square",
+            )
     else:
         return NotImplementedError
-    return image
+    if return_all:
+        return image, window, scale, padding, crop
+    else:
+        return image
 
 
 def mold_video(video, dimension, n_jobs=40):
@@ -551,7 +556,7 @@ def train_on_data_once(
     species=None,
     fold=0,
     fraction=None,
-    perform_evaluation=False,
+    perform_evaluation=True,
     debug=0,
 ):
     """Performs training for the segmentation moduel of SIPEC (SIPEC:SegNet).

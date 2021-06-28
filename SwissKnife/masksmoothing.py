@@ -3,8 +3,6 @@
 # SCRIPT FOR SMOOTHING SEGMENTATION RESULTS OVER TIME
 import sys
 
-sys.path.append("../")
-
 import pickle
 import time
 import numpy as np
@@ -13,7 +11,7 @@ import cv2
 
 from shapely.geometry import Polygon
 
-# from SwissKnife.segmentation import InferenceConfigPrimate, SegModel
+from SwissKnife.segmentation import InferenceConfigPrimate, SegModel
 from SwissKnife.utils import setGPU, rescale_img, detect_primate, masks_to_coms
 
 
@@ -99,7 +97,7 @@ class MaskMatcher:
     def assign_ids(
         self, frame_cur, _model, _classes, _threshold, bboxes_cur, bboxes_pre, ids_pre
     ):
-        """ Identify all bboxes in the current frame.
+        """Identify all bboxes in the current frame.
         Call IdNet for unmatched bboxes.
         In case of repeated ids, label the less probable ones as "Wrong".
         Output: a list of tuples, each tuple is (ID, confidence level).
@@ -142,12 +140,16 @@ class MaskMatcher:
             else:
                 # TODO: fix, hacky
                 for map_id in mapping.keys():
-                    new_id = self.ids[mapping[map_id][1]]
-                    if new_id == 0:
-                        new_id = list(left_nums)[0]
-                    new_ids[map_id] = new_id
-                    if new_id in left_nums:
-                        left_nums.remove(new_id)
+                    # TODO: catch somehow cleaner
+                    try:
+                        new_id = self.ids[mapping[map_id][1]]
+                        if new_id == 0:
+                            new_id = list(left_nums)[0]
+                        new_ids[map_id] = new_id
+                        if new_id in left_nums:
+                            left_nums.remove(new_id)
+                    except IndexError:
+                        continue
                 if len(left_nums) > 0:
                     for num in list(left_nums):
                         for el_idx, el in enumerate(new_ids):
