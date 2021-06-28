@@ -146,7 +146,7 @@ https://github.com/ETHZ-INS/DLCAnalyzer/tree/master/data/OFT/Labels
 https://www.dropbox.com/sh/dpkswv0j3l3j38r/AABwHUdL6XYvrhDLDSlyPFzZa?dl=0
 
 ##### Pretrained Networks
-https://www.dropbox.com/sh/bp7vw5snatqtpr5/AACr_gXFK_CF9CjB4-Z4EF8ea?dl=0
+https://www.dropbox.com/sh/y387kik9mwuszl3/AABBVWALEimW-hrbXvdfjHQSa?dl=0
 
 ## Cite
 
