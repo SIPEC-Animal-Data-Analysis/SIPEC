@@ -1,25 +1,18 @@
 # SIPEC
 # MARKUS MARKS
 # Behavioral Classification
-import sys
-import os
 
-# from scipy.misc import imresize
-from sklearn.externals._pilutil import imresize
 from tqdm import tqdm
 import pandas as pd
 import random
 from datetime import datetime
-
-from SwissKnife.architectures import classification_small
-
 from argparse import ArgumentParser
-import tensorflow.keras.backend as K
 import numpy as np
 
 from sklearn import metrics
 from scipy.stats import pearsonr
 from sklearn.model_selection import StratifiedKFold
+from sklearn.externals._pilutil import imresize
 
 from SwissKnife.utils import (
     setGPU,
@@ -28,21 +21,21 @@ from SwissKnife.utils import (
     load_vgg_labels,
     loadVideo,
     load_config,
-    check_directory,
+    check_directory, callbacks_learningRate_plateau,
 )
-from SwissKnife.dataloader import Dataloader
+from SwissKnife.dataloader import Dataloader, DataGenerator
 from SwissKnife.model import Model
+from SwissKnife.architectures import classification_small
 
 
 def train_behavior(
-    dataloader,
-    config,
-    num_classes,
-    encode_labels=True,
-    class_weights=None,
-    # results_sink=results_sink,
+        dataloader,
+        config,
+        num_classes,
+        encode_labels=True,
+        class_weights=None,
+        # results_sink=results_sink,
 ):
-
     print("data prepared!")
 
     our_model = Model()
@@ -61,23 +54,32 @@ def train_behavior(
         our_model.set_lr_scheduler()
     else:
         # use standard training callback
-        CB_es, CB_lr = get_callbacks()
+        CB_es, CB_lr = callbacks_learningRate_plateau()
         our_model.add_callbacks([CB_es, CB_lr])
 
     # add sklearn metrics for tracking in training
-    my_metrics = Metrics(validation_data=(dataloader.x_test,dataloader.y_test))
+    my_metrics = Metrics()
     my_metrics.setModel(our_model.recognition_model)
+    my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
     our_model.add_callbacks([my_metrics])
 
     if config["train_recognition_model"]:
+        if dataloader.config["use_generator"]:
+            dataloader.training_generator = DataGenerator(
+                x_train=dataloader.x_train, y_train=dataloader.y_train, look_back=dataloader.config["look_back"], batch_size=32,
+                type='recognition'
+            )
         our_model.recognition_model_epochs = config["recognition_model_epochs"]
         our_model.recognition_model_batch_size = config["recognition_model_batch_size"]
-        print(config["recognition_model_batch_size"])
-        print(dataloader.y_test)
         our_model.train_recognition_network(dataloader=dataloader)
         print(config)
 
     if config["train_sequential_model"]:
+        if dataloader.config["use_generator"]:
+            dataloader.training_generator = DataGenerator(
+                x_train=dataloader.x_train, y_train=dataloader.y_train, look_back=dataloader.config["look_back"], batch_size=32,
+                type='sequential'
+            )
         # if False:
         if config["recognition_model_fix"]:
             our_model.fix_recognition_layers()
@@ -88,8 +90,8 @@ def train_behavior(
             input_shape=dataloader.get_input_shape(recurrent=True),
             num_classes=num_classes,
         )
-        my_metrics = Metrics(validation_data=(dataloader.x_test_recurrent,dataloader.y_test_recurrent))
         my_metrics.setModel(our_model.sequential_model)
+        my_metrics.validation_data = (dataloader.x_test_recurrent, dataloader.y_test_recurrent)
         our_model.add_callbacks([my_metrics])
         our_model.set_optimizer(
             config["sequential_model_optimizer"], lr=config["sequential_model_lr"],
@@ -106,17 +108,47 @@ def train_behavior(
 
     print(config)
 
-    res = our_model.predict(dataloader.x_test, model="recognition")
-    acc = metrics.balanced_accuracy_score(res, np.argmax(dataloader.y_test, axis=-1))
-    f1 = metrics.f1_score(res, np.argmax(dataloader.y_test, axis=-1), average="macro")
+    print('evaluating')
+    res = []
+    batches = len(dataloader.x_test)
+    batches = int(batches/config["sequential_model_batch_size"])
+    test_gt = []
+    #TODO: fix -1 to really use all VAL data
+    for idx in tqdm(range(batches-1)):
+        if config["train_sequential_model"]:
+            eval_batch = []
+            for i in range(config["sequential_model_batch_size"]):
+                new_idx = (idx*config["sequential_model_batch_size"]) + i + dataloader.look_back
+                data = dataloader.x_test[new_idx - dataloader.look_back: new_idx + dataloader.look_back]
+                eval_batch.append(data)
+                test_gt.append(dataloader.y_test[new_idx])
+            eval_batch = np.asarray(eval_batch)
+            prediction = our_model.predict(eval_batch, model="sequential")
+        else:
+            eval_batch = []
+            for i in range(config["recognition_model_batch_size"]):
+                new_idx = (idx*config["recognition_model_batch_size"]) + i
+                data = dataloader.x_test[new_idx]
+                eval_batch.append(data)
+                test_gt.append(dataloader.y_test[new_idx])
+            eval_batch = np.asarray(eval_batch)
+            prediction = our_model.predict(eval_batch, model="recognition")
+        for idx, el in enumerate(prediction):
+            res.append(el)
 
-    corr = pearsonr(res, np.argmax(dataloader.y_test, axis=-1))[0]
-    report = metrics.classification_report(res, np.argmax(dataloader.y_test, axis=-1),)
-    return [acc, f1, corr], report
+    res = np.asarray(res)
+    test_gt = np.asarray(test_gt)
 
+    acc = metrics.balanced_accuracy_score(res, np.argmax(test_gt, axis=-1))
+    f1 = metrics.f1_score(res, np.argmax(test_gt, axis=-1), average="macro")
+    #
+    corr = pearsonr(res, np.argmax(test_gt, axis=-1))[0]
+    report = metrics.classification_report(res, np.argmax(test_gt, axis=-1), )
+
+    print(report)
+    return our_model, [acc, f1, corr], report
 
 def train_primate(config, results_sink, shuffle):
-
     basepath = "/media/nexus/storage5/swissknife_data/primate/behavior/"
 
     vids = [
@@ -172,11 +204,11 @@ def train_primate(config, results_sink, shuffle):
     global groups
 
     groups = (
-        [0] * len(labels_idxs[0])
-        + [0] * len(labels_idxs[1])
-        + [3] * len(labels_idxs[2])
-        + [4] * len(labels_idxs[3])
-        + [4] * len(labels_idxs[4])
+            [0] * len(labels_idxs[0])
+            + [0] * len(labels_idxs[1])
+            + [3] * len(labels_idxs[2])
+            + [4] * len(labels_idxs[3])
+            + [4] * len(labels_idxs[4])
     )
 
     groups = groups
@@ -224,7 +256,7 @@ def train_primate(config, results_sink, shuffle):
         x_test = vid[tt_idx]
 
         dataloader = Dataloader(
-            x_train, y_train, x_test, y_test, look_back=config["look_back"]
+            x_train, y_train, x_test, y_test, config=config
         )
 
         # config_name = 'primate_' + str(1)
@@ -232,7 +264,7 @@ def train_primate(config, results_sink, shuffle):
         # config = load_config("../configs/behavior/primate/" + config_name)
         config["recognition_model_batch_size"] = 128
         config["backbone"] = "imagenet"
-        config["encode_labels"]= True
+        config["encode_labels"] = True
         print(config)
 
         num_classes = config["num_classes"]
@@ -247,7 +279,7 @@ def train_primate(config, results_sink, shuffle):
 
         if config["normalize_data"]:
             dataloader.normalize_data()
-        if encode_labels:
+        if config["encode_labels"]:
             dataloader.encode_labels()
         print("labels encoded")
 
@@ -328,15 +360,9 @@ def main():
     shuffle = args.shuffle
     annotations = args.annotations
     video = args.video
-    output_path = args.output_path
+    results_sink = args.results_sink
 
     setGPU(gpu_name)
-
-    output_path = "/home/user/results"
-
-    results_sink = (
-                os.path.join(output_path, "primate/behavior-{}-{}/".format(network, datetime.now().strftime("%Y-%m-%d-%H_%M")))
-            )
     check_directory(results_sink)
 
     if annotations:
@@ -358,22 +384,19 @@ def main():
         # load cfg
         config = load_config("../configs/behavior/shared_config")
         beh_config = load_config(
-            "../configs/behavior/primate/primate_final"
+            "../configs/behavior/default"
         )
         config.update(beh_config)
-
         print(config)
 
-        config["encode_labels"]= True
         num_classes = len(np.unique(annotation))
-
         dataloader = Dataloader(
             x_train, y_train, x_test, y_test, config
         )
-
         dataloader.prepare_data()
         train_behavior(dataloader=dataloader, num_classes=num_classes, config=config)
-    elif operation("train_primate"):
+
+    elif operation == "train_primate":
         config_name = "primate_final"
         config = load_config("../configs/behavior/primate/" + config_name)
         train_primate(config=config, results_sink=results_sink, shuffle=shuffle)
@@ -405,7 +428,7 @@ parser.add_argument(
     action="store",
     dest="config_name",
     type=str,
-    default="behavior_config_baseline",
+    default="default",
     help="behavioral config to use",
 )
 parser.add_argument(
@@ -416,6 +439,7 @@ parser.add_argument(
     default="ours",
     help="which network used for training",
 )
+#TODO: check if folder and then load all files in folder, similar for vid files
 parser.add_argument(
     "--annotations",
     action="store",
@@ -433,18 +457,16 @@ parser.add_argument(
     help="path to folder with annotated video",
 )
 parser.add_argument(
+    "--results_sink",
+    action="store",
+    dest="results_sink",
+    type=str,
+    default='./results/behavior5/',
+    help="path to results",
+)
+parser.add_argument(
     "--shuffle", action="store", dest="shuffle", type=bool, default=False,
 )
-
-parser.add_argument(
-    "--output_path",
-    action="store", 
-    dest="output_path", 
-    type=str, 
-    default=None, 
-    help="Path to the folder where the ouput should be written"
-)
-
 
 # example usage
 # python behavior.py --annotations "/media/nexus/storage5/swissknife_data/primate/behavior/20180124T113800-20180124T115800_0.csv" --video "/media/nexus/storage5/swissknife_data/primate/behavior/fullvids_20180124T113800-20180124T115800_%T1_0.mp4" --gpu 2

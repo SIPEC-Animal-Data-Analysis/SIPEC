@@ -3,9 +3,7 @@
 # MODEL CLASS
 import numpy as np
 import tensorflow as tf
-#from keras.engine.saving import load_model
 from tensorflow.keras.models import load_model
-
 
 from SwissKnife.architectures import (
     pretrained_recognition,
@@ -20,6 +18,7 @@ from SwissKnife.utils import train_model
 
 # TODO: presets for parameters
 # TODO: make sure modulization is correct -> rather have for each task one inheretance model
+# TODO: make param list dict?
 class Model:
     def __init__(self, config=None):
         """Initialize model with default parameters, which can be updated
@@ -28,6 +27,7 @@ class Model:
         Args:
             config: Config for updated hyperparameters.
         """
+        # TODO: fix hardcoded here
         self.architecture = ""
         self.callbacks = []
         self.scheduler_factor = 1.1
@@ -110,8 +110,7 @@ class Model:
             self.optim,
             self.recognition_model_epochs,
             self.recognition_model_batch_size,
-            (dataloader.x_train, dataloader.y_train),
-            data_val=(dataloader.x_test, dataloader.y_test),
+            dataloader=dataloader,
             callbacks=self.callbacks,
             loss=self.recognition_model_loss,
             # TODO: activate augmentation
@@ -129,8 +128,7 @@ class Model:
             self.optim,
             self.sequential_model_epochs,
             self.sequential_model_batch_size,
-            (dataloader.x_train_recurrent, dataloader.y_train_recurrent),
-            data_val=(dataloader.x_test_recurrent, dataloader.y_test_recurrent),
+            dataloader=dataloader,
             callbacks=self.callbacks,
             loss=self.sequential_model_loss,
             # TODO: activate augmentation
@@ -213,6 +211,7 @@ class Model:
         """
         self.optim = get_optimizer(name, lr)
 
+    #TODO: fix hardcoded here
     def scheduler(self, epoch):
         """
         Args:
