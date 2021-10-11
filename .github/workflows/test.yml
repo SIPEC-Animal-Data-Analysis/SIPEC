@@ -1,5 +1,7 @@
 name: GitHub Actions Demo
-on: [push]
+on:
+        push:
+                [ ci_testing ]
 jobs:
   Explore-GitHub-Actions:
     runs-on: [self-hosted, linux, X64]
