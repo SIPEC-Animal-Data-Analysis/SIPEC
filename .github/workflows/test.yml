@@ -1,7 +1,10 @@
 name: GitHub Actions Demo
 on:
-        push:
-                [ ci_testing ]
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ ci_testing ]
+  pull_request:
+    branches: [ ci_testing ]
 jobs:
   Explore-GitHub-Actions:
     runs-on: [self-hosted, linux, X64]
