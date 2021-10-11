@@ -21,4 +21,5 @@ jobs:
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
+      - run: docker run -v --runtime=nvidia --rm sipec/sipec --version
       - run: echo "🍏 This job's status is ${{ job.status }}."
