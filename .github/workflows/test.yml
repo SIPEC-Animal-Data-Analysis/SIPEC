@@ -11,7 +11,7 @@ jobs:
     container:
       image: node:13.5.0-alpine3.10
       #image: sipec:sipec
-      #options: --runtime=nvidia 
+      options: --runtime=nvidia --user 1001:1001
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       #- name: checkout
