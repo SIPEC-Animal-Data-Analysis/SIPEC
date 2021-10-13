@@ -7,11 +7,12 @@ on:
     branches: [ ci_testing ]
 jobs:
   Explore-GitHub-Actions:
-    runs-on: [self-hosted, linux, X64]
+    #runs-on: [self-hosted, linux, X64]
+          runs-on: [ubuntu-latest]
     container:
       image: node:13.5.0-alpine3.10
       #image: sipec:sipec
-      options: --runtime=nvidia --user 1001:1001
+      #options: --runtime=nvidia --user 1001:1001
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       #- name: checkout
