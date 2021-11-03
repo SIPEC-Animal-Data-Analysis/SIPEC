@@ -9,7 +9,8 @@ jobs:
   Explore-GitHub-Actions:
     #runs-on: [self-hosted, linux, X64]
     #runs-on: [ubuntu-18.04]
-    runs-on: [ubuntu18]
+    #runs-on: [ubuntu18]
+    runs-on: [deepNeuro]
     container:
       image: node:13.5.0-alpine3.10
       #image: sipec:sipec
