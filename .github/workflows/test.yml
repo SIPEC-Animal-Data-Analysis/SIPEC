@@ -18,7 +18,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       #- name: checkout
       #  uses: actions/checkout@v2
-      - name: retesting running in docker
+      - name: testing running in docker
         run: node -v 
 
 
