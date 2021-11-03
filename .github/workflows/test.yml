@@ -12,15 +12,16 @@ jobs:
     #runs-on: [ubuntu18]
     runs-on: [deepNeuro]
     container:
-      image: node:13.5.0-alpine3.10
+      image: nvidia/cuda:9.0-base
+      #image: node:13.5.0-alpine3.10
       #image: sipec:sipec
-      #options: --runtime=nvidia --user 1001:1001
+      options: --runtime=nvidia
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       #- name: checkout
       #  uses: actions/checkout@v2
       - name: retesting running in docker
-        run: node -v 
+        run: nvidia-smi
 
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
