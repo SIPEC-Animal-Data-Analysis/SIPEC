@@ -12,7 +12,7 @@ jobs:
     #runs-on: [ubuntu18]
     runs-on: [deepNeuro]
     container:
-      image: nvidia/cuda:9.0-base
+            image: sipec/sipec:latest
       #image: node:13.5.0-alpine3.10
       #image: sipec:sipec
       options: --runtime=nvidia
