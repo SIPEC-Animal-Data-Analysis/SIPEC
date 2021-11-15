@@ -22,8 +22,8 @@ jobs:
         uses: actions/checkout@v2
       - run: git checkout ci_testing
       - name: testing running in docker
-        #run: python ./SwissKnife/segmentation.py --help
-        run: ls -R
+        #run: python ./SwissKnife/full_inference.py --gpu 0 --species mouse --video /home/user/data/full_inference_posenet_25_June/animal1234_day1.avi --posenet_path /home/user/data/pretrained_networks/posenet_mouse.h5  --segnet_path /home/user/data/pretrained_networks/mask_rcnn_mouse_0095.h5 --max_ids 4 --results_sink /home/user/results/full_inference
+        run ls -R /home/tarun/data
 
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
