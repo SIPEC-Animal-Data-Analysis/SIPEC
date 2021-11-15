@@ -21,7 +21,7 @@ jobs:
       #- name: checkout
       #  uses: actions/checkout@v2
       - name: testing running in docker
-        run: --version
+        run: echo "test"
 
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
