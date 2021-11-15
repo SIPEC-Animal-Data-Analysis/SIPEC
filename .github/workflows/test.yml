@@ -17,6 +17,8 @@ jobs:
       #image: sipec:sipec
       options: --runtime=nvidia
     steps:
+      - name: Check GPU availability
+        run: python ./tests/gpu.py
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: checkout
         uses: actions/checkout@v2
@@ -24,5 +26,5 @@ jobs:
       - name: download data
         run: wget -O animal1234_day1.avi https://www.dropbox.com/s/39z4fk726yl17zl/animal1234_day1.avi?dl=0 && wget -O mask_rcnn_mouse_0095.h5 https://www.dropbox.com/s/b9opxfymea7q6mj/mask_rcnn_mouse_0095.h5?dl=0 && wget -O posenet_mouse.h5 https://www.dropbox.com/s/2cfktm9ejylvxjb/posenet_mouse.h5?dl=0 && wget -O full_inference_posenet_25_June.zip https://www.dropbox.com/s/o4brw49intljxdj/full_inference_posenet_25_June.zip?dl=0 && unzip full_inference_posenet_25_June.zip
       - name: testing running in docker
-        #run: python ./SwissKnife/full_inference.py --gpu 0 --species mouse --video ./animal1234_day1.avi --posenet_path ./posenet_mouse.h5  --segnet_path ./mask_rcnn_mouse_0095.h5 --max_ids 4 --results_sink ./test/ 
-        run: python ./SwissKnife/poseestimation.py --gpu 0 --results_sink ./test --dlc_path ./mouse_pose/OFT/labeled-data/ --segnet_path ./mask_rcnn_mouse_0095.h5 --config poseestimation_config_test
+        run: python ./SwissKnife/full_inference.py --gpu 0 --species mouse --video ./animal1234_day1.avi --posenet_path ./posenet_mouse.h5  --segnet_path ./mask_rcnn_mouse_0095.h5 --max_ids 4 --results_sink ./test/ 
+        #run: python ./SwissKnife/poseestimation.py --gpu 0 --results_sink ./test --dlc_path ./mouse_pose/OFT/labeled-data/ --segnet_path ./mask_rcnn_mouse_0095.h5 --config poseestimation_config_test
