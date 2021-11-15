@@ -12,7 +12,7 @@ jobs:
     #runs-on: [ubuntu18]
     runs-on: [deepNeuro]
     container:
-            image: sipec/sipec:latest
+      image: sipec/sipec:latest
       #image: node:13.5.0-alpine3.10
       #image: sipec:sipec
       options: --runtime=nvidia
@@ -21,7 +21,7 @@ jobs:
       #- name: checkout
       #  uses: actions/checkout@v2
       - name: testing running in docker
-        run: echo "test"
+        run: --version
 
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
