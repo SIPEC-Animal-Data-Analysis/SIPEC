@@ -20,7 +20,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: checkout
         uses: actions/checkout@v2
-        run: git checkout ci_testing
+      - run: git checkout ci_testing
       - name: testing running in docker
         #run: python ./SwissKnife/segmentation.py --help
         run: ls -R
