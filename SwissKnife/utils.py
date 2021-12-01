@@ -1,44 +1,225 @@
 # SIPEC
 # MARKUS MARKS
 # UTILITY FUNCTIONS
+import datetime
 import random
+import sys
 from glob import glob
 import pandas as pd
-import os
-import pickle
-from distutils.version import LooseVersion
-import os.path
-
 
 from scipy.ndimage import center_of_mass
 from skimage.filters import threshold_minimum
 from skimage.measure import regionprops
 from skimage.transform import rescale
 
+sys.path.append("../")
+
+import os
+import pickle
+from distutils.version import LooseVersion
+import os.path
+import ast
+
+# import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 import skvideo
 import skvideo.io
 import tensorflow as tf
-from sklearn.metrics import balanced_accuracy_score, f1_score
+from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
+from skimage.filters import gaussian
+import cv2
+from tqdm import tqdm
 
 from tensorflow.keras import backend as K
 import tensorflow.keras as keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
+# from tensorflow.keras.utils import multi_gpu_model
 
-def preprocess_imagenet(X):
-    X = X.astype("float")
-    # mean and std adjustments with imagenet weights
-    X[:, :, :, 0] -= 0.485
-    X[:, :, :, 0] /= 0.229
-    X[:, :, :, 1] -= 0.456
-    X[:, :, :, 1] /= 0.224
-    X[:, :, :, 2] -= 0.406
-    X[:, :, :, 2] /= 0.225
-    X = X.astype("uint8")
 
-    return X
+def mask_image_to_individuals(mask_image):
+    mask = mask_image[:, :, 0]
+    mask[mask == 255] = 0
+    mask[mask > 0] = 1
+    output = cv2.connectedComponents(mask.astype(np.uint8))
+    mask_list = []
+    for label in np.unique(output[1])[1:]:
+        mask_list.append(mask == label)
+    mask_list = np.array(mask_list)
+    mask_list = np.moveaxis(mask_list, 0, 2)
+    return mask_list
+
+
+### pose estimation utils
+def heatmaps_for_images(labels, img_shape, sigma=3, threshold=None):
+    heatmaps = []
+    for el in labels:
+        maps = heatmaps_for_image_whole(
+            img_shape=img_shape, labels=el, sigma=sigma, threshold=threshold
+        )
+        heatmaps.append(maps)
+    heatmaps = np.asarray(heatmaps)
+
+    return heatmaps.astype("float32")
+
+
+def heatmaps_to_locs(y):
+    locs = []
+    for maps in y:
+        map_locs = []
+        for map_id in range(y.shape[-1]):
+            map = maps[:, :, map_id]
+            loc = np.where(map == map.max())
+            map_locs.append([loc[1][0], loc[0][0]])
+        locs.append(np.array(map_locs))
+
+    y = np.array(locs)
+
+    return y
+
+
+def heatmap_mask(maps, mask):
+    ret = False
+    for mold in tqdm(maps):
+        a = mold * mask
+        if a.sum() > 10:
+            return True
+    return ret
+
+
+def heatmaps_for_image(labels, window=100, sigma=3):
+    heatmaps = []
+    for label in labels:
+        heatmap = np.zeros((window, window))
+        heatmap[int(label[1]), int(label[0])] = 1
+        heatmap = gaussian(heatmap, sigma=sigma)
+        heatmap[heatmap > 0.001] = 1
+        heatmaps.append(heatmap)
+
+    heatmaps = np.asarray(heatmaps)
+    heatmaps = np.moveaxis(heatmaps, 0, 2)
+
+    return heatmaps
+
+
+def heatmaps_for_image_whole(labels, img_shape, sigma=3, threshold=None):
+    heatmaps = []
+    for label in labels:
+        heatmap = np.zeros(img_shape)
+        if label[1] > -1:
+            heatmap[int(label[1]), int(label[0])] = 1
+            heatmap = gaussian(heatmap, sigma=sigma)
+            # threshold
+            if threshold:
+                heatmap[heatmap > threshold] = 1
+            else:
+                heatmap = heatmap / heatmap.max()
+        heatmaps.append(heatmap)
+    heatmaps = np.asarray(heatmaps)
+    heatmaps = np.moveaxis(heatmaps, 0, 2)
+    return heatmaps
+
+
+def keypoints_in_mask(mask, keypoints):
+    for point in keypoints:
+        keypoint = point.astype(int)
+
+        res = mask[keypoint[1], keypoint[0]]
+        if res == False:
+            return False
+    return True
+
+
+def heatmap_to_scatter(heatmaps, threshold=0.6e-9):
+    coords = []
+
+    for idx in range(0, heatmaps.shape[-1]):
+        heatmap = heatmaps[:, :, idx]
+        # heatmap = gaussian(heatmap, sigma=2)
+        val = max(heatmap.flatten())
+        if val > threshold:
+            _coord = np.where(heatmap == val)
+            coords.append([_coord[1][0], _coord[0][0]])
+        else:
+            coords.append([0, 0])
+
+    return np.asarray(coords)
+
+
+def dilate_mask(mask, factor=20):
+    new_mask = binary_dilation(mask, iterations=factor)
+
+    return new_mask
+
+
+def bbox_mask(model, img, verbose=0):
+    image, window, scale, padding, crop = utils.resize_image(
+        img,
+        # min_dim=config.IMAGE_MIN_DIM,
+        # min_scale=config.IMAGE_MIN_SCALE,
+        # max_dim=config.IMAGE_MAX_DIM,
+        # mode=config.IMAGE_RESIZE_MODE)
+        # TODO: nicer here
+        min_dim=2048,
+        max_dim=2048,
+        mode="square",
+    )
+    if verbose:
+        vid_results = model.detect([image], verbose=1)
+    else:
+        vid_results = model.detect([image], verbose=0)
+    r = vid_results[0]
+
+    return image, r["scores"], r["rois"], r["masks"]
+
+
+### END Poseestimation utils
+
+
+# TODO: maybe somewhere else?
+def get_optimizer(optim_name, lr=0.01):
+    optim = None
+    if optim_name == "adam":
+        optim = keras.optimizers.Adam(lr=lr, clipnorm=0.5)
+    if optim_name == "sgd":
+        optim = keras.optimizers.SGD(lr=lr, clipnorm=0.5, momentum=0.9)
+    if optim_name == "rmsprop":
+        optim = keras.optimizers.RMSprop(lr=lr)
+    return optim
+
+
+##callbacks
+
+
+def callbacks_tf_logging(path="./logs/"):
+    logdir = os.path.join(path, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    tf_callback = get_tensorbaord_callback(logdir)
+    return tf_callback
+
+
+def get_tensorbaord_callback(path="./logs"):
+    # Tensorflow board
+    tensorboard_callback = keras.callbacks.TensorBoard(
+        log_dir=path, histogram_freq=0, write_graph=True, write_images=True
+    )
+    return tensorboard_callback
+
+
+def callbacks_learningRate_plateau():
+    CB_lr = keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss", min_delta=0.0001, verbose=True, patience=8, min_lr=1e-7
+    )
+
+    CB_es = keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        min_delta=0.0001,
+        patience=8,
+        mode="min",
+        restore_best_weights=True,
+    )
+
+    return CB_es, CB_lr
 
 
 def masks_to_coords(masks):
@@ -48,7 +229,7 @@ def masks_to_coords(masks):
     return coords
 
 
-def coords_to_masks(coords, dim=2048):
+def coords_to_masks(coords, dim=(2048, 2048)):
     masks = np.zeros((dim, dim, len(coords)), dtype="uint8")
     for coord_id, coord in enumerate(coords):
         for co in coord:
@@ -67,12 +248,21 @@ def clearMemory(model, backend):
     backend.clear_session()
 
 
-def get_tensorbaord_callback(path="./logs"):
-    # Tensorflow board
-    tensorboard_callback = keras.callbacks.TensorBoard(
-        log_dir=path, histogram_freq=0, write_graph=True, write_images=True
-    )
-    return tensorboard_callback
+def run_ai_cumulative_gradient(optimizer):
+    import runai.ga.keras
+
+    optim = runai.ga.keras.optimizers.Optimizer(optimizer, steps=8)
+    return optim
+
+
+def fix_layers(network, with_backbone=True):
+    for layer in network.layers:
+        layer.trainable = True
+        if with_backbone:
+            if "layers" in dir(layer):
+                for _layer in layer.layers:
+                    _layer.trainable = True
+    return network
 
 
 # helper class to keep track of results from different methods
@@ -102,9 +292,6 @@ class ResultsTracker:
             print('Access on file "' + self.path + '" is not available!')
             print(str(e))
             return 0
-
-
-import ast
 
 
 # TODO: include multi behavior
@@ -204,8 +391,8 @@ def rescale_img(mask, frame, mask_size=256):
 def set_random_seed(random_seed):
     os.environ["PYTHONHASHSEED"] = str(random_seed)
     random.seed(random_seed)
-    tf.compat.v1.set_random_seed(random_seed)
-    tf.compat.v1.random.set_random_seed(random_seed)
+    my_rnd_seed = np.random.seed(random_seed)
+    tf.random.set_seed(random_seed)
 
 
 def detect_primate(_img, _model, classes, threshold):
@@ -248,34 +435,6 @@ def apply_all_masks(masks, coms, img, mask_size=128):
     return np.asarray(masked_imgs), np.asarray(masked_masks)
 
 
-def mask_to_original_image(orig_shape, mask, center_of_mass, mask_size):
-
-    img = np.zeros((orig_shape, orig_shape))
-
-    x_min = np.max([0, int(center_of_mass[0] - mask_size)])
-    x_max = np.min([img.shape[0], int(center_of_mass[0] + mask_size)])
-    y_min = np.max([0, int(center_of_mass[1] - mask_size)])
-    y_max = np.min([img.shape[0], int(center_of_mass[1] + mask_size)])
-
-    x_dim = x_max - x_min
-    y_dim = y_max - y_min
-
-    if int(center_of_mass[0] + mask_size) > img.shape[0]:
-        mask = mask[-x_dim:,:]
-    if int(center_of_mass[1] + mask_size) > img.shape[1]:
-        mask = mask[:, -y_dim:]
-    if 0 > int(center_of_mass[0] - mask_size):
-        mask = mask[:x_dim,:]
-    if 0 > int(center_of_mass[1] - mask_size):
-        mask = mask[:, :y_dim]
-
-    img[
-        x_min : x_max,
-        y_min : y_max,
-    ] = mask
-
-    return img
-
 # functions for data processing
 
 ### BEHAVIOR PREPROCESSING ###
@@ -315,6 +474,35 @@ def extractCOM_only(image):
     weighted_center_of_mass = properties[0].weighted_centroid
 
     return center_of_mass, weighted_center_of_mass
+
+
+def mask_to_original_image(orig_shape, mask, center_of_mass, mask_size):
+
+    img = np.zeros((orig_shape, orig_shape))
+
+    x_min = np.max([0, int(center_of_mass[0] - mask_size)])
+    x_max = np.min([img.shape[0], int(center_of_mass[0] + mask_size)])
+    y_min = np.max([0, int(center_of_mass[1] - mask_size)])
+    y_max = np.min([img.shape[0], int(center_of_mass[1] + mask_size)])
+
+    x_dim = x_max - x_min
+    y_dim = y_max - y_min
+
+    if int(center_of_mass[0] + mask_size) > img.shape[0]:
+        mask = mask[-x_dim:, :]
+    if int(center_of_mass[1] + mask_size) > img.shape[1]:
+        mask = mask[:, -y_dim:]
+    if 0 > int(center_of_mass[0] - mask_size):
+        mask = mask[:x_dim, :]
+    if 0 > int(center_of_mass[1] - mask_size):
+        mask = mask[:, :y_dim]
+
+    img[
+        x_min:x_max,
+        y_min:y_max,
+    ] = mask
+
+    return img
 
 
 def maskedImg(
@@ -434,10 +622,10 @@ def balanced_acc(y_true, y_pred):
         return balanced_accuracy_score(y_true.eval(), y_pred.eval())
 
 
-from sklearn.metrics import classification_report
-
-
 class Metrics(tf.keras.callbacks.Callback):
+    def __init__(self, validation_data):
+        self.validation_data = validation_data
+
     def setModel(self, model):
         self.model = model
 
@@ -467,88 +655,22 @@ class Metrics(tf.keras.callbacks.Callback):
         return self._data
 
 
-# TODO: maybe somewhere else?
-def get_optimizer(optim_name, lr=0.01):
-    optim = None
-    if optim_name == "adam":
-        optim = keras.optimizers.Adam(lr=lr, clipnorm=0.5)
-    if optim_name == "sgd":
-        optim = keras.optimizers.SGD(lr=lr, clipnorm=0.5, momentum=0.9)
-    if optim_name == "rmsprop":
-        optim = keras.optimizers.RMSprop(lr=lr)
-    return optim
-
-
-##callbacks
-
-
-def callbacks_tf_logging(path="./logs/"):
-    logdir = os.path.join(path, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-    tf_callback = get_tensorbaord_callback(logdir)
-    return tf_callback
-
-
-def get_tensorbaord_callback(path="./logs"):
-    # Tensorflow board
-    tensorboard_callback = keras.callbacks.TensorBoard(
-        log_dir=path, histogram_freq=0, write_graph=True, write_images=True
-    )
-    return tensorboard_callback
-
-
-def callbacks_learningRate_plateau():
-    CB_lr = keras.callbacks.ReduceLROnPlateau(
-        monitor="val_loss", min_delta=0.0001, verbose=True, patience=8, min_lr=1e-7
-    )
-
-    CB_es = keras.callbacks.EarlyStopping(
-        monitor="val_loss",
-        min_delta=0.0001,
-        patience=8,
-        mode="min",
-        restore_best_weights=True,
-    )
-
-    return CB_es, CB_lr
-
-
-def get_callbacks(min_lr=1e-7, factor=0.1, patience=8):
-    CB_lr = keras.callbacks.ReduceLROnPlateau(
-        monitor="val_loss",
-        min_delta=0.0001,
-        verbose=True,
-        patience=patience,
-        min_lr=min_lr,
-        factor=factor,
-    )
-
-    CB_es = keras.callbacks.EarlyStopping(
-        monitor="val_loss",
-        min_delta=0.0001,
-        patience=8,
-        mode="min",
-        restore_best_weights=True,
-    )
-
-    return CB_es, CB_lr
-
-
 def train_model(
     model,
     optimizer,
     epochs,
     batch_size,
-    dataloader,
+    data_train,
+    data_val=None,
     callbacks=None,
     class_weights=None,
     loss="crossentropy",
     augmentation=None,
     num_gpus=1,
-    multi_workers=False,
-    num_workers=20,
 ):
     if num_gpus > 1:
-        model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
+        print("This part needs to be fixed!!!")
+        # model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
     if loss == "crossentropy":
         # TODO: integrate number of GPUs in config
         model.compile(
@@ -567,107 +689,89 @@ def train_model(
 
     print(model.summary())
 
-    if dataloader.config["use_generator"]:
-        #TODO: fix callbacks
-        training_history = model.fit(
-            dataloader.training_generator,
-            epochs=epochs,
-            # validation_data=(x_test, y_test),
-            # callbacks=callbacks,
-            # shuffle=True,
-            # use_multiprocessing=False,
-            # steps_per_epoch=50,
-            # workers=num_workers,
+    if augmentation:
+        image_gen = ImageDataGenerator(
+            horizontal_flip=True,
+            vertical_flip=True,
+            preprocessing_function=augmentation.augment_image,
         )
-    else:
 
-        if augmentation:
-            image_gen = ImageDataGenerator(
-                horizontal_flip=True,
-                vertical_flip=True,
-                preprocessing_function=augmentation.augment_image,
+        try:
+            batch_gen = image_gen.flow(
+                data_train[0],
+                data_train[1],
+                batch_size=batch_size,
+                shuffle=True,
+                # TODO: implement here
+                # TODO: fix seed globallly
+                #     sample_weight=train_sample_weights,
+                # TODO: check if global seed works here
+                # seed=42,
+            )
+        except ValueError:
+            batch_gen = image_gen.flow(
+                data_train[0],
+                data_train[1],
+                batch_size=batch_size,
+                shuffle=True,
+                # TODO: implement here
+                # TODO: fix seed globallly
+                #     sample_weight=train_sample_weights,
+                # seed=42,
+            )
+        # TODO: implement me
+        # if balanced:
+        # training_generator, steps_per_epoch = balanced_batch_generator(x_train, y_train,
+        #                                                                sampler=RandomOverSampler(),
+        #                                                                batch_size=32,
+        #                                                                random_state=42)
+
+        if class_weights is not None:
+            training_history = model.fit(
+                batch_gen,
+                epochs=epochs,
+                steps_per_epoch=len(data_train[0]),
+                validation_data=(data_val[0], data_val[1]),
+                callbacks=callbacks,
+                class_weight=class_weights,
+                use_multiprocessing=True,
+                workers=8,
+            )
+        else:
+            training_history = model.fit(
+                batch_gen,
+                epochs=epochs,
+                # TODO: check here, also multiprocessing
+                steps_per_epoch=len(data_train[0]),
+                validation_data=(data_val[0], data_val[1]),
+                callbacks=callbacks,
+                use_multiprocessing=True,
+                workers=8,
             )
 
-            try:
-                batch_gen = image_gen.flow(
-                    dataloader.x_train,
-                    dataloader.y_train,
-                    batch_size=batch_size,
-                    shuffle=True,
-                    # TODO: implement here
-                    # TODO: fix seed globallly
-                    #     sample_weight=train_sample_weights,
-                    # TODO: check if global seed works here
-                    # seed=42,
-                )
-            except ValueError:
-                batch_gen = image_gen.flow(
-                    dataloader.x_train,
-                    dataloader.y_train,
-                    batch_size=batch_size,
-                    shuffle=True,
-                    # TODO: implement here
-                    # TODO: fix seed globallly
-                    #     sample_weight=train_sample_weights,
-                    # seed=42,
-                )
-            # TODO: implement me
-            # if balanced:
-            # training_generator, steps_per_epoch = balanced_batch_generator(x_train, y_train,
-            #                                                                sampler=RandomOverSampler(),
-            #                                                                batch_size=32,
-            #                                                                random_state=42)
-
-            if class_weights is not None:
-                training_history = model.fit_generator(
-                    batch_gen,
-                    epochs=epochs,
-                    steps_per_epoch=len(dataloader.x_train[0]),
-                    validation_data=(dataloader.x_test, dataloader.y_test),
-                    callbacks=callbacks,
-                    class_weight=class_weights,
-                    use_multiprocessing=multi_workers,
-                    workers=num_workers,
-                )
-            else:
-                training_history = model.fit_generator(
-                    batch_gen,
-                    epochs=epochs,
-                    # TODO: check here, also multiprocessing
-                    steps_per_epoch=len(dataloader.x_train[0]),
-                    validation_data=(dataloader.x_test, dataloader.y_test),
-                    callbacks=callbacks,
-                    use_multiprocessing=multi_workers,
-                    workers=num_workers,
-                )
-
+    else:
+        if class_weights is not None:
+            training_history = model.fit(
+                data_train[0],
+                data_train[1],
+                epochs=epochs,
+                batch_size=batch_size,
+                # TODO: here validation split instead ?
+                validation_data=(data_val[0], data_val[1]),
+                callbacks=callbacks,
+                shuffle=True,
+                class_weight=class_weights,
+            )
         else:
-            if class_weights is not None:
-                training_history = model.fit(
-                    dataloader.x_train,
-                    dataloader.y_train,
-                    epochs=epochs,
-                    batch_size=batch_size,
-                    # TODO: here validation split instead ?
-                    validation_data=(dataloader.x_test, dataloader.y_test),
-                    callbacks=callbacks,
-                    shuffle=True,
-                    class_weight=class_weights,
-                    use_multiprocessing=multi_workers,
-                    workers=num_workers,
-                )
-            else:
-                training_history = model.fit(
-                    dataloader.x_train,
-                    dataloader.y_train,
-                    epochs=epochs,
-                    batch_size=batch_size,
-                    validation_data=(dataloader.x_test, dataloader.y_test),
-                    callbacks=callbacks,
-                    shuffle=True,
-                    use_multiprocessing=multi_workers,
-                    workers=num_workers,
-                )
+            training_history = model.fit(
+                data_train[0],
+                data_train[1],
+                epochs=epochs,
+                batch_size=batch_size,
+                validation_data=(data_val[0], data_val[1]),
+                callbacks=callbacks,
+                shuffle=True,
+            )
 
     return model, training_history
 
@@ -754,7 +858,7 @@ def setGPU_growth():
 
 
 def setGPU(gpu_name, growth=True):
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+    # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
     # os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
     tf.config.set_visible_devices(
         tf.config.list_physical_devices("GPU")[int(gpu_name)], "GPU"
@@ -805,7 +909,10 @@ def load_config(path):
                             entries = [int(el) for el in help]
                             params[line.split(" = ")[0]] = entries
                     else:
-                        params[line.split(" = ")[0]] = str(line.split(" = ")[1])
+                        if str(line.split(" = ")[1]) == "None":
+                            params[line.split(" = ")[0]] = None
+                        else:
+                            params[line.split(" = ")[0]] = str(line.split(" = ")[1])
     return params
 
 
