@@ -205,9 +205,11 @@ class Model:
         self.recognition_model.save(path + "_recognition")
         self.sequential_model.save(path + "_sequential")
 
-    def load_model(self, path):
-        self.recognition_model = load_model(path + "_recognition")
-        self.sequential_model = load_model(path + "_sequential")
+    def load_model(self, recognition_path=None, sequential_path=None):
+        if recognition_path is not None:
+            self.recognition_model = load_model(recognition_path)
+        if sequential_path is not None:
+            self.sequential_model = load_model(sequential_path)
 
     def fix_recognition_layers(self, num=None):
         """
