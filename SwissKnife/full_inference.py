@@ -311,7 +311,8 @@ def main():
     max_ids = args.max_ids
     segnet_path = args.segnet_path
     posenet_path = args.posenet_path
-    behavenet_path = args.behavenet_path
+    behavenet_path_recognition = args.behavenet_path_recognition
+    behavenet_path_sequential = args.behavenet_path_sequential
     do_visualization = args.do_visualization
     results_sink = args.results_sink
     output_video_name = args.output_video_name
@@ -339,7 +340,6 @@ def main():
         greyscale=inference_cfg["greyscale"],
         num_frames=inference_cfg["num_frames"],
     )
-    videodata = videodata[1000:1050]
     molded_video = mold_video(
         videodata, dimension=inference_cfg["mold_dimension"], n_jobs=20
     )
@@ -359,9 +359,11 @@ def main():
         )
         networks["PoseNet"] = PoseNet
 
-    if behavenet_path:
+    if behavenet_path_recognition:
         BehaveNet = Model()
-        BehaveNet.load_model(behavenet_path)
+        BehaveNet.load_model(recognition_path=behavenet_path_recognition)
+        if behavenet_path_sequential:
+            BehaveNet.load_model(sequential_path=behavenet_path_sequential)
         networks["BehaveNet"] = BehaveNet
 
     results = full_inference(
@@ -386,7 +388,6 @@ def main():
             videodata = loadVideo(
                 video, greyscale=False, num_frames=inference_cfg["num_frames"]
             )
-            videodata = videodata[1000:1050]
             molded_video = mold_video(
                 videodata, dimension=inference_cfg["mold_dimension"], n_jobs=20
             )
@@ -451,12 +452,20 @@ parser.add_argument(
     help="path to posenet model",
 )
 parser.add_argument(
-    "--behavenet_path",
+    "--behavenet_path_recognition",
     action="store",
-    dest="behavenet_path",
+    dest="behavenet_path_recognition",
     type=str,
     default=None,
-    help="path to behaviornet model",
+    help="path to behaviornet recognition model",
+)
+parser.add_argument(
+    "--behavenet_path_sequential",
+    action="store",
+    dest="behavenet_path_sequential",
+    type=str,
+    default=None,
+    help="path to behaviornet sequential model",
 )
 parser.add_argument(
     "--config",
