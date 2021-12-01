@@ -1,0 +1,5 @@
+mold_dimension = 1024
+mask_size = 64
+num_frames = None
+display_coms = 0
+greyscale = 0

@@ -10,7 +10,7 @@ from collections import Counter
 import sys
 
 from SwissKnife.segmentation import mold_video
-from SwissKnife.utils import loadVideo, load_vgg_labels, coords_to_masks
+from SwissKnife.utils import loadVideo, load_vgg_labels, coords_to_masks, load_config
 import skvideo.io
 
 
@@ -104,7 +104,7 @@ def displayScatter(frame, coords, color=(0, 0, 255)):
 
 def apply_mask(image, mask, color, alpha=0.5):
     """Apply the given mask to the image."""
-    for c in range(3):
+    for c in range(image.shape[-1]):
         image[:, :, c] = np.where(
             mask == 1,
             image[:, :, c] * (1 - alpha) + alpha * color[c],
@@ -150,6 +150,46 @@ def visualize_full_inference(
             1,
             cv2.LINE_AA,
         )
+
+        try:
+            coms = results[idx]["coms"]
+        except TypeError:
+            resulting_frames.append(frame)
+            continue
+
+        try:
+            frame = cv2.putText(
+                frame,
+                "behavior: " + results[idx]["behavior_scores"],
+                (100, 25),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                colors[0],
+                1,
+                cv2.LINE_AA,
+            )
+            frame = cv2.putText(
+                frame,
+                "behavior: " + results[idx]["behavior"],
+                (100, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                colors[0],
+                1,
+                cv2.LINE_AA,
+            )
+            frame = cv2.putText(
+                frame,
+                "behavior: " + results[idx]["behavior_threshold"],
+                (100, 75),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                colors[1],
+                1,
+                cv2.LINE_AA,
+            )
+        except (KeyError, TypeError):
+            pass
 
         if "SegNet" in networks.keys():
             coms = results[idx]["coms"]
@@ -313,27 +353,20 @@ def main():
     output_video_name = args.output_video_name
     video = args.video
     results_path = args.results_path
+    config = args.config
 
-    # TODO: put me in cfg file
-    # TODO: readout networks automatically
-    viz_cfg = {
-        "mold_dimension": 1024,
-        "mask_size": 64,
-        "lookback": 25,
-        "id_matching": False,
-        "mask_matching": True,
-        "display_coms": False,
-        "num_frames": 1000,
-        "id_classes": {
-            "0": 0,
-            "1": 1,
-            "2": 2,
-            "3": 3,
-        },
-        "networks": {"SegNet": None, "PoseNet": None},
+    viz_cfg = load_config("../configs/inference/" + config)
+    viz_cfg["id_classes"] = {
+        "0": 0,
+        "1": 1,
+        "2": 2,
+        "3": 3,
     }
+    viz_cfg["networks"] = {"SegNet": None, "PoseNet": None}
 
-    videodata = loadVideo(video, greyscale=False, num_frames=viz_cfg["num_frames"])
+    videodata = loadVideo(
+        video, greyscale=viz_cfg["greyscale"], num_frames=viz_cfg["num_frames"]
+    )
     molded_video = mold_video(videodata, dimension=viz_cfg["mold_dimension"])
     results = np.load(results_path, allow_pickle=True)
 
@@ -378,6 +411,14 @@ parser.add_argument(
     type=str,
     default=None,
     help="path the results file from full_inference",
+)
+parser.add_argument(
+    "--config",
+    action="store",
+    dest="config",
+    type=str,
+    default="default",
+    help="config to use",
 )
 
 
