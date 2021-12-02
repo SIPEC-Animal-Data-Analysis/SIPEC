@@ -28,12 +28,28 @@ import skvideo.io
 import tensorflow as tf
 from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
 from skimage.filters import gaussian
+import cv2
+from tqdm import tqdm
 
 from tensorflow.keras import backend as K
 import tensorflow.keras as keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # from tensorflow.keras.utils import multi_gpu_model
+
+
+def mask_image_to_individuals(mask_image):
+    mask = mask_image[:, :, 0]
+    mask[mask == 255] = 0
+    mask[mask > 0] = 1
+    output = cv2.connectedComponents(mask.astype(np.uint8))
+    mask_list = []
+    for label in np.unique(output[1])[1:]:
+        mask_list.append(mask == label)
+    mask_list = np.array(mask_list)
+    mask_list = np.moveaxis(mask_list, 0, 2)
+    return mask_list
+
 
 ### pose estimation utils
 def heatmaps_for_images(labels, img_shape, sigma=3, threshold=None):
@@ -213,7 +229,7 @@ def masks_to_coords(masks):
     return coords
 
 
-def coords_to_masks(coords, dim=2048):
+def coords_to_masks(coords, dim=(2048, 2048)):
     masks = np.zeros((dim, dim, len(coords)), dtype="uint8")
     for coord_id, coord in enumerate(coords):
         for co in coord:
@@ -377,8 +393,6 @@ def set_random_seed(random_seed):
     random.seed(random_seed)
     my_rnd_seed = np.random.seed(random_seed)
     tf.random.set_seed(random_seed)
-    # tf.set_random_seed(random_seed)
-    # tf.random.set_random_seed(random_seed)
 
 
 def detect_primate(_img, _model, classes, threshold):
@@ -475,17 +489,17 @@ def mask_to_original_image(orig_shape, mask, center_of_mass, mask_size):
     y_dim = y_max - y_min
 
     if int(center_of_mass[0] + mask_size) > img.shape[0]:
-        mask = mask[-x_dim:,:]
+        mask = mask[-x_dim:, :]
     if int(center_of_mass[1] + mask_size) > img.shape[1]:
         mask = mask[:, -y_dim:]
     if 0 > int(center_of_mass[0] - mask_size):
-        mask = mask[:x_dim,:]
+        mask = mask[:x_dim, :]
     if 0 > int(center_of_mass[1] - mask_size):
         mask = mask[:, :y_dim]
 
     img[
-        x_min : x_max,
-        y_min : y_max,
+        x_min:x_max,
+        y_min:y_max,
     ] = mask
 
     return img
@@ -609,7 +623,6 @@ def balanced_acc(y_true, y_pred):
 
 
 class Metrics(tf.keras.callbacks.Callback):
-
     def __init__(self, validation_data):
         self.validation_data = validation_data
 
@@ -845,7 +858,7 @@ def setGPU_growth():
 
 
 def setGPU(gpu_name, growth=True):
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+    # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
     # os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_name)
     tf.config.set_visible_devices(
         tf.config.list_physical_devices("GPU")[int(gpu_name)], "GPU"
@@ -896,7 +909,10 @@ def load_config(path):
                             entries = [int(el) for el in help]
                             params[line.split(" = ")[0]] = entries
                     else:
-                        params[line.split(" = ")[0]] = str(line.split(" = ")[1])
+                        if str(line.split(" = ")[1]) == "None":
+                            params[line.split(" = ")[0]] = None
+                        else:
+                            params[line.split(" = ")[0]] = str(line.split(" = ")[1])
     return params
 
 

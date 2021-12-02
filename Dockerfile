@@ -47,7 +47,7 @@ RUN git clone https://github.com/SIPEC-Animal-Data-Analysis/SIPEC.git
 
 WORKDIR /home/user/SIPEC
 
-RUN git checkout main 
+RUN git checkout devel
 
 ENV VIRTUAL_ENV=/home/user/SIPEC/env
 
@@ -65,7 +65,7 @@ RUN mkdir /home/user/data
 
 WORKDIR /home/user/data/
 
-RUN wget -O pretrained_networks.zip https://www.dropbox.com/s/38adfecf6741gm6/pretrained_networks.zip?dl=0 && unzip pretrained_networks.zip && rm pretrained_networks.zip
+RUN wget -O pretrained_networks.zip https://www.dropbox.com/s/38adfecf6741gm6/pretrained_networks.zip?dl=0 && unzip pretrained_networks.zip -x / -d pretrained_networks && rm pretrained_networks.zip
 
 RUN wget -O mouse_segmentation_4plex_merged.zip https://www.dropbox.com/s/0c4m60zg5kx3nqq/mouse_segmentation_4plex_merged.zip?dl=0 && unzip mouse_segmentation_4plex_merged.zip && rm mouse_segmentation_4plex_merged.zip
 

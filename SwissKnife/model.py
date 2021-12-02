@@ -3,15 +3,14 @@
 # MODEL CLASS
 import numpy as np
 import tensorflow as tf
-#from keras.engine.saving import load_model
 from tensorflow.keras.models import load_model
-
 
 from SwissKnife.architectures import (
     pretrained_recognition,
     recurrent_model_tcn,
     recurrent_model_lstm,
 )
+from SwissKnife.classification_comparison import remove_layers
 from SwissKnife.utils import get_optimizer
 
 # TODO: import these DL utils into this class
@@ -20,6 +19,7 @@ from SwissKnife.utils import train_model
 
 # TODO: presets for parameters
 # TODO: make sure modulization is correct -> rather have for each task one inheretance model
+# TODO: make param list dict?
 class Model:
     def __init__(self, config=None):
         """Initialize model with default parameters, which can be updated
@@ -28,6 +28,7 @@ class Model:
         Args:
             config: Config for updated hyperparameters.
         """
+        # TODO: fix hardcoded here
         self.architecture = ""
         self.callbacks = []
         self.scheduler_factor = 1.1
@@ -62,8 +63,11 @@ class Model:
             input_shape:
             num_classes:
         """
+
         if architecture in [
             "densenet",
+            "efficientnet",
+            "efficientnet4",
             "resnet",
             "xception",
             "inceptionResnet",
@@ -89,11 +93,15 @@ class Model:
         """
         if architecture == "tcn":
             self.sequential_model = recurrent_model_tcn(
-                self.recognition_model, input_shape, classes=num_classes,
+                self.recognition_model,
+                input_shape,
+                classes=num_classes,
             )
         if architecture == "lstm":
             self.sequential_model = recurrent_model_lstm(
-                self.recognition_model, input_shape, classes=num_classes,
+                self.recognition_model,
+                input_shape,
+                classes=num_classes,
             )
         # reset callbacks
         self.callbacks = []
@@ -110,8 +118,7 @@ class Model:
             self.optim,
             self.recognition_model_epochs,
             self.recognition_model_batch_size,
-            (dataloader.x_train, dataloader.y_train),
-            data_val=(dataloader.x_test, dataloader.y_test),
+            dataloader=dataloader,
             callbacks=self.callbacks,
             loss=self.recognition_model_loss,
             # TODO: activate augmentation
@@ -129,16 +136,16 @@ class Model:
             self.optim,
             self.sequential_model_epochs,
             self.sequential_model_batch_size,
-            (dataloader.x_train_recurrent, dataloader.y_train_recurrent),
-            data_val=(dataloader.x_test_recurrent, dataloader.y_test_recurrent),
+            dataloader=dataloader,
             callbacks=self.callbacks,
             loss=self.sequential_model_loss,
             # TODO: activate augmentation
             augmentation=self.augmentation,
             class_weights=self.class_weight,
+            sequential=True,
         )
 
-    def predict(self, data, model="recognition", threshold=None):
+    def predict(self, data, model="recognition", threshold=None, default_behavior=1):
         """
         Args:
             data:
@@ -151,19 +158,27 @@ class Model:
                 prediction = self.recognition_model.predict(
                     np.expand_dims(data, axis=0)
                 )
-                if threshold is None:
-                    return np.argmax(prediction).astype(int)
-                else:
-                    if prediction.max() > threshold:
-                        return np.argmax(prediction).astype(int)
-                    else:
-                        return "None detected"
             else:
                 prediction = self.recognition_model.predict(data)
-                return np.argmax(prediction, axis=-1).astype(int)
         else:
             prediction = self.sequential_model.predict(data)
-            return np.argmax(prediction, axis=-1).astype(int)
+
+        if threshold is None:
+            return prediction, np.argmax(prediction).astype(int)
+        else:
+            prediction_idxs = list(range(len(prediction)))
+            non_default_predictions = (
+                prediction[:default_behavior] + prediction[default_behavior + 1 :]
+            )
+            non_default_prediction_idxs = (
+                prediction_idxs[:default_behavior]
+                + prediction_idxs[default_behavior + 1 :]
+            )
+
+            if np.max(non_default_predictions) > threshold:
+                return prediction, np.argmax(non_default_prediction_idxs).astype(int)
+            else:
+                return prediction, default_behavior
 
     def predict_sequential(self, data):
         # TODO: implement recognition vs sequential
@@ -186,8 +201,15 @@ class Model:
     def export_training_details(self):
         raise NotImplementedError
 
-    def save_model(self):
-        raise NotImplementedError
+    def save_model(self, path):
+        self.recognition_model.save(path + "_recognition")
+        self.sequential_model.save(path + "_sequential")
+
+    def load_model(self, recognition_path=None, sequential_path=None):
+        if recognition_path is not None:
+            self.recognition_model = load_model(recognition_path)
+        if sequential_path is not None:
+            self.sequential_model = load_model(sequential_path)
 
     def fix_recognition_layers(self, num=None):
         """
@@ -213,6 +235,7 @@ class Model:
         """
         self.optim = get_optimizer(name, lr)
 
+    # TODO: fix hardcoded here
     def scheduler(self, epoch):
         """
         Args:
