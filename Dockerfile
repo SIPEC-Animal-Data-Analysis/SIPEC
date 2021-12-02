@@ -47,7 +47,7 @@ RUN git clone https://github.com/SIPEC-Animal-Data-Analysis/SIPEC.git
 
 WORKDIR /home/user/SIPEC
 
-RUN git checkout devel
+RUN git checkout main
 
 ENV VIRTUAL_ENV=/home/user/SIPEC/env
 
