@@ -5,82 +5,126 @@
 SIPEC: the deep-learning Swiss knife for behavioral data analysis
 
 
-This is the repository accompanying SIPEC, which is a pipeline that enables all-round behavioral analysis through usage of state-of-the-art neural networks.
-You can use SIPEC by either combining its many modules in your own workflow, or use template workflows, that have been used in the paper, which can be accessed via command line.
+This is the repository accompanying the [SIPEC publication*](https://doi.org/10.1101/2020.10.26.355115), which is a pipeline that enables all-round behavioral analysis through the usage of state-of-the-art neural networks.
+You can use SIPEC by either combining its modules in your own workflow, or using template workflows, that have been used in the paper, which can be accessed via command line.
 We will be providing more detailed and illustrated instructions soon. Moreover, extensive documentation and more exemplary data will be made available.
+
+We welcome feedback via GitHub issues.
+
+
+* Markus Marks, Jin Qiuhan, Oliver Sturman, Lukas von Ziegler, Sepp Kollmorgen, Wolfger von der Behrens, Valerio Mante, Johannes Bohacek, Mehmet Fatih Yanik
+  bioRxiv 2020.10.26.355115; doi: https://doi.org/10.1101/2020.10.26.355115
 
 ![](supp_files/Supplementary%20Video%201.gif)
 
-## Installation
+## Usage/Installation
 
-This setup instructions are for Linux (Mac and Windows will follow). 
-Particularly this has been tested on Ubuntu 18.
-For really making use of SIPEC your machine should have at least one powerful, ideally multiple GPUs.
-It has been tested with either NVIDIA GTX 2080 Ti or V100 GPUs.
-The overall setup should be done in less than 5 minutes. 
+**For using SIPEC, your machine should have a powerful GPU.
+We have tested the scripts with NVIDIA GTX 1080, NVIDIA GTX 2080 Ti and V100 GPUs.**
 
-We recommend creating a virtual environment using anaconda.
+### Docker
 
-  ```
-wget https://repo.anaconda.com/archive/Anaconda3-2020.02-Linux-x86_64.sh
-bash Anaconda3-2020.02-Linux-x86_64.sh -b
-rm Anaconda3-2020.02-Linux-x86_64.sh
+We provide a docker image with the required environment to run the SIPEC scripts.
 
-source ./anaconda3/bin/activate
-conda init
+In order to pull the docker image you would first need to install `docker` and `nvidia-docker2` following the instructions on:
 
-conda create -n new python=3.7 -y
-conda activate new
-conda update -n base -c defaults conda
+> [https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 
-conda install tensorflow-gpu=1.14.0 -y
-conda install keras=2.3.1
-pip install opencv-contrib-python
+After installing `docker` and `nvidia-docker2` you can download the SIPEC image by executing:
 
-apt install build-essential libglib2.0-0 libsm6 libxext6 libxrender-dev -y
-apt install libsm6 libxrender1 libfontconfig1 -y
-apt install --no-install-recommends ffmpeg && pip install ffmpeg scikit-video
-  ```
+```
+docker pull sipec/sipec:latest
+```
 
-Now that our environment is setup we can download and install SIPEC.
+**Note:** In order to run docker without `sudo` you would need to create a docker group and add your user to it. Please follow the instructions on: [https://docs.docker.com/engine/install/linux-postinstall/](https://docs.docker.com/engine/install/linux-postinstall/) 
 
-  ```
-git clone https://github.com/damaggu/SIPEC.git
+The docker image contains the environment, sample data and SIPEC scripts.
 
-cd DeepLab-SwissKnife
-pip install -r requirements.txt
-  ```
-You can now add SIPEC to your ~/.bashrc or run this command to add it to your python path.
-  ```
-export PYTHONPATH="PATH-TO-SIPEC:${PYTHONPATH}"
-  ```
+### Environment installation
 
+If you do not want to use the docker container you can follow these installation instructions for **Linux**. 
+These instructions have been tested on Ubuntu 20.04 but would most likely also work on Ubuntu 18.
+
+#### Step 1: Install Cuda 11.0.3
+
+Download and install Cuda 11.0.3 (We have tested the setup with this cuda version).
+
+After the installation is finised run `nvcc --version` to check the installed cuda version.
+
+#### Step 2: Install cuDNN 8
+
+Download and install cuDNN 8. For this you would need to register for NVIDIA's developer program (it is free):
+
+https://developer.nvidia.com/cudnn-download-survey
+
+#### Step 3:
+
+After you have successfully installed cuda and cuDNN:
+* clone the SIPEC repository
+* open a terminal and go to the cloned SIPEC directory: `cd PATH_TO_SIPEC_ON_YOUR_MACHINE`
+* run the following commands
+```
+chmod +x setup.sh
+./setup.sh
+```
+The script will ask you for the root password.
+
+#### Step 4:
+The script `setup.sh` has created a virtual environment named `env` in the repository folder.
+Activate the environment by executing:
+```
+source ./env/bin/activate
+```
+
+#### Step 5:
+
+To test your setup run one of the scripts in the folder `SwissKnife`, e.g.,
+```
+python segmentation.py --help
+```
 ## Usage
 
-#### own pipline
+### predefined pipelines
+
+You can run these template pipelines for training or evaluation of SIPEC networks.
+
+If your system has multiple GPUs, the `--gpu` flag allows you to run a script on a specific GPU while keeping other GPUs free to run other scripts.
+
+Here are some example command line usages of the pipeline
+<pre><code>
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
+                      segmentation.py --cv_folds 0 --gpu 0 --frames /home/user/data/mouse_segmentation_4plex_merged/frames --annotations /home/user/data/mouse_segmentation_4plex_merged/merged.json
+
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
+                     classification_comparison.py --gpu 0 --config_name behavior_config_final --random_seed 1 --output_path=/home/user/results
+
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
+                      poseestimation.py --gpu 0 --results_sink /home/user/results --dlc_path /home/user/data/mouse_pose/OFT/labeled-data/ --segnet_path /home/user/data/pretrained_networks/mask_rcnn_mouse_0095.h5 --config poseestimation_config_test
+
+docker run -v "<b>RESULTS_PATH</b>:/home/user/results" --runtime=nvidia --rm sipec/sipec 
+                      full_inference.py --gpu 0 --species mouse --video /home/user/data/full_inference_posenet_25_June/animal1234_day1.avi --posenet_path /home/user/data/pretrained_networks/posenet_mouse.h5  --segnet_path /home/user/data/pretrained_networks/mask_rcnn_mouse_0095.h5 --max_ids 4 --results_sink /home/user/results/full_inference     
+
+<b>Coming soon</b>: behavior.py
+
+</pre></code>
+
+Where, **RESULTS_PATH** is the path on your machine where you would like to write the results.
+
+The output of these workflows are results files that quantify the network performance, and a .h5 file that are the network weights for subsequent use.
+Depending on modules to be trained, and the GPUs available the training can take multiple hours or days.
+
+In order to find all the arguments that can be passed to the scripts use the flag `--help`, e.g.,
+
+```
+docker container run --runtime=nvidia --rm sipec/sipec segmentation.py --help
+```
+
+
+### own pipline
 You can build your own workflow by combining functions of the different SIPEC modules.
 To do so, you usually need to define a config file, that specifies parameters for the network and training to be used.
 Next, you will need to load your data via the dataloader module.
 This enables you to run the different SIPEC modules.
-
-#### predefined pipelines
-
-You can run these template pipelines for training or evaluation of SIPEC networks.
-To do so, you need to adjust the paths in the respective python files.
-The gpu flag allows you to run a script on a specific GPU while keeping other GPUs free to run other scripts on.
-
-Here are some example command line usages of the pipeline
-  ```
-    python segmentation.py --operation train_mouse --gpu 2 --cv_folds 0 --random_seed 2
-    python identification.py --config identification_config --network ours --operation train_primate --gpu 3 --fraction 0.6 --video path_to_video
-    python behavior.py --gpu 3 --operation train --config primate_final
-    python poseestimation.py --operation train_mouse --gpu 1
-    python full_inference.py --operation primate --gpu 2
-    python visualization.py --operation vis_results_primate
-  ```
-
-The output of these workflows are results files that quantify the network performance, and a .h5 file that are the network weights for subsequent use.
-Depending on modules to be trained, and the GPUs available the training can take multiple hours or days.
 
 ## Annotation of Data
 
@@ -97,6 +141,12 @@ For open field (OFT) mouse behavioral analysis, you can use the exemplary data f
 https://zenodo.org/record/3608658
 The corresponding labels can be accessed here.
 https://github.com/ETHZ-INS/DLCAnalyzer/tree/master/data/OFT/Labels
+
+##### Primate, Mouse data for different SIPEC modules (incomplete, being updated at the moment)
+https://www.dropbox.com/sh/dpkswv0j3l3j38r/AABwHUdL6XYvrhDLDSlyPFzZa?dl=0
+
+##### Pretrained Networks
+https://www.dropbox.com/sh/y387kik9mwuszl3/AABBVWALEimW-hrbXvdfjHQSa?dl=0
 
 ## Cite
 
