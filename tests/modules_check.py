@@ -4,14 +4,12 @@ from collections import defaultdict
 import importlib
 import sys
 
-print("The script started")
-
-sys.path.insert(1,'../SwissKnife/')
+sys.path.insert(1,'./SwissKnife/')
 
 def main():
     import_dict = []
     from_dict = []
-    for file in glob.glob("../SwissKnife/*.py"):
+    for file in glob.glob("./SwissKnife/*.py"):
     #for file in glob.glob("./test.py"):
         with open(file, "r") as source:
             tree = ast.parse(source.read())
@@ -56,6 +54,6 @@ class Analyzer(ast.NodeVisitor):
     def data(self):
         return self.stats
 
-
-main()
+if __name__=="__main__":
+    main()
 
