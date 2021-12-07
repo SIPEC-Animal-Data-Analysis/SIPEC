@@ -4,6 +4,8 @@ from collections import defaultdict
 import importlib
 import sys
 
+print("The script started")
+
 sys.path.insert(1,'../SwissKnife/')
 
 def main():
