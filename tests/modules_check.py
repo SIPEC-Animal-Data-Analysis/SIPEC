@@ -55,6 +55,5 @@ class Analyzer(ast.NodeVisitor):
         return self.stats
 
 
-if __name__ == "__main__":
-    main()
+main()
 
