@@ -13,7 +13,6 @@ def main():
     #for file in glob.glob("./test.py"):
         with open(file, "r") as source:
             tree = ast.parse(source.read())
-
         analyzer = Analyzer()
         analyzer.visit(tree)
         data = analyzer.data()
@@ -31,10 +30,12 @@ def main():
 def load_modules(import_list, dd):
     for mod in import_list:
         importlib.import_module(mod)
+        print(f"Importing module: {mod}")
     for key, value in dd.items():
         tmp_mod = importlib.import_module(key)
         for i in value:
             getattr(tmp_mod, i)
+            print(f"Importing: {i} from: {tmp_mod}")
 
 class Analyzer(ast.NodeVisitor):
     def __init__(self):
