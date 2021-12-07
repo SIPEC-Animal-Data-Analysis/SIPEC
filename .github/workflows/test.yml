@@ -23,8 +23,8 @@ jobs:
       - run: git checkout ci_testing
       - name: Check GPU availibility
         run: python ./tests/gpu.py
-        #- name: Loading modules
-        # run: python ./tests/modules_check.py
+      - name: Loading modules
+        run: python ./tests/modules_check.py
         #- name: download data
         #run: wget -O animal1234_day1.avi https://www.dropbox.com/s/39z4fk726yl17zl/animal1234_day1.avi?dl=0 && wget -O mask_rcnn_mouse_0095.h5 https://www.dropbox.com/s/b9opxfymea7q6mj/mask_rcnn_mouse_0095.h5?dl=0 && wget -O posenet_mouse.h5 https://www.dropbox.com/s/2cfktm9ejylvxjb/posenet_mouse.h5?dl=0 && wget -O full_inference_posenet_25_June.zip https://www.dropbox.com/s/o4brw49intljxdj/full_inference_posenet_25_June.zip?dl=0 && unzip full_inference_posenet_25_June.zip
         #- name: testing running in docker
