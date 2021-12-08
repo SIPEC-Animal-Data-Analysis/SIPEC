@@ -15,7 +15,6 @@ from tqdm import tqdm
 import pandas as pd
 from scipy import misc
 from tensorflow.keras import backend as K
-import cv2
 
 from SwissKnife.dataloader import create_dataset
 from SwissKnife.utils import (
@@ -75,6 +74,8 @@ class Dataset(utils.Dataset):
             # image = new_img.astype('uint8')
             height, width = image.shape[:2]
 
+            attributes = [r["region_attributes"] for r in a["regions"]]
+
             self.add_image(
                 self.species,
                 image_id=a["filename"],  # use file name as a unique image id
@@ -82,14 +83,15 @@ class Dataset(utils.Dataset):
                 width=width,
                 height=height,
                 polygons=polygons,
+                annotations=attributes,
             )
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
-       Returns:
-        masks: A bool array of shape [height, width, instance count] with
-            one mask per instance.
-        class_ids: a 1D array of class IDs of the instance masks.
+        Returns:
+         masks: A bool array of shape [height, width, instance count] with
+             one mask per instance.
+         class_ids: a 1D array of class IDs of the instance masks.
         """
         # If not a balloon dataset image, delegate to parent class.
         image_info = self.image_info[image_id]
@@ -104,8 +106,11 @@ class Dataset(utils.Dataset):
         )
         for i, p in enumerate(info["polygons"]):
             # Get indexes of pixels inside the polygon and set them to 1
-            rr, cc = skimage.draw.polygon(p["all_points_y"], p["all_points_x"])
-            mask[rr, cc, i] = 1
+            try:
+                rr, cc = skimage.draw.polygon(p["all_points_y"], p["all_points_x"])
+                mask[rr, cc, i] = 1
+            except (IndexError, KeyError):
+                pass
 
         # Return mask, and array of class IDs of each instance. Since we have
         # one class ID only, we return an array of 1s
@@ -120,9 +125,23 @@ class Dataset(utils.Dataset):
             super(self.__class__, self).image_reference(image_id)
 
 
+def merge_annotations(path1, path2, save_path):
+    annotations_1 = json.load(open(path1))
+    annotations_2 = json.load(open(path2))
+    annotations_1["_via_img_metadata"].update(annotations_2["_via_img_metadata"])
+    with open(save_path, "w") as f:
+        json.dump(annotations_1, f)
+
+
 # TODO: cleanup this
 def prepareData(
-    frames_path, annotations_path, species, fold=None, cv_folds=None, fraction=None
+    frames_path,
+    annotations_path,
+    species,
+    fold=None,
+    cv_folds=None,
+    fraction=None,
+    prepare=True,
 ):
     annotations = json.load(open(annotations_path))
     if "_via_img_metadata" in annotations.keys():
@@ -130,45 +149,64 @@ def prepareData(
     else:
         annotations = list(annotations.values())
 
-    # if no CV do basically 80/20 train/test split via CV interface
+    # annotations = annotations[:20]
+    # TODO: make one/cv_fold
     if cv_folds == 0:
-        cv_folds = 5
-        fold = 0
+        #
+        # Training dataset
+        dataset_train = Dataset(species)
+        dataset_train.load(frames_path, "train", annotations)
+        if prepare:
+            dataset_train.prepare()
 
-    num_imgs = len(annotations)
-    imgs_by_folds = int(float(num_imgs) / float(cv_folds))
-    if fold == cv_folds - 1:
-        annotations_val = annotations[int(fold * imgs_by_folds) :]
-        annotations_train = annotations[: int(fold * imgs_by_folds)]
+        # Validation dataset
+        dataset_val = Dataset(species)
+        dataset_val.load(frames_path, "val", annotations)
+        if prepare:
+            dataset_val.prepare()
+
     else:
-        annotations_val = annotations[
-            int(fold * imgs_by_folds) : int((fold + 1) * imgs_by_folds)
-        ]
-        annotations_train = (
-            annotations[: int(fold * imgs_by_folds)]
-            + annotations[int((fold + 1) * imgs_by_folds) :]
-        )
 
-    if fraction:
-        num_training_imgs = int(len(annotations_train) * fraction)
-        annotations_train = random.sample(annotations_train, num_training_imgs)
+        num_imgs = len(annotations)
+        imgs_by_folds = int(float(num_imgs) / float(cv_folds))
+        if fold == cv_folds - 1:
+            annotations_val = annotations[int(fold * imgs_by_folds) :]
+            annotations_train = annotations[: int(fold * imgs_by_folds)]
+        else:
+            annotations_val = annotations[
+                int(fold * imgs_by_folds) : int((fold + 1) * imgs_by_folds)
+            ]
+            annotations_train = (
+                annotations[: int(fold * imgs_by_folds)]
+                + annotations[int((fold + 1) * imgs_by_folds) :]
+            )
 
-    # Training dataset
-    dataset_train = Dataset(species)
-    dataset_train.load(frames_path, "all", annotations_train)
-    dataset_train.prepare()
+        if fraction:
+            num_training_imgs = int(len(annotations_train) * fraction)
+            annotations_train = random.sample(annotations_train, num_training_imgs)
 
-    # Validation datasetss
-    dataset_val = Dataset(species)
-    dataset_val.load(frames_path, "all", annotations_val)
-    dataset_val.prepare()
+        # Training dataset
+        dataset_train = Dataset(species)
+        dataset_train.load(frames_path, "all", annotations_train)
+
+        # Validation datasetss
+        dataset_val = Dataset(species)
+        dataset_val.load(frames_path, "all", annotations_val)
+
+        if prepare:
+            dataset_train.prepare()
+            dataset_val.prepare()
 
     return dataset_train, dataset_val
 
 
-def get_SIPEC_reproduction_data(name):
+def get_SIPEC_reproduction_data(name, cv_folds=0):
 
-    if name == "primate":
+    if name == "mouse_merged":
+        if cv_folds == 0:
+            frames_path = "/media/nexus/storage5/swissknife_data/mouse/segmentation_inputs_merged/frames/"
+            annotations_path = "/media/nexus/storage5/swissknife_data/mouse/segmentation_inputs_merged/merged_annotations.json"
+    elif name == "primate":
         # prepare path, such that roughly 0.2 of frames are in "val" folder, rest in "train" folder
         if cv_folds == 0:
             frames_path = "/media/nexus/storage5/swissknife_data/primate/segmentation_inputs/current/annotated_frames/"
@@ -208,25 +246,63 @@ def get_SIPEC_reproduction_data(name):
 def get_segmentation_data(
     frames_path=None,
     annotations_path=None,
+    base_folder=None,
     name=None,
     fold=None,
     cv_folds=None,
     fraction=None,
 ):
     # TODO: fix here for existing paths
-    print("load data")
-    # if name:
-    #     frames_path, annotations_path = get_SIPEC_reproduction_data(name)
+    # print("load data")
+    # if not name == 'mouse':
+    #     frames_path, annotations_path = get_SIPEC_reproduction_data("primate", cv_folds=5)
+    # print('awphnowpaho')
 
-    # prepare path, such that roughly 0.2 of frames are in "val" folder, rest in "train" folder
-    dataset_train, dataset_val = prepareData(
-        frames_path,
-        annotations_path,
-        species=name,
-        fold=fold,
-        cv_folds=cv_folds,
-        fraction=fraction,
-    )
+    if base_folder:
+        dataset_train = None
+        dataset_val = None
+        for root, subFolders, files in os.walk(base_folder):
+            for file in files:
+                if "json" in file:
+                    print(file)
+                    print(subFolders)
+                    print(root)
+                    annotations_path = os.path.join(root, file)
+                    if dataset_train:
+                        annotations = json.load(open(annotations_path))
+                        if "_via_img_metadata" in annotations.keys():
+                            annotations = list(
+                                annotations["_via_img_metadata"].values()
+                            )
+                        else:
+                            annotations = list(annotations.values())
+
+                        dataset_train.load(root + "/", "all", annotations)
+                    else:
+                        dataset_train, dataset_val = prepareData(
+                            root + "/",
+                            annotations_path,
+                            species=name,
+                            fold=fold,
+                            cv_folds=cv_folds,
+                            fraction=fraction,
+                            prepare=False,
+                        )
+
+        dataset_train.prepare()
+        dataset_val.prepare()
+        print("done")
+
+    else:
+        # prepare path, such that roughly 0.2 of frames are in "val" folder, rest in "train" folder
+        dataset_train, dataset_val = prepareData(
+            frames_path,
+            annotations_path,
+            species=name,
+            fold=fold,
+            cv_folds=cv_folds,
+            fraction=fraction,
+        )
     print("data loaded")
     return dataset_train, dataset_val
 
@@ -641,10 +717,6 @@ def get_individual_mouse_data():
     return x_train, y_train, x_test, y_test
 
 
-#from scipy.misc import imresize
-# imresize from scipy has been removed: https://docs.scipy.org/doc/scipy-1.2.1/reference/generated/scipy.misc.imresize.html
-# The suggested way is to use Pillow
-from PIL import Image
 from skimage import color
 
 # mouse individual (60 mice)
@@ -764,8 +836,7 @@ def generate_individual_mouse_data(
 
                 el = color.rgb2gray(el)
 
-                #el = imresize(el, 0.5)
-                el = np.array(Image.fromarray(el).resize(0.5))
+                el = imresize(el, 0.5)
 
                 vid_new.append(el)
 
