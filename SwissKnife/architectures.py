@@ -28,6 +28,7 @@ from tensorflow.keras.layers import (
     Activation,
     TimeDistributed,
     LSTM,
+    GRU,
     Input,
     Bidirectional,
     MaxPooling2D,
@@ -208,7 +209,7 @@ def classification_scratch(input_shape):
     return model
 
 
-def classification_large(input_shape):
+def classification_large(input_shape, num_classes):
     """
     Args:
         input_shape:
@@ -247,15 +248,15 @@ def classification_large(input_shape):
     model.add(Activation("relu"))
     model.add(Dropout(dropout))
 
-    model.add(Conv2D(512, kernel_size=(2, 2), strides=(2, 2), padding="valid"))
-    model.add(BatchNormalization())
-    model.add(Activation("relu"))
-    model.add(Dropout(dropout))
-
-    model.add(Conv2D(1024, kernel_size=(2, 2), strides=(2, 2), padding="valid"))
-    model.add(BatchNormalization())
-    model.add(Activation("relu"))
-    model.add(Dropout(dropout))
+    # model.add(Conv2D(512, kernel_size=(2, 2), strides=(2, 2), padding="valid"))
+    # model.add(BatchNormalization())
+    # model.add(Activation("relu"))
+    # model.add(Dropout(dropout))
+    #
+    # model.add(Conv2D(1024, kernel_size=(2, 2), strides=(2, 2), padding="valid"))
+    # model.add(BatchNormalization())
+    # model.add(Activation("relu"))
+    # model.add(Dropout(dropout))
 
     model.add(Flatten())
 
@@ -275,7 +276,7 @@ def classification_large(input_shape):
     model.add(Dropout(dropout))
 
     #     model.add(Flatten())
-    model.add(Dense(4))
+    model.add(Dense(num_classes))
     model.add(Activation("softmax"))
 
     return model
@@ -508,7 +509,8 @@ def recurrent_model_tcn(
     # TODO: config me!
     filters = 64
     kernel_size = 2
-    # dout = 0.01
+    dout = 0.1
+    alpha = 0.3
     act_fcn = "relu"
     k = Conv1D(
         filters,
@@ -517,6 +519,7 @@ def recurrent_model_tcn(
         dilation_rate=1,
         kernel_initializer="he_normal",
     )(k)
+    # k_1 = Flatten(k)
     k = BatchNormalization()(k)
     # k = Activation(LeakyReLU(alpha=0.3))(k)
     # k = Activation(Activation('relu'))(k)
@@ -563,13 +566,13 @@ def recurrent_model_tcn(
     k = Flatten()(k)
 
     k = Dense(64)(k)
-    k = Activation(LeakyReLU(alpha=0.3))(k)
+    k = Activation(LeakyReLU(alpha=alpha))(k)
     # k = Dropout(dout)(k)
     k = Dense(32)(k)
-    k = Activation(LeakyReLU(alpha=0.3))(k)
+    k = Activation(LeakyReLU(alpha=alpha))(k)
     # k = Dropout(dout)(k)
     k = Dense(16)(k)
-    k = Activation(LeakyReLU(alpha=0.3))(k)
+    k = Activation(LeakyReLU(alpha=alpha))(k)
 
     k = Dense(classes)(k)
     k = Activation("softmax")(k)
@@ -647,7 +650,7 @@ def recurrent_model_lstm(
 
 
 # TODO: adaptiv size
-def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True):
+def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True, skip_layers=False):
     """This returns the model architecture for a model that operates on images and is pretrained with imagenet weights.
     This architecture is used for IdNet and BehaviorNet as backbone in SIPEC and is referred to as RecognitionNet.
 
@@ -670,15 +673,31 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
     if model_name == "xception":
         recognition_model = Xception(
             include_top=False,
-            input_shape=(75, 75, 3),
+            input_shape=(76, 76, 3),
             # input_shape=(input_shape[0], input_shape[1], 3),
             pooling="avg",
             weights="imagenet",
         )
         # TODO: config me!
         # just if segmentation  mask is small (for 35)
-        # for i in range(0, 17):
-        #     recognition_model.layers.pop(0)
+        if skip_layers:
+            for i in range(0, 17):
+                recognition_model.layers.pop(0)
+
+    elif model_name == "efficientnet":
+        recognition_model = EfficientNetB7(
+            include_top=False,
+            input_shape=(input_shape[0], input_shape[1], 3),
+            pooling="avg",
+            weights="imagenet",
+        )
+    elif model_name == "efficientnet4":
+        recognition_model = EfficientNetB4(
+            include_top=False,
+            input_shape=(input_shape[0], input_shape[1], 3),
+            pooling="avg",
+            weights="imagenet",
+        )
 
     elif model_name == "resnet":
         recognition_model = ResNet50(
@@ -710,7 +729,7 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
         recognition_model = classification_large(input_shape, num_classes)
 
     elif model_name == "densenet":
-        recognition_model = DenseNet201(
+        recognition_model = DenseNet121(
             include_top=False,
             input_shape=(input_shape[0], input_shape[1], 3),
             pooling="avg",
@@ -743,11 +762,24 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
 
     else:
         x = Conv2D(3, kernel_size=(1, 1), strides=(1, 1))(new_input)
-        if model_name == "xception" or "inceptionv3":
-            x = ZeroPadding2D(padding=(2, 2))(x)
+        if (
+            model_name == "xception"
+            or model_name == "inceptionv3"
+            or model_name == "inceptionResnet"
+        ):
+            if input_shape[1] >= 76:
+                pass
+            else:
+                diff = 76 - input_shape[1]
+                diff = int(diff / 2)
+                x = ZeroPadding2D(padding=(diff, diff))(x)
         x = recognition_model(x)
         x = BatchNormalization()(x)
-        if model_name == "xception":
+        if (
+            model_name == "xception"
+            or model_name == "efficientnet"
+            or model_name == "efficientnet4"
+        ):
             dout = 0.25
             x = Dropout(dout)(x)
         if model_name == "densenet":
