@@ -7,6 +7,8 @@ from argparse import ArgumentParser
 from tqdm import tqdm
 from tensorflow.keras.models import load_model
 import numpy as np
+from skimage.registration import optical_flow_tvl1
+from sklearn.externals._pilutil import imresize
 
 from SwissKnife.visualization import visualize_full_inference
 from SwissKnife.masksmoothing import MaskMatcher
@@ -26,9 +28,6 @@ from SwissKnife.utils import (
 )
 from SwissKnife.model import Model
 
-from skimage.registration import optical_flow_tvl1
-from sklearn.externals._pilutil import imresize
-
 
 def full_inference(
     videodata,
@@ -41,10 +40,11 @@ def full_inference(
     mask_matching=False,
     id_matching=False,
     mask_size=256,
-    lookback_matching=100,
+    lookback_matching=300,
     lookback_behavior=25,
     mold_dimension=1024,
     max_ids=4,
+    posenet_resize_factor=None,
     behaviornet_confidence=0.5,
 ):
     """Performs full inference on a given video using available SIPEC modules.
@@ -83,24 +83,26 @@ def full_inference(
     # set threshold for detection of primate identities
     threshold = 0.5
     results = []
+    # lookback_matching = 50 # idtracker length
+    maskmatcher.hist_length = lookback_matching
+
+    prev_results = None
 
     for idx, el in tqdm(enumerate(videodata)):
         # for idx in range(length):
         #     el = cv2.imread(videodata + "frame%d.jpg" % idx)
-        if idx == 135:
+        if idx == 1253:
             print("yo")
         results_per_frame = {}
         molded_img, masks, boxes, mask_scores = networks["SegNet"].detect_image(
-            el, verbose=0, mold=False
+            el, verbose=0, mold=True
         )
 
         masks = masks[:, :, :max_ids]
         boxes = boxes[:max_ids, :]
         mask_scores = mask_scores[:max_ids]
-
         coms = masks_to_coms(masks)
         # TODO: fixme
-
         try:
             masked_imgs, masked_masks = apply_all_masks(
                 masks, coms, molded_img, mask_size=mask_size
@@ -128,14 +130,21 @@ def full_inference(
 
         if mask_matching:
 
-            if not idx == 0 and not results[-1] == 0:
-                mapping = maskmatcher.match_masks(
-                    boxes[: maskmatcher.max_ids], results[-1]["boxes"]
-                )
+            if not idx == 0:
+                try:
+                    mapping = maskmatcher.match_masks(
+                        boxes[: maskmatcher.max_ids], results[-lookback_matching:]
+                    )
+                    prev_results = results[-lookback_matching:-1]
+                except TypeError:
+                    mapping = maskmatcher.match_masks(
+                        boxes[: maskmatcher.max_ids], prev_results
+                    )
                 print(mapping)
                 new_ids = maskmatcher.match_ids(
                     mapping, len(boxes[: maskmatcher.max_ids])
                 )
+                new_ids = [el[1] + 1 for el in mapping.values()]
                 overlaps = [mapping[el][0] for el in mapping]
                 if len(overlaps) < len(boxes):
                     for i in range(len(boxes) - len(overlaps)):
@@ -150,6 +159,7 @@ def full_inference(
                     masked_imgs = maskmatcher.map(mapping, masked_imgs)
                     flow_imags = maskmatcher.map(mapping, flow_imags)
                     coms = maskmatcher.map(mapping, coms)
+                    # overlaps = maskmatcher.map(mapping, overlaps)
                 print(new_ids)
                 results_per_frame["track_ids"] = new_ids
                 results_per_frame["overalps"] = overlaps
@@ -197,8 +207,14 @@ def full_inference(
         if "PoseNet" in networks.keys():
             maps = []
             for mask_id, img in enumerate(masked_imgs):
+                if posenet_resize_factor:
+                    img = imresize(img, posenet_resize_factor).astype("uint8")
                 heatmaps = networks["PoseNet"].predict(np.expand_dims(img, axis=0))
                 heatmaps = heatmaps[0, :, :, :]
+                if posenet_resize_factor:
+                    heatmaps = imresize(heatmaps, (1 / posenet_resize_factor)).astype(
+                        "uint8"
+                    )
                 # TODO: merge with section in posestimation.py and make common util fcn
                 image, window, scale, padding, crop = mold_image(
                     example_frame, dimension=mold_dimension, return_all=True
@@ -343,10 +359,17 @@ def main():
     molded_video = mold_video(
         videodata, dimension=inference_cfg["mold_dimension"], n_jobs=20
     )
-
+    # /media/nexus/storage4/swissknife_results/second_submission/mouse20211015T1558/mask_rcnn_mouse_0095.h5
     SegNet = SegModel(species=species)
     SegNet.inference_config.DETECTION_MIN_CONFIDENCE = inference_cfg[
         "segnet_detection_confidence"
+    ]
+    SegNet.inference_config.IMAGE_MIN_DIM = inference_cfg["mold_dimension"]
+    SegNet.inference_config.IMAGE_MAX_DIM = inference_cfg["mold_dimension"]
+    SegNet.inference_config.IMAGE_SHAPE = [
+        inference_cfg["mold_dimension"],
+        inference_cfg["mold_dimension"],
+        3,
     ]
     SegNet.set_inference(model_path=segnet_path)
 
