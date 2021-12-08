@@ -64,11 +64,17 @@ def mold_image(img, config=None, dimension=None, min_dimension=None, return_all=
     elif dimension:
         if min_dimension:
             image, window, scale, padding, crop = utils.resize_image(
-                img[:, :, :], min_dim=min_dimension, max_dim=dimension, mode="pad64",
+                img[:, :, :],
+                min_dim=min_dimension,
+                max_dim=dimension,
+                mode="pad64",
             )
         else:
             image, window, scale, padding, crop = utils.resize_image(
-                img[:, :, :], min_dim=dimension, max_dim=dimension, mode="square",
+                img[:, :, :],
+                min_dim=dimension,
+                max_dim=dimension,
+                mode="square",
             )
     else:
         return NotImplementedError
@@ -87,7 +93,12 @@ def mold_video(video, config=None, dimension=None, n_jobs=40, min_dimension=None
     """
     results = Parallel(
         n_jobs=n_jobs, max_nbytes=None, backend="multiprocessing", verbose=40
-    )(delayed(mold_image)(image, config=config, dimension=dimension, min_dimension=min_dimension) for image in video)
+    )(
+        delayed(mold_image)(
+            image, config=config, dimension=dimension, min_dimension=min_dimension
+        )
+        for image in video
+    )
     return np.asarray(results)
 
 
@@ -132,6 +143,7 @@ class InferenceConfigPrimate(PrimateConfig):
     # IMAGE_MAX_DIM = 4096
     # IMAGE_SHAPE = [4096, 4096, 3]
 
+
 class MouseConfig(Config):
     NAME = "mouse"
     BACKBONE = "resnet101"
@@ -155,6 +167,7 @@ class MouseConfig(Config):
 
     WEIGHT_DECAY = 0.0001
     GRADIENT_CLIP_NORM = 1.0
+
 
 class SmallConfig(Config):
     NAME = "small"
@@ -327,7 +340,11 @@ class SegModel:
             ###
 
         #  mouse
-        if self.species == "mouse" or self.species == "ineichen" or self.species == "small":
+        if (
+            self.species == "mouse"
+            or self.species == "ineichen"
+            or self.species == "small"
+        ):
             for training_params in training_params_dict_mouse:
                 epochs, layers, lr_modifier = training_params
 
@@ -449,7 +466,6 @@ class SegModel:
             )
         else:
             raise NotImplementedError
-
 
     # FIXME: remove hardcoing
     # functioning primate model
@@ -574,7 +590,7 @@ class SegModel:
 
         for idx, batch in enumerate(range(batches)):
             start = time()
-            data = videodata[idx * batch_size: (idx + 1) * batch_size]
+            data = videodata[idx * batch_size : (idx + 1) * batch_size]
             vid_results = self.model.detect(data, verbose=1)
             results = results + vid_results
             print("time", time() - start)
@@ -586,7 +602,15 @@ class SegModel:
             return results
 
 
-def evaluate_network(model_path, species, filter_masks=False, cv_folds=0, pass_fold=None, name=None, fraction=None):
+def evaluate_network(
+    model_path,
+    species,
+    filter_masks=False,
+    cv_folds=0,
+    pass_fold=None,
+    name=None,
+    fraction=None,
+):
     # load training and val data
     """
     Args:
@@ -596,8 +620,8 @@ def evaluate_network(model_path, species, filter_masks=False, cv_folds=0, pass_f
         cv_folds:
     """
     mean_aps = []
-    IOUs=[]
-    dice=[]
+    IOUs = []
+    dice = []
     for fold in range(cv_folds + 1):
         if not fold == pass_fold:
             continue
@@ -609,7 +633,9 @@ def evaluate_network(model_path, species, filter_masks=False, cv_folds=0, pass_f
         if filter_masks:
             maskfilter = MaskFilter()
             maskfilter.train(dataset_train)
-            mean_ap, mean_iou, mean_dice = model.evaluate(dataset_val, maskfilter=maskfilter)
+            mean_ap, mean_iou, mean_dice = model.evaluate(
+                dataset_val, maskfilter=maskfilter
+            )
         else:
             mean_ap, mean_iou, mean_dice = model.evaluate(dataset_val)
         print("MEAN AP", mean_ap)
@@ -621,23 +647,26 @@ def evaluate_network(model_path, species, filter_masks=False, cv_folds=0, pass_f
     print("IOUUUUU: ", str(np.mean(np.array(IOUs))))
     print("dice: ", str(np.mean(np.array(dice))))
 
-    np.save('./' + name + 'res.npy', [np.mean(np.array(mean_aps)), np.mean(np.array(IOUs)), np.mean(np.array(dice))])
+    np.save(
+        "./" + name + "res.npy",
+        [np.mean(np.array(mean_aps)), np.mean(np.array(IOUs)), np.mean(np.array(dice))],
+    )
 
 
 # TODO: change cv folds to None default
 # TODO: seperate training from evaluation
 def train_on_data_once(
-        model_path,
-        species,
-        cv_folds=0,
-        frames_path=None,
-        load_model_path=None,
-        annotations_path=None,
-        base_folder=None,
-        fold=0,
-        fraction=None,
-        perform_evaluation=True,
-        debug=1,
+    model_path,
+    species,
+    cv_folds=0,
+    frames_path=None,
+    load_model_path=None,
+    annotations_path=None,
+    base_folder=None,
+    fold=0,
+    fraction=None,
+    perform_evaluation=True,
+    debug=1,
 ):
     """Performs training for the segmentation moduel of SIPEC (SIPEC:SegNet).
 
@@ -682,7 +711,9 @@ def train_on_data_once(
     # initiate mouse model
     model = SegModel(species)
     # initiate training
-    model.init_training(model_path=model_path, load_model_path=load_model_path, init_with="imagenet")
+    model.init_training(
+        model_path=model_path, load_model_path=load_model_path, init_with="imagenet"
+    )
     model.init_augmentation()
     # start training
     print("training on #NUM images : ", str(len(dataset_train.image_ids)))
@@ -727,13 +758,13 @@ def do_ablation(species, cv_folds, random_seed, fraction):
 
     results_path = "~/segmentation/" + species + "_" + experiment_name
     results_fname = (
-            results_path
-            + "results_array"
-            + "_"
-            + str(random_seed)
-            + "_"
-            + str(fraction)
-            + ".npy"
+        results_path
+        + "results_array"
+        + "_"
+        + str(random_seed)
+        + "_"
+        + str(fraction)
+        + ".npy"
     )
     if os.path.isfile(results_fname):
         results = list(np.load(results_fname, allow_pickle=True))
@@ -757,7 +788,7 @@ def do_ablation(species, cv_folds, random_seed, fraction):
 
 # TODO: shorten
 def train_on_data(
-        species, cv_folds, fraction=None, to_file=True, experiment="", fold=None
+    species, cv_folds, fraction=None, to_file=True, experiment="", fold=None
 ):
     # path, where to save trained model
     """
@@ -777,11 +808,7 @@ def train_on_data(
     results_path = base + "segmentation/" + species + "_" + experiment
 
     model_path = (
-            results_path
-            + str(fraction).replace('.', '_')
-            + "_fold_"
-            + str(fold)
-            + '/'
+        results_path + str(fraction).replace(".", "_") + "_fold_" + str(fold) + "/"
     )
 
     print(model_path)
@@ -813,34 +840,34 @@ def train_on_data(
 
     end = time() - start
 
-    print('time : ' + str(end))
+    print("time : " + str(end))
 
     if to_file:
 
         results_fname = (
-                results_path
-                + "results_array"
-                + "_"
-                + str(0)
-                + "_"
-                + str(fraction)
-                + "_fold_"
-                + str(fold)
-                + ".npy"
+            results_path
+            + "results_array"
+            + "_"
+            + str(0)
+            + "_"
+            + str(fraction)
+            + "_fold_"
+            + str(fold)
+            + ".npy"
         )
         if os.path.isfile(results_fname):
             results = list(np.load(results_fname, allow_pickle=True))
         else:
             results = [["random_seed", "data_fraction", "MEAN_AP"]]
         results.append([0, fraction, mean_ap, mean_iou, mean_dice])
-        print('mean aps : '  +  str(mean_ap))
-        print('mean_iou : ' + str(mean_iou))
-        print('mean_dice : ' + str(mean_dice))
+        print("mean aps : " + str(mean_ap))
+        print("mean_iou : " + str(mean_iou))
+        print("mean_dice : " + str(mean_dice))
 
         # check_folder(results_path)
         np.save(results_fname, results, allow_pickle=True)
 
-        np.save(results_path + "_" + str(fraction) + "_" + str(fold) + '_time.npy', end)
+        np.save(results_path + "_" + str(fraction) + "_" + str(fold) + "_time.npy", end)
 
     return mean_aps
 
