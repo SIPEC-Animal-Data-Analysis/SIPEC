@@ -12,7 +12,7 @@ from joblib import Parallel, delayed
 from argparse import ArgumentParser
 import imageio
 import numpy as np
-from keras import backend as K
+from tensorflow.keras import backend as K
 from skimage.transform import rescale
 import tensorflow as tf
 from datetime import datetime
@@ -22,7 +22,7 @@ from SwissKnife.architectures import idtracker_ai
 from SwissKnife.utils import (
     Metrics,
     setGPU,
-    callbacks_learningRate_plateau,
+    get_callbacks,
     check_directory,
     set_random_seed,
     load_config,
@@ -169,7 +169,10 @@ def evaluate_on_data(
             y_test = np.hstack(y_test)
 
             dataloader = Dataloader(
-                x_train[:, 4, :, :, :], y_train, x_test[:, 4, :, :, :], y_test,
+                x_train[:, 4, :, :, :],
+                y_train,
+                x_test[:, 4, :, :, :],
+                y_test,
             )
 
             dataloader.categorize_data(num_classes=num_classes)
@@ -215,6 +218,7 @@ def train_on_data(
     if species == "primate":
         print("preparing data")
         X, y, vidlist = get_primate_identification_data(scaled=True)
+        print(vidlist)
         results = []
         _results_sink = results_sink
 
@@ -239,7 +243,11 @@ def train_on_data(
         y_test = np.hstack(y_test)
 
         dataloader = Dataloader(
-            x_train[:, 4, :, :, :], y_train, x_test[:, 4, :, :, :], y_test,
+            x_train[:, 4, :, :, :],
+            y_train,
+            x_test[:, 4, :, :, :],
+            y_test,
+            config=config,
         )
 
         dataloader.x_train_recurrent = x_train
@@ -248,7 +256,8 @@ def train_on_data(
         dataloader.y_test_recurrent = y_test
 
         # TODO: doesn't work here
-        # dataloader.change_dtype()
+        dataloader.downscale_frames()
+        dataloader.change_dtype()
 
         print("data preparation done")
 
@@ -261,9 +270,7 @@ def train_on_data(
             animal_lim=num_classes, cv_folds=cv_folds, fold=fold, masking=masking
         )
 
-        dataloader = Dataloader(
-            x_train, y_train, x_test, y_test, look_back=config["look_back"]
-        )
+        dataloader = Dataloader(x_train, y_train, x_test, y_test, config=config)
 
         import matplotlib.pyplot as plt
 
@@ -325,7 +332,8 @@ def train_on_data(
 
         # set optimizer
         our_model.set_optimizer(
-            config["recognition_model_optimizer"], lr=config["recognition_model_lr"],
+            config["recognition_model_optimizer"],
+            lr=config["recognition_model_lr"],
         )
 
         ## Define callbacks
@@ -336,11 +344,12 @@ def train_on_data(
             our_model.set_lr_scheduler()
         else:
             # use standard training callback
-            CB_es, CB_lr = callbacks_learningRate_plateau()
+            CB_es, CB_lr = get_callbacks()
             our_model.add_callbacks([CB_es, CB_lr])
 
         # add sklearn metrics for tracking in training
         my_metrics = Metrics()
+        my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
         my_metrics.setModel(our_model.recognition_model)
         our_model.add_callbacks([my_metrics])
 
@@ -353,8 +362,8 @@ def train_on_data(
         if config["recognition_model_augmentation"]:
             our_model.set_augmentation(augmentation)
 
-        our_model.recognition_model_epochs = config["recognition_model_epochs"]
         our_model.recognition_model_batch_size = config["recognition_model_batch_size"]
+        our_model.recognition_model_epochs = config["recognition_model_epochs"]
 
         if config["train_recognition_model"]:
             # start training of recognition network
@@ -369,11 +378,14 @@ def train_on_data(
                 [
                     "SIPEC_recognition",
                     video,
+                    fraction,
                     metrics.balanced_accuracy_score(
                         res, np.argmax(dataloader.y_test, axis=-1)
                     ),
                     metrics.f1_score(
-                        res, np.argmax(dataloader.y_test, axis=-1), average="macro",
+                        res,
+                        np.argmax(dataloader.y_test, axis=-1),
+                        average="macro",
                     ),
                 ]
             )
@@ -396,9 +408,14 @@ def train_on_data(
                 num_classes=num_classes,
             )
             my_metrics.setModel(our_model.sequential_model)
+            my_metrics.validation_data = (
+                dataloader.x_test_recurrent,
+                dataloader.y_test_recurrent,
+            )
             our_model.add_callbacks([my_metrics])
             our_model.set_optimizer(
-                config["sequential_model_optimizer"], lr=config["sequential_model_lr"],
+                config["sequential_model_optimizer"],
+                lr=config["sequential_model_lr"],
             )
             if config["sequential_model_use_scheduler"]:
                 our_model.scheduler_lr = config["sequential_model_scheduler_lr"]
@@ -410,7 +427,7 @@ def train_on_data(
                 "sequential_model_batch_size"
             ]
 
-            CB_es, CB_lr = callbacks_learningRate_plateau()
+            CB_es, CB_lr = get_callbacks()
             CB_train = [CB_lr, CB_es]
             # our_model.add_callbacks(CB_train)
 
@@ -422,6 +439,7 @@ def train_on_data(
                 [
                     "SIPEC_sequential",
                     video,
+                    fraction,
                     metrics.balanced_accuracy_score(
                         res, np.argmax(dataloader.y_test_recurrent, axis=-1)
                     ),
@@ -446,13 +464,17 @@ def train_on_data(
 
         # Supplementary
         # optimizer default SGD, but also adam, test both
-        our_model.set_optimizer("sgd", lr=0.001)
+        our_model.set_optimizer("sgd", lr=0.0001)
 
         our_model.recognition_model_epochs = 100
-        our_model.recognition_model_batch_size = 16
+        our_model.recognition_model_batch_size = 64
+
+        CB_es = get_callbacks(patience=10, min_delta=0.05, reduce=False)
+        our_model.add_callbacks([CB_es])
 
         my_metrics = Metrics()
         my_metrics.setModel(our_model.recognition_model)
+        my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
         our_model.add_callbacks([my_metrics])
 
         our_model.train_recognition_network(dataloader=dataloader)
@@ -462,6 +484,7 @@ def train_on_data(
             [
                 "IdTracker",
                 video,
+                fraction,
                 metrics.balanced_accuracy_score(
                     res, np.argmax(dataloader.y_test, axis=-1)
                 ),
@@ -481,6 +504,7 @@ def train_on_data(
             [
                 "shuffle",
                 video,
+                fraction,
                 metrics.balanced_accuracy_score(
                     # res, np.argmax(dataloader.y_test, axis=-1)
                     res,
@@ -498,7 +522,9 @@ def train_on_data(
         print(results)
 
     np.save(
-        results_sink + "results_df", results, allow_pickle=True,
+        results_sink + "results_df",
+        results,
+        allow_pickle=True,
     )
 
 
@@ -769,24 +795,12 @@ def main():
     fold = args.fold
     nw_path = args.nw_path
 
-    if gpu_name is not None:
-        print("setting gpu")
-        setGPU(K, gpu_name)
-
     config = load_config("../configs/identification/" + config_name)
 
-    random_seed = config["random_seed"]
-    os.environ["PYTHONHASHSEED"] = str(random_seed)
-    random.seed(random_seed)
-    my_rnd_seed = np.random.seed(random_seed)
-    tf.set_random_seed(random_seed)
-    tf.random.set_random_seed(random_seed)
+    config["use_generator"] = False
 
-    keras_config = tf.ConfigProto()
-    keras_config.gpu_options.allow_growth = True
-    keras_config.gpu_options.visible_device_list = str(gpu_name)
-    sess = tf.Session(graph=tf.get_default_graph(), config=keras_config)
-    K.set_session(sess)
+    set_random_seed(config["random_seed"])
+    setGPU(gpu_name=gpu_name)
 
     if operation == "train_primate_cv":
         results_sink = (
@@ -838,6 +852,7 @@ def main():
             results_sink=results_sink,
             video=video,
             fraction=fraction,
+            masking=config["masking"],
         )
     if operation == "train_mouse":
         results_sink = (
