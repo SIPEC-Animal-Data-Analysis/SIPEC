@@ -110,6 +110,7 @@ class Dataset(utils.Dataset):
                 rr, cc = skimage.draw.polygon(p["all_points_y"], p["all_points_x"])
                 mask[rr, cc, i] = 1
             except (IndexError, KeyError):
+                print('ERROR skipping image {}'.format(image_id))
                 pass
 
         # Return mask, and array of class IDs of each instance. Since we have
