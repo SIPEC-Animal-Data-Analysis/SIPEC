@@ -1,6 +1,7 @@
 # SIPEC
 # MARKUS MARKS
 # Dataloader
+from skimage.registration import optical_flow_tvl1
 from tensorflow import keras
 import numpy as np
 from imblearn.under_sampling import RandomUnderSampler
@@ -8,29 +9,37 @@ from sklearn import preprocessing
 from sklearn.externals._pilutil import imresize
 from sklearn.utils import class_weight
 from tqdm import tqdm
+from joblib import Parallel, delayed
+import multiprocessing
+import pickle
 
+
+# adapted from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 class DataGenerator(keras.utils.Sequence):
     "Generates data for Keras"
 
     def __init__(
-            self,
-            x_train,
-            y_train,
-            look_back,
-            type='recognition',
-            batch_size=32,
-            shuffle=True,
+        self,
+        x_train,
+        y_train,
+        look_back,
+        type="recognition",
+        batch_size=32,
+        shuffle=True,
+        temporal_causal=True,
     ):
         # self.dim = dim
         self.batch_size = batch_size
         self.look_back = look_back
-        self.list_IDs = np.array(range(self.look_back, len(x_train)-self.look_back))
+        self.list_IDs = np.array(range(self.look_back, len(x_train) - self.look_back))
         # self.n_channels = n_channels
         self.shuffle = shuffle
         # self.augmentation = augmentation
         self.type = type
         self.x_train = x_train
         self.y_train = y_train
+        self.dlc_train_flat = None
+        self.temporal_causal = temporal_causal
 
         self.on_epoch_end()
 
@@ -41,7 +50,7 @@ class DataGenerator(keras.utils.Sequence):
     def __getitem__(self, index):
         "Generate one batch of data"
         # Generate indexes of the batch
-        indexes = self.indexes[index * self.batch_size: (index + 1) * self.batch_size]
+        indexes = self.indexes[index * self.batch_size : (index + 1) * self.batch_size]
 
         # Find list of IDs
         list_IDs_temp = [self.list_IDs[k] for k in indexes]
@@ -65,15 +74,20 @@ class DataGenerator(keras.utils.Sequence):
 
         # Generate data
         for i, ID in enumerate(list_IDs_temp):
-            if self.type == 'recognition':
+            if self.type == "recognition":
                 X.append(self.x_train[ID])
             else:
-                X.append(self.x_train[ID - self.look_back : ID + self.look_back])
+                if self.temporal_causal:
+                    X.append(self.x_train[ID - (2 * self.look_back): ID])
+                else:
+                    X.append(self.x_train[ID - self.look_back: ID + self.look_back])
+
             y.append(self.y_train[ID])
             # _y = self.y_train[ID - self.look_back: ID + self.look_back]
             # y.append(self.label_encoder.transform(_y))
 
-        return np.asarray(X).astype('float32'), np.asarray(y).astype('int')
+        return np.asarray(X).astype("float32"), np.asarray(y).astype("int")
+
 
 def create_dataset(dataset, look_back=5, oneD=False):
     # """Create a recurrent dataset from array.
@@ -155,6 +169,9 @@ class Dataloader:
 
         self.use_generator = False
 
+    def encode_label(self, label):
+        return self.label_encoder.transform(label)
+
     def encode_labels(self):
         self.label_encoder = preprocessing.LabelEncoder()
         self.y_train = self.label_encoder.fit_transform(self.y_train)
@@ -234,8 +251,8 @@ class Dataloader:
     def create_recurrent_labels(self, only_test=False):
 
         if only_test:
-            self.y_test_recurrent = self.y_test[self.look_back: -self.look_back]
-            self.y_test = self.y_test[self.look_back: -self.look_back]
+            self.y_test_recurrent = self.y_test[self.look_back : -self.look_back]
+            self.y_test = self.y_test[self.look_back : -self.look_back]
         else:
             self.y_train_recurrent = self.y_train[self.look_back : -self.look_back]
             self.y_test_recurrent = self.y_test[self.look_back : -self.look_back]
@@ -249,21 +266,26 @@ class Dataloader:
             oneD:
         """
         if only_test:
-            self.x_test_recurrent = create_dataset(self.x_test, self.look_back, oneD=oneD)
+            self.x_test_recurrent = create_dataset(
+                self.x_test, self.look_back, oneD=oneD
+            )
         else:
-            self.x_train_recurrent = create_dataset(self.x_train, self.look_back, oneD=oneD)
-            self.x_test_recurrent = create_dataset(self.x_test, self.look_back, oneD=oneD)
+            self.x_train_recurrent = create_dataset(
+                self.x_train, self.look_back, oneD=oneD
+            )
+            self.x_test_recurrent = create_dataset(
+                self.x_test, self.look_back, oneD=oneD
+            )
 
         # also shorten normal data so all same length
         if only_test:
             self.x_test = self.x_test[self.look_back : -self.look_back]
         else:
-            self.x_test = self.x_test[self.look_back: -self.look_back]
-            self.x_train = self.x_train[self.look_back: -self.look_back]
+            self.x_test = self.x_test[self.look_back : -self.look_back]
+            self.x_train = self.x_train[self.look_back : -self.look_back]
 
         if recurrent_labels:
             self.create_recurrent_labels(only_test=only_test)
-
 
     def create_recurrent_data_dlc(self, recurrent_labels=True):
 
@@ -276,7 +298,6 @@ class Dataloader:
 
         if recurrent_labels:
             self.create_recurrent_labels()
-
 
     # TODO: redo all like this, i.e. gettters instead of changing data
     def expand_dims(self):
@@ -318,7 +339,7 @@ class Dataloader:
             raise NotImplementedError
         if self.x_train_recurrent is not None:
             num_labels = int(len(self.x_train_recurrent) * percentage)
-            indices = np.arange(0, len(self.x_train_recurrent)-1)
+            indices = np.arange(0, len(self.x_train_recurrent) - 1)
             random_idxs = np.random.choice(indices, size=num_labels, replace=False)
             self.x_train = self.x_train[random_idxs]
             self.y_train = self.y_train[random_idxs]
@@ -425,9 +446,15 @@ class Dataloader:
         Args:
             recurrent:
         """
+
+        try:
+            rec_shape = self.x_train_recurrent.shape[1]
+        except AttributeError:
+            rec_shape = int(2 * self.look_back)
         if recurrent:
             input_shape = (
-                int(2*self.look_back),
+                # new version here:
+                rec_shape,
                 self.x_train.shape[1],
                 self.x_train.shape[2],
                 self.x_train.shape[3],
@@ -456,20 +483,22 @@ class Dataloader:
             im_re.append(imresize(el, factor))
         self.x_test = np.asarray(im_re)
 
-
-    def prepare_data(self, downscale=0.5, remove_behaviors=[], flatten=False, use_generator=True):
+    def prepare_data(
+        self, downscale=0.5, remove_behaviors=[], flatten=False, use_generator=True
+    ):
         print("preparing data")
         self.change_dtype()
 
         for behavior in remove_behaviors:
             self.remove_behavior(behavior=behavior)
-
         if downscale:
             self.downscale_frames(factor=downscale)
         if self.config["normalize_data"]:
             self.normalize_data()
+        if self.config["do_flow"]:
+            self.create_flow_data()
         if self.config["encode_labels"]:
-            print('test')
+            print("test")
             self.encode_labels()
         print("labels encoded")
         if self.config["use_class_weights"]:
@@ -477,11 +506,9 @@ class Dataloader:
             self.class_weights = class_weight.compute_class_weight(
                 "balanced", np.unique(self.y_train), self.y_train
             )
-
         if self.config["undersample_data"]:
             print("undersampling data")
             self.undersample_data()
-
         if self.config["use_generator"]:
             self.categorize_data(self.num_classes, recurrent=False)
         else:
@@ -494,3 +521,58 @@ class Dataloader:
             self.categorize_data(self.num_classes, recurrent=True)
 
         print("data ready")
+
+    def flow_single(self, fr1, fr2):
+        if len(fr1.shape) > 2:
+            fr2 = fr2[:, :, 0]
+            fr1 = fr1[:, :, 0]
+        v, u = optical_flow_tvl1(fr1, fr2)
+        v = np.expand_dims(v, axis=-1)
+        u = np.expand_dims(u, axis=-1)
+        s = np.stack([u, v], axis=2)[:, :, :, 0]
+        return v
+
+    def do_flow(self, videodata, num_cores=(multiprocessing.cpu_count()) * 2):
+
+        flow_data = Parallel(n_jobs=num_cores)(
+            delayed(self.flow_single)(videodata[i], videodata[i - 1])
+            for i in tqdm(range(1, len(videodata)))
+        )
+        flow_data = np.array(flow_data)
+        flow_data = np.vstack([np.expand_dims(flow_data[0], axis=0), flow_data])
+
+        return flow_data
+
+    def create_flow_data(self):
+
+        flow_data_train = self.do_flow(self.x_train)
+        # self.x_train = np.stack([flow_data_train, self.x_train])
+        a = np.swapaxes(flow_data_train, 0, -1)
+        b = np.swapaxes(self.x_train, 0, -1)
+        self.x_train = np.swapaxes(np.vstack([a, b]), 0, -1)
+        # self.x_train = self.x_train[:, :, :, 0, :]
+
+        flow_data_test = self.do_flow(self.x_test)
+        # self.x_test = np.stack([flow_data_test, self.x_test], axis=-1)
+        a = np.swapaxes(flow_data_test, 0, -1)
+        b = np.swapaxes(self.x_test, 0, -1)
+        self.x_test = np.swapaxes(np.vstack([a, b]), 0, -1)
+        # self.x_test = self.x_test[:, :, :, 0, :]
+
+        pass
+
+    def expand_dims(self, axis=-1):
+
+        self.x_train = np.expand_dims(self.x_train, axis=axis)
+        self.x_test = np.expand_dims(self.x_test, axis=axis)
+
+    def save(self, path):
+        self.x_train = None
+        self.x_train_recurrent = None
+        self.x_test = None
+        self.x_test_recurrent = None
+        self.y_train = None
+        self.y_train_recurrent = None
+        self.y_test = None
+        self.y_test_recurrent = None
+        pickle.dump(self, open(path, "wb"))
