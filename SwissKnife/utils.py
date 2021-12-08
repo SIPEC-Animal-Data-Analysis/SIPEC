@@ -6,21 +6,16 @@ import random
 import sys
 from glob import glob
 import pandas as pd
+import os
+import pickle
+from distutils.version import LooseVersion
+import os.path
 
 from scipy.ndimage import center_of_mass
 from skimage.filters import threshold_minimum
 from skimage.measure import regionprops
 from skimage.transform import rescale
 
-sys.path.append("../")
-
-import os
-import pickle
-from distutils.version import LooseVersion
-import os.path
-import ast
-
-# import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 import skvideo
@@ -34,6 +29,21 @@ from tqdm import tqdm
 from tensorflow.keras import backend as K
 import tensorflow.keras as keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+
+def preprocess_imagenet(X):
+    X = X.astype("float")
+    # mean and std adjustments with imagenet weights
+    X[:, :, :, 0] -= 0.485
+    X[:, :, :, 0] /= 0.229
+    X[:, :, :, 1] -= 0.456
+    X[:, :, :, 1] /= 0.224
+    X[:, :, :, 2] -= 0.406
+    X[:, :, :, 2] /= 0.225
+    X = X.astype("uint8")
+
+    return X
+
 
 # from tensorflow.keras.utils import multi_gpu_model
 
@@ -177,51 +187,6 @@ def bbox_mask(model, img, verbose=0):
 ### END Poseestimation utils
 
 
-# TODO: maybe somewhere else?
-def get_optimizer(optim_name, lr=0.01):
-    optim = None
-    if optim_name == "adam":
-        optim = keras.optimizers.Adam(lr=lr, clipnorm=0.5)
-    if optim_name == "sgd":
-        optim = keras.optimizers.SGD(lr=lr, clipnorm=0.5, momentum=0.9)
-    if optim_name == "rmsprop":
-        optim = keras.optimizers.RMSprop(lr=lr)
-    return optim
-
-
-##callbacks
-
-
-def callbacks_tf_logging(path="./logs/"):
-    logdir = os.path.join(path, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-    tf_callback = get_tensorbaord_callback(logdir)
-    return tf_callback
-
-
-def get_tensorbaord_callback(path="./logs"):
-    # Tensorflow board
-    tensorboard_callback = keras.callbacks.TensorBoard(
-        log_dir=path, histogram_freq=0, write_graph=True, write_images=True
-    )
-    return tensorboard_callback
-
-
-def callbacks_learningRate_plateau():
-    CB_lr = keras.callbacks.ReduceLROnPlateau(
-        monitor="val_loss", min_delta=0.0001, verbose=True, patience=8, min_lr=1e-7
-    )
-
-    CB_es = keras.callbacks.EarlyStopping(
-        monitor="val_loss",
-        min_delta=0.0001,
-        patience=8,
-        mode="min",
-        restore_best_weights=True,
-    )
-
-    return CB_es, CB_lr
-
-
 def masks_to_coords(masks):
     coords = []
     for i in range(masks.shape[-1]):
@@ -229,7 +194,7 @@ def masks_to_coords(masks):
     return coords
 
 
-def coords_to_masks(coords, dim=(2048, 2048)):
+def coords_to_masks(coords, dim=2048):
     masks = np.zeros((dim, dim, len(coords)), dtype="uint8")
     for coord_id, coord in enumerate(coords):
         for co in coord:
@@ -292,6 +257,9 @@ class ResultsTracker:
             print('Access on file "' + self.path + '" is not available!')
             print(str(e))
             return 0
+
+
+import ast
 
 
 # TODO: include multi behavior
@@ -391,8 +359,8 @@ def rescale_img(mask, frame, mask_size=256):
 def set_random_seed(random_seed):
     os.environ["PYTHONHASHSEED"] = str(random_seed)
     random.seed(random_seed)
-    my_rnd_seed = np.random.seed(random_seed)
-    tf.random.set_seed(random_seed)
+    tf.compat.v1.set_random_seed(random_seed)
+    tf.compat.v1.random.set_random_seed(random_seed)
 
 
 def detect_primate(_img, _model, classes, threshold):
@@ -622,6 +590,9 @@ def balanced_acc(y_true, y_pred):
         return balanced_accuracy_score(y_true.eval(), y_pred.eval())
 
 
+from sklearn.metrics import classification_report
+
+
 class Metrics(tf.keras.callbacks.Callback):
     def __init__(self, validation_data):
         self.validation_data = validation_data
@@ -655,22 +626,92 @@ class Metrics(tf.keras.callbacks.Callback):
         return self._data
 
 
+# TODO: maybe somewhere else?
+def get_optimizer(optim_name, lr=0.01):
+    optim = None
+    if optim_name == "adam":
+        optim = keras.optimizers.Adam(lr=lr, clipnorm=0.5)
+    if optim_name == "sgd":
+        optim = keras.optimizers.SGD(lr=lr, clipnorm=0.5, momentum=0.9)
+    if optim_name == "rmsprop":
+        optim = keras.optimizers.RMSprop(lr=lr)
+    return optim
+
+
+##callbacks
+
+
+def callbacks_tf_logging(path="./logs/"):
+    logdir = os.path.join(path, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    tf_callback = get_tensorbaord_callback(logdir)
+    return tf_callback
+
+
+def get_tensorbaord_callback(path="./logs"):
+    # Tensorflow board
+    tensorboard_callback = keras.callbacks.TensorBoard(
+        log_dir=path, histogram_freq=0, write_graph=True, write_images=True
+    )
+    return tensorboard_callback
+
+
+def callbacks_learningRate_plateau():
+    CB_lr = keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss", min_delta=0.0001, verbose=True, patience=8, min_lr=1e-7
+    )
+
+    CB_es = keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        min_delta=0.0001,
+        patience=8,
+        mode="min",
+        restore_best_weights=True,
+    )
+
+    return CB_es, CB_lr
+
+
+def get_callbacks(min_lr=1e-7, factor=0.1, patience=8, min_delta=0.0001, reduce=True):
+    CB_lr = keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss",
+        min_delta=min_delta,
+        verbose=True,
+        patience=patience,
+        min_lr=min_lr,
+        factor=factor,
+    )
+
+    CB_es = keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        min_delta=min_delta,
+        patience=8,
+        mode="min",
+        restore_best_weights=True,
+    )
+
+    if reduce:
+        return CB_es, CB_lr
+    else:
+        return CB_es
+
+
 def train_model(
     model,
     optimizer,
     epochs,
     batch_size,
-    data_train,
-    data_val=None,
+    dataloader,
     callbacks=None,
     class_weights=None,
     loss="crossentropy",
     augmentation=None,
     num_gpus=1,
+    multi_workers=False,
+    num_workers=1,
+    sequential=False,
 ):
     if num_gpus > 1:
-        print("This part needs to be fixed!!!")
-        # model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
+        model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
     if loss == "crossentropy":
         # TODO: integrate number of GPUs in config
         model.compile(
@@ -680,7 +721,8 @@ def train_model(
         )
     elif loss == "focal_loss":
         model.compile(
-            loss=categorical_focal_loss(gamma=3.0, alpha=0.5),
+            # baseline is gamma 2, low is 1 , high is 5
+            loss=categorical_focal_loss(gamma=5.0, alpha=0.5),
             optimizer=optimizer,
             metrics=["categorical_crossentropy", "categorical_accuracy", f1],
         )
@@ -689,89 +731,141 @@ def train_model(
 
     print(model.summary())
 
-    if augmentation:
-        image_gen = ImageDataGenerator(
-            horizontal_flip=True,
-            vertical_flip=True,
-            preprocessing_function=augmentation.augment_image,
+    if dataloader.config["use_generator"]:
+        training_history = model.fit(
+            dataloader.training_generator,
+            epochs=epochs,
+            batch_size=batch_size,
+            # steps_per_epoch=int(len(dataloader.x_train)/batch_size),
+            validation_data=dataloader.validation_generator
+            # validation_data=(x_test, y_test),
+            # callbacks=callbacks,
+            # shuffle=True,
+            # use_multiprocessing=False,
+            # steps_per_epoch=50,
+            # workers=num_workers,
         )
-
-        try:
-            batch_gen = image_gen.flow(
-                data_train[0],
-                data_train[1],
-                batch_size=batch_size,
-                shuffle=True,
-                # TODO: implement here
-                # TODO: fix seed globallly
-                #     sample_weight=train_sample_weights,
-                # TODO: check if global seed works here
-                # seed=42,
-            )
-        except ValueError:
-            batch_gen = image_gen.flow(
-                data_train[0],
-                data_train[1],
-                batch_size=batch_size,
-                shuffle=True,
-                # TODO: implement here
-                # TODO: fix seed globallly
-                #     sample_weight=train_sample_weights,
-                # seed=42,
-            )
-        # TODO: implement me
-        # if balanced:
-        # training_generator, steps_per_epoch = balanced_batch_generator(x_train, y_train,
-        #                                                                sampler=RandomOverSampler(),
-        #                                                                batch_size=32,
-        #                                                                random_state=42)
-
-        if class_weights is not None:
-            training_history = model.fit(
-                batch_gen,
-                epochs=epochs,
-                steps_per_epoch=len(data_train[0]),
-                validation_data=(data_val[0], data_val[1]),
-                callbacks=callbacks,
-                class_weight=class_weights,
-                use_multiprocessing=True,
-                workers=8,
-            )
-        else:
-            training_history = model.fit(
-                batch_gen,
-                epochs=epochs,
-                # TODO: check here, also multiprocessing
-                steps_per_epoch=len(data_train[0]),
-                validation_data=(data_val[0], data_val[1]),
-                callbacks=callbacks,
-                use_multiprocessing=True,
-                workers=8,
-            )
-
     else:
-        if class_weights is not None:
-            training_history = model.fit(
-                data_train[0],
-                data_train[1],
-                epochs=epochs,
-                batch_size=batch_size,
-                # TODO: here validation split instead ?
-                validation_data=(data_val[0], data_val[1]),
-                callbacks=callbacks,
-                shuffle=True,
-                class_weight=class_weights,
+
+        if augmentation:
+            image_gen = ImageDataGenerator(
+                horizontal_flip=True,
+                vertical_flip=True,
+                preprocessing_function=augmentation.augment_image,
             )
+
+            try:
+                batch_gen = image_gen.flow(
+                    dataloader.x_train,
+                    dataloader.y_train,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    # TODO: implement here
+                    # TODO: fix seed globallly
+                    #     sample_weight=train_sample_weights,
+                    # TODO: check if global seed works here
+                    # seed=42,
+                )
+            except ValueError:
+                batch_gen = image_gen.flow(
+                    dataloader.x_train,
+                    dataloader.y_train,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    # TODO: implement here
+                    # TODO: fix seed globallly
+                    #     sample_weight=train_sample_weights,
+                    # seed=42,
+                )
+            # TODO: implement me
+            # if balanced:
+            # training_generator, steps_per_epoch = balanced_batch_generator(x_train, y_train,
+            #                                                                sampler=RandomOverSampler(),
+            #                                                                batch_size=32,
+            #                                                                random_state=42)
+
+            if class_weights is not None:
+                training_history = model.fit_generator(
+                    batch_gen,
+                    epochs=epochs,
+                    steps_per_epoch=len(dataloader.x_train[0]),
+                    validation_data=(dataloader.x_test, dataloader.y_test),
+                    callbacks=callbacks,
+                    class_weight=class_weights,
+                    use_multiprocessing=multi_workers,
+                    workers=num_workers,
+                )
+            else:
+                training_history = model.fit_generator(
+                    batch_gen,
+                    epochs=epochs,
+                    # TODO: check here, also multiprocessing
+                    steps_per_epoch=len(dataloader.x_train[0]),
+                    validation_data=(dataloader.x_test, dataloader.y_test),
+                    callbacks=callbacks,
+                    use_multiprocessing=multi_workers,
+                    workers=num_workers,
+                )
+
         else:
-            training_history = model.fit(
-                data_train[0],
-                data_train[1],
-                epochs=epochs,
-                batch_size=batch_size,
-                validation_data=(data_val[0], data_val[1]),
-                callbacks=callbacks,
-                shuffle=True,
-            )
+            if class_weights is not None:
+                if sequential:
+                    training_history = model.fit(
+                        dataloader.x_train_recurrent,
+                        dataloader.y_train_recurrent,
+                        epochs=epochs,
+                        batch_size=batch_size,
+                        validation_data=(
+                            dataloader.x_test_recurrent,
+                            dataloader.y_test_recurrent,
+                        ),
+                        callbacks=callbacks,
+                        shuffle=True,
+                        use_multiprocessing=multi_workers,
+                        workers=num_workers,
+                        class_weight=class_weights,
+                    )
+                else:
+                    training_history = model.fit(
+                        dataloader.x_train,
+                        dataloader.y_train,
+                        epochs=epochs,
+                        batch_size=batch_size,
+                        validation_data=(dataloader.x_test, dataloader.y_test),
+                        callbacks=callbacks,
+                        shuffle=True,
+                        use_multiprocessing=multi_workers,
+                        workers=num_workers,
+                        class_weight=class_weights,
+                    )
+            else:
+                if sequential:
+                    training_history = model.fit(
+                        dataloader.x_train_recurrent,
+                        dataloader.y_train_recurrent,
+                        epochs=epochs,
+                        batch_size=batch_size,
+                        validation_data=(
+                            dataloader.x_test_recurrent,
+                            dataloader.y_test_recurrent,
+                        ),
+                        callbacks=callbacks,
+                        shuffle=True,
+                        use_multiprocessing=multi_workers,
+                        workers=num_workers,
+                    )
+                else:
+                    training_history = model.fit(
+                        dataloader.x_train,
+                        dataloader.y_train,
+                        epochs=epochs,
+                        batch_size=batch_size,
+                        validation_data=(dataloader.x_test, dataloader.y_test),
+                        callbacks=callbacks,
+                        shuffle=True,
+                        use_multiprocessing=multi_workers,
+                        workers=num_workers,
+                    )
 
     return model, training_history
 
