@@ -14,7 +14,9 @@ from SwissKnife.utils import loadVideo, load_vgg_labels, coords_to_masks, load_c
 import skvideo.io
 
 
-def visualize_labels_on_video_cv(video, labels, framerate_video, out_path):
+def visualize_labels_on_video_cv(
+    video, labels, framerate_video, out_path, num_frames=None, predictions=None
+):
     # TODO: change here to matplotlib?
     cap = cv2.VideoCapture(video)
 
@@ -23,25 +25,47 @@ def visualize_labels_on_video_cv(video, labels, framerate_video, out_path):
 
     results = []
     idx = 0
+    start_idx = 0
     while cap.isOpened():
+        print(idx)
         ret, frame = cap.read()
-        if idx < 250:
-            continue
-        else:
-            idx = 0
+        if idx == len(labels):
+            break
+        if num_frames:
+            if idx > num_frames:
+                break
         if ret:
             if idx == 0:
                 size = np.asarray(frame).shape
-            cv2.putText(
-                frame,
-                labels[idx] + "___" + str(idx),
-                (50, 50),
-                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale=1,
-                color=(255, 0, 0),
-                lineType=2,
-            )
-
+            if predictions is None:
+                cv2.putText(
+                    frame,
+                    labels[idx] + "_" + str(idx),
+                    (50, 50),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=0.5,
+                    color=(255, 0, 0),
+                    lineType=2,
+                )
+            else:
+                cv2.putText(
+                    frame,
+                    "GT:" + labels[idx],
+                    (50, 40),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=0.5,
+                    color=(255, 0, 0),
+                    lineType=2,
+                )
+                cv2.putText(
+                    frame,
+                    "Prediction:" + predictions[idx],
+                    (50, 55),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=0.5,
+                    color=(0, 255, 0),
+                    lineType=2,
+                )
             results.append(frame)
             idx += 1
         else:
@@ -57,6 +81,79 @@ def visualize_labels_on_video_cv(video, labels, framerate_video, out_path):
     out.release()
     cap.release()
     cv2.destroyAllWindows()
+
+
+def visualize_labels_on_video_skimage_array(
+    video, labels, framerate_video, out_path, num_frames=None, predictions=None
+):
+    # TODO: change here to matplotlib?
+    # cap = cv2.VideoCapture(video)
+    # if not cap.isOpened():
+    #     print("Error opening video stream or file")
+
+    results = []
+    idx = 0
+    start_idx = 0
+    # while cap.isOpened():
+    for idx in tqdm(range(0, len(video))):
+        frame = video[idx]
+        print(idx)
+        # ret, frame = cap.read()
+        # if start_idx < 251:
+        #     start_idx = start_idx + 1
+        #     continue
+        if idx == len(labels):
+            break
+        if num_frames:
+            if idx > num_frames:
+                break
+        # if ret:
+        if idx == 0:
+            size = np.asarray(frame).shape
+        if predictions is None:
+            cv2.putText(
+                frame,
+                labels[idx] + "_" + str(idx),
+                (50, 50),
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                fontScale=0.5,
+                color=(255, 0, 0),
+                lineType=2,
+            )
+        else:
+            cv2.putText(
+                frame,
+                "GT:" + labels[idx],
+                (50, 40),
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                fontScale=0.5,
+                color=(255, 0, 0),
+                lineType=2,
+            )
+            cv2.putText(
+                frame,
+                "Prediction:" + predictions[idx],
+                (50, 55),
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                fontScale=0.5,
+                color=(0, 255, 0),
+                lineType=2,
+            )
+        results.append(frame)
+        idx = idx + 1
+
+    skvideo.io.vwrite(out_path, results, verbosity=1)
+
+    # fourcc = cv2.VideoWriter_fourcc("X", "V", "I", "D")
+    # out = cv2.VideoWriter(
+    #     out_path, fourcc, framerate_video, (int(cap.get(3)), int(cap.get(4))), True
+    # )
+    # for res in results:
+    #     out.write(res)
+
+    # out.release()
+    # cap.release()
+    # cv2.destroyAllWindows()
 
 
 def visualize_labels_on_video(video_path, labels_path, outpath):
@@ -132,6 +229,8 @@ def visualize_full_inference(
     dimension=1024,
 ):
     resulting_frames = []
+
+    prev_results = None
     for idx in tqdm(range(0, len(video))):
         frame = video[idx]
 
@@ -152,7 +251,8 @@ def visualize_full_inference(
         )
 
         try:
-            coms = results[idx]["coms"]
+            results[idx]["coms"]
+            prev_results = results[idx]
         except TypeError:
             resulting_frames.append(frame)
             continue
@@ -205,7 +305,10 @@ def visualize_full_inference(
                     frame = displayBoxes(frame, box, color=colors[box_id])
                 except IndexError:
                     continue
-            masks = coords_to_masks(results[idx]["mask_coords"], dim=dimension)
+            try:
+                masks = coords_to_masks(results[idx]["mask_coords"], dim=dimension)
+            except IndexError:
+                continue
             print("num masks: ", str(masks.shape[-1]))
             for i in range(masks.shape[-1]):
                 mask = masks[:, :, i]
@@ -215,7 +318,15 @@ def visualize_full_inference(
                     pass
 
                 if display_coms:
-                    frame = displayScatter(frame, coms[i, :], color=colors[i])
+                    for hist in range(10):
+                        coms = results[idx - hist]["coms"]
+                        sizefactor = int(10.0 * (1.0 - hist / 10))
+                        try:
+                            frame = displayScatter(
+                                frame, coms[i, :], color=colors[i], size=sizefactor
+                            )
+                        except IndexError:
+                            continue
 
         if "IdNet" in networks.keys():
             offset = 100
