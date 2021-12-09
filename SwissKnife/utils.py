@@ -11,7 +11,7 @@ import pickle
 from distutils.version import LooseVersion
 import os.path
 
-from scipy.ndimage import center_of_mass
+from scipy.ndimage import center_of_mass, binary_dilation
 from skimage.filters import threshold_minimum
 from skimage.measure import regionprops
 from skimage.transform import rescale
@@ -211,13 +211,6 @@ def saveModel(model):
 def clearMemory(model, backend):
     del model
     backend.clear_session()
-
-
-def run_ai_cumulative_gradient(optimizer):
-    import runai.ga.keras
-
-    optim = runai.ga.keras.optimizers.Optimizer(optimizer, steps=8)
-    return optim
 
 
 def fix_layers(network, with_backbone=True):
