@@ -216,6 +216,16 @@ colors = [
     (255, 0, 0),
     (0, 0, 255),
     (255, 0, 255),
+    (150, 150, 150),
+    (0, 150, 0),
+    (150, 0, 0),
+    (0, 0, 150),
+    (150, 0, 150),
+    (75, 75, 75),
+    (0, 75, 0),
+    (75, 0, 0),
+    (0, 0, 75),
+    (75, 0, 75),
 ]
 
 
@@ -313,9 +323,7 @@ def visualize_full_inference(
             for i in range(masks.shape[-1]):
                 mask = masks[:, :, i]
                 print(mask)
-                if i < 4:
-                    frame = apply_mask(frame, mask, color=colors[i])
-                    pass
+                frame = apply_mask(frame, mask, color=colors[i])
 
                 if display_coms:
                     for hist in range(10):
