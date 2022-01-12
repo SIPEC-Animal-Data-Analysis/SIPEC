@@ -173,7 +173,7 @@ class SmallConfig(Config):
     NAME = "small"
     BACKBONE = "resnet101"
     IMAGES_PER_GPU = 1
-    BATCH_SIZE = 2
+    BATCH_SIZE = 1
     NUM_CLASSES = 2
     STEPS_PER_EPOCH = 100
     DETECTION_MIN_CONFIDENCE = 0.5
@@ -181,9 +181,9 @@ class SmallConfig(Config):
 
     LEARNING_RATE = 0.001
     IMAGE_RESIZE_MODE = "crop"
-    IMAGE_MIN_DIM = 512
-    IMAGE_MAX_DIM = 512
-    IMAGE_SHAPE = [512, 512, 3]
+    IMAGE_MIN_DIM = 256
+    IMAGE_MAX_DIM = 256
+    IMAGE_SHAPE = [256, 256, 3]
     USE_MINI_MASK = True
     MINI_MASK_SHAPE = (56, 56)
     MAX_GT_INSTANCES = 20
