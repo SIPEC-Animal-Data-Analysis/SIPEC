@@ -181,9 +181,9 @@ class SmallConfig(Config):
 
     LEARNING_RATE = 0.001
     IMAGE_RESIZE_MODE = "crop"
-    IMAGE_MIN_DIM = 256
-    IMAGE_MAX_DIM = 256
-    IMAGE_SHAPE = [256, 256, 3]
+    IMAGE_MIN_DIM = 128
+    IMAGE_MAX_DIM = 128
+    IMAGE_SHAPE = [128, 128, 3]
     USE_MINI_MASK = True
     MINI_MASK_SHAPE = (56, 56)
     MAX_GT_INSTANCES = 20
