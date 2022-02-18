@@ -691,6 +691,13 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
             pooling="avg",
             weights="imagenet",
         )
+    elif model_name == "efficientnet3":
+        recognition_model = EfficientNetB3(
+            include_top=False,
+            input_shape=(input_shape[0], input_shape[1], 3),
+            pooling="avg",
+            weights="imagenet",
+        )
     elif model_name == "efficientnet4":
         recognition_model = EfficientNetB4(
             include_top=False,
