@@ -348,8 +348,7 @@ def train_on_data(
             our_model.add_callbacks([CB_es, CB_lr])
 
         # add sklearn metrics for tracking in training
-        my_metrics = Metrics()
-        my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
+        my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
         my_metrics.setModel(our_model.recognition_model)
         our_model.add_callbacks([my_metrics])
 
@@ -374,6 +373,7 @@ def train_on_data(
             )
 
             res = our_model.predict(dataloader.x_test)
+            res = np.argmax(res[0], axis=-1)
             results.append(
                 [
                     "SIPEC_recognition",
@@ -389,6 +389,7 @@ def train_on_data(
                     ),
                 ]
             )
+            print(results[-1])
 
         if config["train_sequential_model"]:
             our_model.fix_recognition_layers()
@@ -435,6 +436,7 @@ def train_on_data(
             print(our_model.sequential_model.summary())
 
             res = our_model.predict_sequential(dataloader.x_test_recurrent)
+            res = np.argmax(res[0], axis=-1)
             results.append(
                 [
                     "SIPEC_sequential",
@@ -450,6 +452,7 @@ def train_on_data(
                     ),
                 ]
             )
+            print(results[-1])
             # our_model.sequential_model.sample_weights(
             #     results_sink + "IDnet_" + video + "_sequentialNet" + ".h5"
             # )
@@ -916,6 +919,7 @@ parser.add_argument(
     action="store",
     dest="config",
     type=str,
+    default='identification_config',
     help="config for specifying training params",
 )
 parser.add_argument(
