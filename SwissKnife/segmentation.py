@@ -1,7 +1,6 @@
 """
 segmentation.py
 ====================================
-The core module of my example project
 """
 
 # SIPEC
@@ -37,7 +36,7 @@ from SwissKnife.utils import (
     setGPU,
     check_folder,
     save_dict,
-    set_random_seed,
+    set_random_seed, load_config,
 )
 
 
@@ -173,7 +172,7 @@ class SmallConfig(Config):
     NAME = "small"
     BACKBONE = "resnet101"
     IMAGES_PER_GPU = 1
-    BATCH_SIZE = 1
+    BATCH_SIZE = 2
     NUM_CLASSES = 2
     STEPS_PER_EPOCH = 100
     DETECTION_MIN_CONFIDENCE = 0.5
@@ -181,9 +180,9 @@ class SmallConfig(Config):
 
     LEARNING_RATE = 0.001
     IMAGE_RESIZE_MODE = "crop"
-    IMAGE_MIN_DIM = 128
-    IMAGE_MAX_DIM = 128
-    IMAGE_SHAPE = [128, 128, 3]
+    IMAGE_MIN_DIM = 512
+    IMAGE_MAX_DIM = 512
+    IMAGE_SHAPE = [512, 512, 3]
     USE_MINI_MASK = True
     MINI_MASK_SHAPE = (56, 56)
     MAX_GT_INSTANCES = 20
@@ -229,6 +228,11 @@ class InferencIneichenConfig(IneichenConfig):
     IMAGES_PER_GPU = 1
     BATCH_SIZE = 1
 
+class IneichenConfigSmall(IneichenConfig):
+    IMAGE_MIN_DIM = 320
+    IMAGE_MAX_DIM = 320
+    IMAGE_SHAPE = [320, 320, 3]
+    MINI_MASK_SHAPE = (56, 56)
 
 class MaskFilter:
     """
@@ -251,38 +255,18 @@ class MaskFilter:
 
 class SegModel:
     # TODO: give confidence as argument
-    def __init__(self, species):
+    def __init__(self, species, training_config=None, inference_config=None):
         """Main class for a segmentation model used for training and inference.
         Args:
             species:Species to initialize parameters with. "mouse" and "primate" are available.
         """
         self.species = species
-        if self.species == "mouse":
-            self.config = MouseConfig()
-        if self.species == "primate" or self.species == "jin":
-            self.config = PrimateConfig()
-        if self.species == "ineichen":
-            self.config = IneichenConfig()
-        if self.species == "small":
-            self.config = SmallConfig()
+        self.config = training_config
+        self.inference_config = inference_config
+
         self.model_path = None
         self.augmentation = None
         self.model = None
-
-        if self.species == "mouse":
-            self.inference_config = InferenceConfigMouse()
-
-        if self.species == "primate":
-            self.inference_config = InferenceConfigPrimate()
-
-        if self.species == "ineichen":
-            self.inference_config = InferencIneichenConfig()
-
-        if self.species == "jin":
-            self.inference_config = InferencJinConfig()
-
-        if self.species == "small":
-            self.inference_config = InferenceConfigSmall()
 
         pass
 
@@ -294,77 +278,52 @@ class SegModel:
         """
 
         # TODO:modulefy me
-        if self.load_model_path:
-            training_params_dict_primate = [
-                [150, "all", 10.0],
+        if self.config.NAME == 'test':
+            training_params_dict = [
+                [5, "heads", 1.0],
             ]
         else:
-            training_params_dict_primate = [
-                [3, "heads", 1.0],
-                [5, "5+", 1.0],
-                [8, "4+", 1.0],
-                [10, "3+", 1.0],
-                [60, "all", 5.0],
-                [100, "all", 10.0],
-                [200, "all", 15.0],
-            ]
+            if self.species == "primate":
+                if self.load_model_path:
+                    training_params_dict = [
+                        [150, "all", 10.0],
+                    ]
+                else:
+                    training_params_dict = [
+                        [3, "heads", 1.0],
+                        [5, "5+", 1.0],
+                        [8, "4+", 1.0],
+                        [10, "3+", 1.0],
+                        [60, "all", 5.0],
+                        [100, "all", 10.0],
+                        [200, "all", 15.0],
+                    ]
+            else:
+                if self.load_model_path:
+                    training_params_dict = [
+                        [125, "all", 5.0],
+                        [200, "all", 10.0],
+                    ]
+                else:
+                    training_params_dict = [
+                        [1, "heads", 1.0],
+                        [5, "5+", 1.0],
+                        [8, "4+", 1.0],
+                        [20, "3+", 1.0],
+                        [100, "all", 5.0],
+                        [125, "all", 7.5],
+                        [200, "all", 10.0],
+                    ]
 
-        if self.load_model_path:
-            training_params_dict_mouse = [
-                [125, "all", 5.0],
-                [200, "all", 10.0],
-            ]
-        else:
-            training_params_dict_mouse = [
-                [1, "heads", 1.0],
-                [5, "5+", 1.0],
-                [8, "4+", 1.0],
-                [20, "3+", 1.0],
-                [100, "all", 5.0],
-                [125, "all", 7.5],
-                [200, "all", 10.0],
-            ]
+        for training_params in training_params_dict:
+            epochs, layers, lr_modifier = training_params
 
-        if self.species == "primate":
-            for training_params in training_params_dict_primate:
-                epochs, layers, lr_modifier = training_params
-
-                self.model.train(
-                    dataset_train,
-                    dataset_val,
-                    learning_rate=self.config.LEARNING_RATE / lr_modifier,
-                    epochs=epochs,
-                    layers=layers,
-                    augmentation=self.augmentation,
-                )
-            ###
-
-        #  mouse
-        if (
-            self.species == "mouse"
-            or self.species == "ineichen"
-            or self.species == "small"
-        ):
-            for training_params in training_params_dict_mouse:
-                epochs, layers, lr_modifier = training_params
-
-                self.model.train(
-                    dataset_train,
-                    dataset_val,
-                    learning_rate=self.config.LEARNING_RATE / lr_modifier,
-                    epochs=epochs,
-                    layers=layers,
-                    augmentation=self.augmentation,
-                )
-
-        if self.species == "test":
             self.model.train(
                 dataset_train,
                 dataset_val,
-                learning_rate=self.config.LEARNING_RATE,
-                # epochs=1,
-                epochs=1,
-                layers="heads",
+                learning_rate=self.config.LEARNING_RATE / lr_modifier,
+                epochs=epochs,
+                layers=layers,
                 augmentation=self.augmentation,
             )
 
@@ -658,6 +617,8 @@ def evaluate_network(
 def train_on_data_once(
     model_path,
     species,
+    config,
+    inference_config=None,
     cv_folds=0,
     frames_path=None,
     load_model_path=None,
@@ -672,6 +633,7 @@ def train_on_data_once(
 
     Parameters
     ----------
+    inference_config
     model_path : str
         Path to model, can be either where a new model should be stored or a path to an existing model to be retrained.
     cv_folds : int
@@ -709,7 +671,7 @@ def train_on_data_once(
         fraction=fraction,
     )
     # initiate mouse model
-    model = SegModel(species)
+    model = SegModel(species, training_config=config)
     # initiate training
     model.init_training(
         model_path=model_path, load_model_path=load_model_path, init_with="imagenet"
@@ -721,6 +683,8 @@ def train_on_data_once(
     # evaluate model
     if perform_evaluation:
         model = SegModel(species)
+        model.inference_config = inference_config
+        model.inference_config.__init__()
         model_path = model.set_inference(model_path=model_path)
         mean_ap, mean_iou, mean_dice = model.evaluate(dataset_val)
     if debug:
@@ -894,40 +858,36 @@ def main():
     fold = args.fold
     name = args.name
     base_folder = args.base_folder
+    config = args.config
+    inference_config = args.inference_config
 
-    # set_random_seed(42)
-    random_seed = 2
-
+    random_seed = 42
     setGPU(gpu_name)
-    set_random_seed(2)
+    set_random_seed(random_seed)
 
-    # if operation == "mouse_ablation":
-    #     do_ablation(
-    #         species="mouse",
-    #         cv_folds=cv_folds,
-    #         random_seed=random_seed,
-    #         fraction=fraction,
-    #     )
-    # if operation == "ineichen":
-    #     train_on_data(species="ineichen")
-    # if operation == "jin":
-    #     train_on_data(species="jin")
-    # if operation == "inference_primate":
-    #     inference_on_multi_animal_videos(species="primate")
-    # if operation == "evaluate_network":
-    #     evaluate_network(load_model_path, "mouse", cv_folds=5, pass_fold=fold, name=name, fraction=fraction)
-    # # TODO: pass video
-    # if operation == "inference_mouse":
-    #     inference_for_single_mouse_videos()
+    config = load_config("../configs/segmentation/" + config)
+    cfg = Config()
+    for key, value in config.items():
+        cfg.__dict__[key] = value
+    cfg.__init__()
+
+    inference_config = load_config("../configs/segmentation/" + inference_config)
+    inference_cfg = Config()
+    for key, value in inference_config.items():
+        inference_cfg.__dict__[key] = value
+    inference_cfg.__init__()
 
     train_on_data_once(
         species=operation,
         model_path=model_path,
+        config=cfg,
+        inference_config=inference_cfg,
         load_model_path=load_model_path,
         annotations_path=annotations,
         base_folder=base_folder,
         frames_path=frames,
         cv_folds=cv_folds,
+        debug=0,
     )
 
     print("done")
@@ -947,8 +907,24 @@ parser.add_argument(
     action="store",
     dest="operation",
     type=str,
-    default="train_primate",
+    default="default",
     help="deprecated - only for reproduction of SIPEC paper results",
+)
+parser.add_argument(
+    "--config",
+    action="store",
+    dest="config",
+    type=str,
+    default="training_default",
+    help="config to use",
+)
+parser.add_argument(
+    "--inference_config",
+    action="store",
+    dest="inference_config",
+    type=str,
+    default="inference_default",
+    help="inference config to use",
 )
 parser.add_argument(
     "--gpu",
@@ -966,6 +942,7 @@ parser.add_argument(
     default=None,
     help="fraction to use for training",
 )
+#TODO: add default path
 parser.add_argument(
     "--model_path",
     action="store",

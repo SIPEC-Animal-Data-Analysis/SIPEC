@@ -1,0 +1,4 @@
+NAME = inference_default
+DETECTION_MIN_CONFIDENCE = 0.9
+IMAGES_PER_GPU = 1
+BATCH_SIZE = 1
