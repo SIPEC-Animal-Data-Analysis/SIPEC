@@ -15,6 +15,7 @@ from tqdm import tqdm
 import pandas as pd
 from scipy import misc
 from tensorflow.keras import backend as K
+from sklearn.externals._pilutil import imresize
 
 from SwissKnife.dataloader import create_dataset
 from SwissKnife.utils import (
