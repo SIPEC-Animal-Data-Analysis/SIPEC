@@ -122,7 +122,7 @@ def primate_identification(level=2):
                         #                 scale={("x": (0.75, 1.25), "y": (0.75, 1.25))}, # scale images to 80-120% of their size, individually per axis
                         scale=(
                             0.85,
-                            1.85,
+                            1.15,
                         ),  # scale images to 80-120% of their size, individually per axis
                         #                 translate_percent={"x": (-0.1, 0.1), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
                         rotate=(-10, 10),  # rotate by -45 to +45 degrees
