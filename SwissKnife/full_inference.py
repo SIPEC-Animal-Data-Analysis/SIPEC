@@ -10,6 +10,7 @@ import numpy as np
 from skimage.registration import optical_flow_tvl1
 from sklearn.externals._pilutil import imresize
 
+from SwissKnife.mrcnn.config import Config
 from SwissKnife.visualization import visualize_full_inference
 from SwissKnife.masksmoothing import MaskMatcher
 from SwissKnife.poseestimation import heatmap_to_scatter, custom_binary_crossentropy
@@ -34,7 +35,7 @@ def full_inference(
     results_sink,
     networks,
     example_frame,
-    id_classes,
+    id_classes=None,
     use_flow=1,
     downsample_factor=1,
     mask_matching=False,
@@ -76,9 +77,9 @@ def full_inference(
     """
     maskmatcher = MaskMatcher()
     maskmatcher.max_ids = max_ids
-    classes = id_classes
     # invert classes / to go both ways
-    classes_invert = [el for el in classes.keys()]
+    if id_classes:
+        id_classes_invert = [el for el in id_classes.keys()]
 
     # set threshold for detection of primate identities
     threshold = 0.5
@@ -197,7 +198,7 @@ def full_inference(
             confidences = []
             for img in rescaled_imgs:
                 primate, confidence = detect_primate(
-                    img, networks["IdNet"], classes_invert, threshold
+                    img, networks["IdNet"], id_classes_invert, threshold
                 )
                 ids.append(primate)
                 confidences.append(confidence)
@@ -361,6 +362,13 @@ def main():
     )
     # /media/nexus/storage4/swissknife_results/second_submission/mouse20211015T1558/mask_rcnn_mouse_0095.h5
     SegNet = SegModel(species=species)
+    #TODO: integrate with training
+    SegNet.inference_config = Config()
+    SegNet.inference_config.NAME = "default"
+    SegNet.inference_config.NUM_CLASSES = 2
+    SegNet.inference_config.BATCH_SIZE = 1
+    SegNet.inference_config.IMAGES_PER_GPU = 1
+    SegNet.inference_config.DETECTION_MAX_INSTANCES = 10
     SegNet.inference_config.DETECTION_MIN_CONFIDENCE = inference_cfg[
         "segnet_detection_confidence"
     ]
@@ -371,6 +379,7 @@ def main():
         inference_cfg["mold_dimension"],
         3,
     ]
+    SegNet.inference_config.__init__()
     SegNet.set_inference(model_path=segnet_path)
 
     networks = {"SegNet": SegNet}
