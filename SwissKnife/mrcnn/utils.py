@@ -660,11 +660,11 @@ def compute_matches(gt_boxes, gt_class_ids, gt_masks,
 	"""Finds matches between prediction and ground truth instances.
 
 	Returns:
-		gt_match: 1-D array. For each GT box it has the index of the matched
-				  predicted box.
-		pred_match: 1-D array. For each predicted box, it has the index of
-					the matched ground truth box.
-		overlaps: [pred_boxes, gt_boxes] IoU overlaps.
+			gt_match: 1-D array. For each GT box it has the index of the matched
+							  predicted box.
+			pred_match: 1-D array. For each predicted box, it has the index of
+									the matched ground truth box.
+			overlaps: [pred_boxes, gt_boxes] IoU overlaps.
 	"""
 	# Trim zero padding
 	# TODO: cleaner to do zero unpadding upstream
@@ -682,35 +682,44 @@ def compute_matches(gt_boxes, gt_class_ids, gt_masks,
 	# Compute IoU overlaps [pred_masks, gt_masks]
 	overlaps = compute_overlaps_masks(pred_masks, gt_masks)
 
+	ious = 0
+	dices = 0
+
 	# Loop through predictions and find matching ground truth boxes
 	match_count = 0
 	pred_match = -1 * np.ones([pred_boxes.shape[0]])
 	gt_match = -1 * np.ones([gt_boxes.shape[0]])
 	for i in range(len(pred_boxes)):
-		# Find best matching ground truth box
-		# 1. Sort matches by score
-		sorted_ixs = np.argsort(overlaps[i])[::-1]
-		# 2. Remove low scores
-		low_score_idx = np.where(overlaps[i, sorted_ixs] < score_threshold)[0]
-		if low_score_idx.size > 0:
-			sorted_ixs = sorted_ixs[:low_score_idx[0]]
-		# 3. Find the match
-		for j in sorted_ixs:
-			# If ground truth box is already matched, go to next one
-			if gt_match[j] > -1:
-				continue
-			# If we reach IoU smaller than the threshold, end the loop
-			iou = overlaps[i, j]
-			if iou < iou_threshold:
-				break
-			# Do we have a match?
-			if pred_class_ids[i] == gt_class_ids[j]:
-				match_count += 1
-				gt_match[j] = i
-				pred_match[i] = j
-				break
-
-	return gt_match, pred_match, overlaps
+			# Find best matching ground truth box
+			# 1. Sort matches by score
+			sorted_ixs = np.argsort(overlaps[i])[::-1]
+			# 2. Remove low scores
+			low_score_idx = np.where(overlaps[i, sorted_ixs] < score_threshold)[0]
+			if low_score_idx.size > 0:
+					sorted_ixs = sorted_ixs[:low_score_idx[0]]
+			# 3. Find the match
+			for j in sorted_ixs:
+					# If ground truth box is already matched, go to next one
+					if gt_match[j] > -1:
+							continue
+					# If we reach IoU smaller than the threshold, end the loop
+					iou = overlaps[i, j]
+					if iou < iou_threshold:
+							break
+					# Do we have a match?
+					if pred_class_ids[i] == gt_class_ids[j]:
+							match_count += 1
+							gt_match[j] = i
+							pred_match[i] = j
+							# ious = iou
+							gt_mask = gt_masks[:, :, j]
+							pr_mask = pred_masks[:,:,i]
+							intersec = gt_mask * pr_mask
+							dice = (2 * intersec.sum()) / (pr_mask.sum() + gt_mask.sum())
+							dices = dice
+							ious = (intersec.sum()) / (pr_mask.sum() + gt_mask.sum() - intersec.sum())
+							break
+	return gt_match, pred_match, overlaps, ious, dices
 
 
 def compute_ap(gt_boxes, gt_class_ids, gt_masks,
@@ -725,7 +734,7 @@ def compute_ap(gt_boxes, gt_class_ids, gt_masks,
 	overlaps: [pred_boxes, gt_boxes] IoU overlaps.
 	"""
 	# Get matches and overlaps
-	gt_match, pred_match, overlaps = compute_matches(
+	gt_match, pred_match, overlaps, ious, dices = compute_matches(
 		gt_boxes, gt_class_ids, gt_masks,
 		pred_boxes, pred_class_ids, pred_scores, pred_masks,
 		iou_threshold)
@@ -747,9 +756,9 @@ def compute_ap(gt_boxes, gt_class_ids, gt_masks,
 	# Compute mean AP over recall range
 	indices = np.where(recalls[:-1] != recalls[1:])[0] + 1
 	mAP = np.sum((recalls[indices] - recalls[indices - 1]) *
-	             precisions[indices])
+				 precisions[indices])
 
-	return mAP, precisions, recalls, overlaps
+	return mAP, precisions, recalls, overlaps, ious, dices
 
 
 def compute_ap_range(gt_box, gt_class_id, gt_mask,
