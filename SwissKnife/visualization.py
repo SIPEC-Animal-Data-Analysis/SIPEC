@@ -31,9 +31,9 @@ def visualize_labels_on_video_cv(
         ret, frame = cap.read()
         if idx == len(labels):
             break
-        if num_frames:
-            if idx > num_frames:
-                break
+        # if num_frames:
+        #     if idx > num_frames:
+        #         break
         if ret:
             if idx == 0:
                 size = np.asarray(frame).shape
@@ -170,8 +170,10 @@ def visualize_labels_on_video(video_path, labels_path, outpath):
 
     visualize_labels_on_video_cv(video_path, labels, framerate_video, outpath)
 
+def multiply_list(list, mul):
+    return [el*mul for el in list]
 
-def displayBoxes(frame, mask, color=(0, 0, 255), animal_id=None, mask_id=None):
+def displayBoxes(frame, mask, color=(0, 0, 255), animal_id=None, mask_id=None, alpha=0.5):
     mask_color_labeled = (0, 0, 255)
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_thickness = 1
@@ -216,6 +218,34 @@ colors = [
     (255, 0, 0),
     (0, 0, 255),
     (255, 0, 255),
+    (150, 150, 150),
+    (0, 150, 0),
+    (150, 0, 0),
+    (0, 0, 150),
+    (150, 0, 150),
+    (75, 75, 75),
+    (0, 75, 0),
+    (75, 0, 0),
+    (0, 0, 75),
+    (75, 0, 75),
+]
+posenet_colors = [
+    (0, 32, 0),
+    (0, 64, 0),
+    (0, 127, 0),
+    (0, 255, 0),
+    (0, 0, 32),
+    (0, 0, 64),
+    (0, 0, 127),
+    (0, 0, 255),
+    (32, 0, 0),
+    (64, 0, 0),
+    (127, 0, 0),
+    (255, 0, 0),
+    (32, 32, 0),
+    (64, 64, 0),
+    (127, 127, 0),
+    (255, 255, 0),
 ]
 
 
@@ -229,7 +259,6 @@ def visualize_full_inference(
     dimension=1024,
 ):
     resulting_frames = []
-
     prev_results = None
     for idx in tqdm(range(0, len(video))):
         frame = video[idx]
@@ -306,6 +335,7 @@ def visualize_full_inference(
                 except IndexError:
                     continue
             try:
+                # masks = results[idx]["masked_masks"]
                 masks = coords_to_masks(results[idx]["mask_coords"], dim=dimension)
             except IndexError:
                 continue
@@ -313,9 +343,7 @@ def visualize_full_inference(
             for i in range(masks.shape[-1]):
                 mask = masks[:, :, i]
                 print(mask)
-                if i < 4:
-                    frame = apply_mask(frame, mask, color=colors[i])
-                    pass
+                frame = apply_mask(frame, mask, color=colors[i])
 
                 if display_coms:
                     for hist in range(10):
@@ -444,6 +472,118 @@ def visualize_full_inference(
                             cv2.LINE_AA,
                         )
                 except (TypeError, IndexError):
+                    continue
+
+        else:
+            name_ids = results[idx]["track_ids"]
+            mymasks = results[idx]["masked_masks"]
+            overlaps = results[idx]["overalps"]
+            for i in range(masks.shape[-1]):
+                if i >= 4:
+                    print("OUTSIDE!")
+                    continue
+                try:
+                    mask = boxes[i]
+                except IndexError:
+                    print("OUTSIDE3!")
+                    continue
+
+                try:
+                    textsize= 0.5
+                    if i < len(coms):
+                        frame = cv2.putText(
+                            frame,
+                            "X Pos " + "%.2f" % coms[i, 0],
+                            (mask[1], mask[0] - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            textsize,
+                            colors[0],
+                            1,
+                            cv2.LINE_AA,
+                        )
+                        frame = cv2.putText(
+                            frame,
+                            "Y Pos " + "%.2f" % coms[i, 1],
+                            (mask[1], mask[0] - 25),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            textsize,
+                            colors[0],
+                            1,
+                            cv2.LINE_AA,
+                        )
+                    # if i < len(confidences):
+                    #     frame = cv2.putText(
+                    #         frame,
+                    #         "Confidence " + "%.2f" % confidences[i],
+                    #         (mask[1], mask[0] - 50),
+                    #         cv2.FONT_HERSHEY_SIMPLEX,
+                    #         0.75,
+                    #         colors[0],
+                    #         1,
+                    #         cv2.LINE_AA,
+                    #     )
+                    # if i < len(name_ids):
+                    #     frame = cv2.putText(
+                    #         frame,
+                    #         "Animal ID " + name_ids[i],
+                    #         (mask[1], mask[0] - 75),
+                    #         cv2.FONT_HERSHEY_SIMPLEX,
+                    #         0.75,
+                    #         colors[0],
+                    #         1,
+                    #         cv2.LINE_AA,
+                    #     )
+                    if i < len(name_ids):
+                        frame = cv2.putText(
+                            frame,
+                            "movement " + "%.1f" % overlaps[i],
+                            (mask[1], mask[0] - 45),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            textsize,
+                            colors[0],
+                            1,
+                            cv2.LINE_AA,
+                        )
+                    # try:
+                    #     if i < len(name_ids):
+                    #         frame = cv2.putText(
+                    #             frame,
+                    #             "corrected Animal ID " + corrected_ids[i],
+                    #             (mask[1], mask[0] - 125),
+                    #             cv2.FONT_HERSHEY_SIMPLEX,
+                    #             0.75,
+                    #             colors[0],
+                    #             1,
+                    #             cv2.LINE_AA,
+                    #         )
+                    # except KeyError:
+                    #     if i < len(name_ids):
+                    #         frame = cv2.putText(
+                    #             frame,
+                    #             "corrected Animal ID " + "none",
+                    #             (mask[1], mask[0] - 150),
+                    #             cv2.FONT_HERSHEY_SIMPLEX,
+                    #             0.75,
+                    #             colors[0],
+                    #             1,
+                    #             cv2.LINE_AA,
+                    #             10,
+                    #         )
+                    if i < len(mymasks):
+                        masksize = float(mymasks[i].sum()) / float(
+                            mymasks[i].shape[0] * mymasks[i].shape[1]
+                        )
+                        frame = cv2.putText(
+                            frame,
+                            "Size " + "%.1f" % masksize,
+                            (mask[1], mask[0] - 65),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            textsize,
+                            colors[0],
+                            1,
+                            cv2.LINE_AA,
+                        )
+                except:
                     continue
 
         if "PoseNet" in networks.keys():
