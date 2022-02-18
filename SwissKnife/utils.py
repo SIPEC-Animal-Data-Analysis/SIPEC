@@ -728,11 +728,11 @@ def train_model(
         training_history = model.fit(
             dataloader.training_generator,
             epochs=epochs,
-            batch_size=batch_size,
+            # batch_size=batch_size,
             # steps_per_epoch=int(len(dataloader.x_train)/batch_size),
-            validation_data=dataloader.validation_generator
+            validation_data=dataloader.validation_generator,
             # validation_data=(x_test, y_test),
-            # callbacks=callbacks,
+            callbacks=callbacks,
             # shuffle=True,
             # use_multiprocessing=False,
             # steps_per_epoch=50,
