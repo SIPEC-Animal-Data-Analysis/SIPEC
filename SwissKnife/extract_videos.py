@@ -8,7 +8,7 @@ from tqdm import tqdm
 import os
 
 
-from SwissKnife.poseestimation import dilate_mask
+from SwissKnife.utils import dilate_mask
 from scipy.ndimage.measurements import center_of_mass
 from SwissKnife.utils import apply_to_mask
 
