@@ -26,7 +26,9 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: checkout
         uses: actions/checkout@v2
-      - run: git checkout ci_testing
+        with:
+          ref: ${{ github.ref }}
+        #- run: git checkout ci_testing
       - name: Check GPU availibility
         run: python ./tests/gpu.py
       - name: Loading modules
