@@ -2,9 +2,15 @@ name: GitHub Actions Demo
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [ ci_testing ]
+    branches:
+      - '*'         # matches every branch that doesn't contain a '/'
+      - '*/*'       # matches every branch containing a single '/'
+      - '**'        # matches every branch
   pull_request:
-    branches: [ ci_testing ]
+    branches:
+      - '*'         # matches every branch that doesn't contain a '/'
+      - '*/*'       # matches every branch containing a single '/'
+      - '**'        # matches every branch
 jobs:
   Explore-GitHub-Actions:
     #runs-on: [self-hosted, linux, X64]
