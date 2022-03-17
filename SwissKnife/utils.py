@@ -665,7 +665,7 @@ def callbacks_learningRate_plateau():
 
 
 def get_callbacks(min_lr=1e-7, factor=0.1, patience=8, min_delta=0.0001, reduce=True):
-    import keras
+    import tensorflow.keras as keras
     CB_lr = keras.callbacks.ReduceLROnPlateau(
         monitor="val_loss",
         min_delta=min_delta,
