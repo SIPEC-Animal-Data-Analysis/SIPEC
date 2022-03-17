@@ -34,6 +34,7 @@ def load_modules(import_list, dd):
     for key, value in dd.items():
         tmp_mod = importlib.import_module(key)
         for i in value:
+            print("tmp_mode {}".format(i))
             getattr(tmp_mod, i)
             print(f"Importing: {i} from: {tmp_mod}")
 
