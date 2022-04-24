@@ -178,6 +178,7 @@ class Model:
             if np.max(non_default_predictions) > threshold:
                 return prediction, np.argmax(non_default_prediction_idxs).astype(int)
             else:
+                #TODO: fixme: not always behavior but also identification
                 return prediction, default_behavior
 
     def predict_sequential(self, data):
