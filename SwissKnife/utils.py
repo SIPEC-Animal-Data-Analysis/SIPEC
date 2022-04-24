@@ -665,7 +665,9 @@ def callbacks_learningRate_plateau():
 
 
 def get_callbacks(min_lr=1e-7, factor=0.1, patience=8, min_delta=0.0001, reduce=True):
-    CB_lr = keras.callbacks.ReduceLROnPlateau(
+    #import tensorflow.keras as keras
+    from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
+    CB_lr = ReduceLROnPlateau(
         monitor="val_loss",
         min_delta=min_delta,
         verbose=True,
@@ -674,7 +676,7 @@ def get_callbacks(min_lr=1e-7, factor=0.1, patience=8, min_delta=0.0001, reduce=
         factor=factor,
     )
 
-    CB_es = keras.callbacks.EarlyStopping(
+    CB_es = EarlyStopping(
         monitor="val_loss",
         min_delta=min_delta,
         patience=8,
