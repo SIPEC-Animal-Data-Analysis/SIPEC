@@ -65,9 +65,9 @@ def train_behavior(
         our_model.add_callbacks([CB_es, CB_lr])
 
     # add sklearn metrics for tracking in training
-    my_metrics = Metrics()
+    validation_data = (dataloader.x_test, dataloader.y_test)
+    my_metrics = Metrics(validation_data)
     my_metrics.setModel(our_model.recognition_model)
-    my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
     our_model.add_callbacks([my_metrics])
 
     if config["train_recognition_model"]:
@@ -91,6 +91,10 @@ def train_behavior(
         print()
         our_model.train_recognition_network(dataloader=dataloader)
         print(config)
+
+    res = our_model.predict(dataloader.x_test, model="recognition")
+    np.save('predictions_recognition.npy', res)
+    print('safed predictions')
 
     if config["train_sequential_model"]:
         if dataloader.config["use_generator"]:
@@ -302,9 +306,6 @@ def train_primate(config, results_sink, shuffle):
         # config_name = 'primate_' + str(1)
         #
         # config = load_config("../configs/behavior/primate/" + config_name)
-        config["recognition_model_batch_size"] = 128
-        config["backbone"] = "imagenet"
-        config["encode_labels"] = True
         print(config)
 
         num_classes = config["num_classes"]
@@ -441,6 +442,9 @@ def main():
     elif operation == "train_primate":
         config_name = "primate_final"
         config = load_config("../configs/behavior/primate/" + config_name)
+        beh_config = load_config("../configs/behavior/default")
+        config.update(beh_config)
+        print(config)
         train_primate(config=config, results_sink=results_sink, shuffle=shuffle)
     else:
         config = load_config(config_name)
