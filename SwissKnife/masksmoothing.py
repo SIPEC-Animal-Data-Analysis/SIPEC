@@ -24,6 +24,7 @@ class MaskMatcher:
     def __init__(self, max_ids=4):
         self.ids = None
         self.max_ids = max_ids
+        self.hist_length = 0
         pass
 
     def bbox_to_polygon(self, bbox):
@@ -113,19 +114,58 @@ class MaskMatcher:
                 ids_list_cur[pair[0]] = ids_list_pre[pair[1]]
         return ids_list_cur
 
+    def euclidean_dist(self, com1, com2):
+        res = 0
+        for i in range(len(com1)):
+            el1 = com1[i]
+            el2 = com2[i]
+            res += np.square(el1 - el2)
+        return np.sqrt(res)
+
     def match_masks(self, bboxes_cur, bboxes_pre):
 
-        ids_list_cur = [0] * len(bboxes_cur)
-        mapping = self.bbox_match(bboxes_cur, bboxes_pre)
+        mapping_matrix = np.zeros((self.max_ids, self.max_ids))
+        for idx_cur, el_cur in enumerate(bboxes_cur):
+            for prev_boxes_idxs, prev_boxes_els in enumerate(reversed(bboxes_pre)):
+                for idx_prev, el_prev in enumerate(prev_boxes_els["boxes"]):
+                    overlap = self.iou(el_cur, el_prev)
+                    mapping_matrix[idx_prev][idx_cur] += overlap ** 2 / (
+                        prev_boxes_idxs ** 1.5 + 1
+                    )
+        for i in range(self.max_ids):
+            mx = np.max(mapping_matrix)
+            coords = np.where(mapping_matrix == mx)
+            if mx == 0:
+                # two masks merge and one leftover ids arises, pick only max
+                for col in range(len(mapping_matrix)):
+                    if np.sum(mapping_matrix[:, col]) == 0:
+                        for row in range(len(mapping_matrix)):
+                            if np.sum(mapping_matrix[row, :]) == 0:
+                                mapping_matrix[row, col] = -1
+            else:
+                # set rows and cols away from the max value to 0
+                for row in range(len(mapping_matrix)):
+                    if not row == coords[0][0]:
+                        mapping_matrix[row, coords[1][0]] = 0
+                for col in range(len(mapping_matrix)):
+                    if not col == coords[1][0]:
+                        mapping_matrix[coords[0][0], col] = 0
+                mapping_matrix[coords[0][0], coords[1][0]] = -mapping_matrix[
+                    coords[0][0], coords[1][0]
+                ]
+        mapping_matrix = -mapping_matrix
 
-        # TODO: shorten
-        delkeys = []
-        for key in mapping.keys():
-            if mapping[key] == [0, 0]:
-                delkeys.append(key)
-        for key in delkeys:
-            del mapping[key]
-        return mapping
+        mapp = {}
+        for i in range(len(mapping_matrix)):
+            col = mapping_matrix[:, i]
+            ma = np.max(col)
+            if ma == 0:
+                continue
+            mapp[i] = [
+                mapping_matrix[np.argmax(col), i] / np.max(mapping_matrix),
+                np.argmax(col),
+            ]
+        return mapp
 
     def match_ids(self, mapping, nums):
         if self.ids is None or len(mapping) == 0:

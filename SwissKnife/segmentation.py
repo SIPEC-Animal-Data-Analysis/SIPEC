@@ -1,7 +1,6 @@
 """
 segmentation.py
 ====================================
-The core module of my example project
 """
 
 # SIPEC
@@ -9,21 +8,17 @@ The core module of my example project
 # SEGMENTATION PART
 # This code is optimized from the Mask RCNN (Waleed Abdulla, (c) 2017 Matterport, Inc.) repository
 
-# TODO: Look at the warnings and resolve them
-import warnings
-
-warnings.filterwarnings("ignore")
-
 import sys
 import os
 
-sys.path.append(os.path.abspath("./"))
-sys.path.append(os.path.abspath("../"))
+import warnings
+from time import time
+
+warnings.filterwarnings("ignore")
 
 import gc
 import random
 from joblib import Parallel, delayed
-
 
 from argparse import ArgumentParser
 import os
@@ -36,19 +31,17 @@ from SwissKnife.mrcnn.config import Config
 import SwissKnife.mrcnn.model as modellib
 from SwissKnife.mrcnn import utils
 
+from SwissKnife.dataprep import get_segmentation_data
 from SwissKnife.utils import (
     setGPU,
     check_folder,
     save_dict,
-    maskedImg,
-    set_random_seed,
-    clearMemory,
+    set_random_seed, load_config,
 )
 
-from tensorflow.keras import backend as K
 
 # TODO: fix this import bug here
-from dataprep import get_segmentation_data
+# from dataprep import get_segmentation_data
 
 
 # TODO: include validation image that network detects new Ground truth!!
@@ -70,11 +63,17 @@ def mold_image(img, config=None, dimension=None, min_dimension=None, return_all=
     elif dimension:
         if min_dimension:
             image, window, scale, padding, crop = utils.resize_image(
-                img[:, :, :], min_dim=min_dimension, max_dim=dimension, mode="pad64",
+                img[:, :, :],
+                min_dim=min_dimension,
+                max_dim=dimension,
+                mode="pad64",
             )
         else:
             image, window, scale, padding, crop = utils.resize_image(
-                img[:, :, :], min_dim=dimension, max_dim=dimension, mode="square",
+                img[:, :, :],
+                min_dim=dimension,
+                max_dim=dimension,
+                mode="square",
             )
     else:
         return NotImplementedError
@@ -84,7 +83,7 @@ def mold_image(img, config=None, dimension=None, min_dimension=None, return_all=
         return image
 
 
-def mold_video(video, dimension, n_jobs=40):
+def mold_video(video, config=None, dimension=None, n_jobs=40, min_dimension=None):
     """
     Args:
         video:
@@ -93,8 +92,13 @@ def mold_video(video, dimension, n_jobs=40):
     """
     results = Parallel(
         n_jobs=n_jobs, max_nbytes=None, backend="multiprocessing", verbose=40
-    )(delayed(mold_image)(image, dimension=dimension) for image in video)
-    return results
+    )(
+        delayed(mold_image)(
+            image, config=config, dimension=dimension, min_dimension=min_dimension
+        )
+        for image in video
+    )
+    return np.asarray(results)
 
 
 # TODO: batch size in inference
@@ -157,10 +161,43 @@ class MouseConfig(Config):
     USE_MINI_MASK = True
     MINI_MASK_SHAPE = (56, 56)
     MAX_GT_INSTANCES = 4
+    DETECTION_MAX_INSTANCES = 6
     TRAIN_ROIS_PER_IMAGE = 128
 
     WEIGHT_DECAY = 0.0001
     GRADIENT_CLIP_NORM = 1.0
+
+
+class SmallConfig(Config):
+    NAME = "small"
+    BACKBONE = "resnet101"
+    IMAGES_PER_GPU = 1
+    BATCH_SIZE = 2
+    NUM_CLASSES = 2
+    STEPS_PER_EPOCH = 100
+    DETECTION_MIN_CONFIDENCE = 0.5
+    GPU_COUNT = 1
+
+    LEARNING_RATE = 0.001
+    IMAGE_RESIZE_MODE = "crop"
+    IMAGE_MIN_DIM = 512
+    IMAGE_MAX_DIM = 512
+    IMAGE_SHAPE = [512, 512, 3]
+    USE_MINI_MASK = True
+    MINI_MASK_SHAPE = (56, 56)
+    MAX_GT_INSTANCES = 20
+
+    TRAIN_ROIS_PER_IMAGE = 200
+    WEIGHT_DECAY = 0.0001
+
+    GRADIENT_CLIP_NORM = 1.0
+
+
+class InferenceConfigSmall(MouseConfig):
+    # TODO: test / anpassen
+    DETECTION_MIN_CONFIDENCE = 0.9
+    IMAGES_PER_GPU = 1
+    BATCH_SIZE = 1
 
 
 class InferenceConfigMouse(MouseConfig):
@@ -191,6 +228,11 @@ class InferencIneichenConfig(IneichenConfig):
     IMAGES_PER_GPU = 1
     BATCH_SIZE = 1
 
+class IneichenConfigSmall(IneichenConfig):
+    IMAGE_MIN_DIM = 320
+    IMAGE_MAX_DIM = 320
+    IMAGE_SHAPE = [320, 320, 3]
+    MINI_MASK_SHAPE = (56, 56)
 
 class MaskFilter:
     """
@@ -213,33 +255,18 @@ class MaskFilter:
 
 class SegModel:
     # TODO: give confidence as argument
-    def __init__(self, species):
+    def __init__(self, species, training_config=None, inference_config=None):
         """Main class for a segmentation model used for training and inference.
         Args:
             species:Species to initialize parameters with. "mouse" and "primate" are available.
         """
         self.species = species
-        if self.species == "mouse":
-            self.config = MouseConfig()
-        if self.species == "primate" or self.species == "jin":
-            self.config = PrimateConfig()
-        if self.species == "ineichen":
-            self.config = IneichenConfig()
+        self.config = training_config
+        self.inference_config = inference_config
+
         self.model_path = None
         self.augmentation = None
         self.model = None
-
-        if self.species == "mouse":
-            self.inference_config = InferenceConfigMouse()
-
-        if self.species == "primate":
-            self.inference_config = InferenceConfigPrimate()
-
-        if self.species == "ineichen":
-            self.inference_config = InferencIneichenConfig()
-
-        if self.species == "jin":
-            self.inference_config = InferencJinConfig()
 
         pass
 
@@ -251,59 +278,52 @@ class SegModel:
         """
 
         # TODO:modulefy me
-        training_params_dict_primate = [
-            [3, "heads", 1.0],
-            [5, "5+", 1.0],
-            [8, "4+", 1.0],
-            [10, "3+", 1.0],
-            [60, "all", 5.0],
-            [100, "all", 10.0],
-        ]
+        if self.config.NAME == 'test':
+            training_params_dict = [
+                [5, "heads", 1.0],
+            ]
+        else:
+            if self.species == "primate":
+                if self.load_model_path:
+                    training_params_dict = [
+                        [150, "all", 10.0],
+                    ]
+                else:
+                    training_params_dict = [
+                        [3, "heads", 1.0],
+                        [5, "5+", 1.0],
+                        [8, "4+", 1.0],
+                        [10, "3+", 1.0],
+                        [60, "all", 5.0],
+                        [100, "all", 10.0],
+                        [200, "all", 15.0],
+                    ]
+            else:
+                if self.load_model_path:
+                    training_params_dict = [
+                        [125, "all", 5.0],
+                        [200, "all", 10.0],
+                    ]
+                else:
+                    training_params_dict = [
+                        [1, "heads", 1.0],
+                        [5, "5+", 1.0],
+                        [8, "4+", 1.0],
+                        [20, "3+", 1.0],
+                        [100, "all", 5.0],
+                        [125, "all", 7.5],
+                        [200, "all", 10.0],
+                    ]
 
-        training_params_dict_mouse = [
-            [3, "heads", 1.0],
-            [5, "5+", 1.0],
-            [8, "4+", 1.0],
-            [10, "3+", 1.0],
-            [100, "all", 5.0],
-        ]
+        for training_params in training_params_dict:
+            epochs, layers, lr_modifier = training_params
 
-        if self.species == "primate":
-            for training_params in training_params_dict_primate:
-                epochs, layers, lr_modifier = training_params
-
-                self.model.train(
-                    dataset_train,
-                    dataset_val,
-                    learning_rate=self.config.LEARNING_RATE / lr_modifier,
-                    epochs=epochs,
-                    layers=layers,
-                    augmentation=self.augmentation,
-                )
-            ###
-
-        #  mouse
-        if self.species == "mouse" or self.species == "ineichen":
-            for training_params in training_params_dict_mouse:
-                epochs, layers, lr_modifier = training_params
-
-                self.model.train(
-                    dataset_train,
-                    dataset_val,
-                    learning_rate=self.config.LEARNING_RATE / lr_modifier,
-                    epochs=epochs,
-                    layers=layers,
-                    augmentation=self.augmentation,
-                )
-
-        if self.species == "test":
             self.model.train(
                 dataset_train,
                 dataset_val,
-                learning_rate=self.config.LEARNING_RATE,
-                # epochs=1,
-                epochs=1,
-                layers="heads",
+                learning_rate=self.config.LEARNING_RATE / lr_modifier,
+                epochs=epochs,
+                layers=layers,
                 augmentation=self.augmentation,
             )
 
@@ -364,13 +384,14 @@ class SegModel:
                 random_order=True,
             )
 
-    def init_training(self, model_path, init_with="coco"):
+    def init_training(self, model_path, load_model_path=None, init_with="coco"):
         """Initialized training of a new or existing segmentation network.
         Args:
             model_path:Path to segmentation network, either existing or desired path for new model.
             init_with:The initializations "imagenet" or "coco" are available for new segmentation models and "last" if retraining existing network.
         """
         self.model_path = model_path
+        self.load_model_path = load_model_path
         # Create model in training mode
         self.model = modellib.MaskRCNN(
             mode="training", config=self.config, model_dir=self.model_path
@@ -378,7 +399,12 @@ class SegModel:
 
         self.config.display()
 
-        if init_with == "imagenet":
+        if load_model_path:
+            self.model.load_weights(
+                load_model_path,
+                by_name=True,
+            )
+        elif init_with == "imagenet":
             self.model.load_weights(self.model.get_imagenet_weights(), by_name=True)
         elif init_with == "coco":
             # Load weights trained on MS COCO, but skip layers that
@@ -397,13 +423,8 @@ class SegModel:
                     "mrcnn_mask",
                 ],
             )
-        elif init_with == "last":
-            # Load the last model you trained and continue training
-            # self.model.load_weights(self.model.find_last(), by_name=True)
-            self.model.load_weights(
-                "/media/nexus/storage4/swissknife_results/segmentation/mouse_/mouse20200624T0724/mask_rcnn_mouse_0040.h5",
-                by_name=True,
-            )
+        else:
+            raise NotImplementedError
 
     # FIXME: remove hardcoing
     # functioning primate model
@@ -439,6 +460,8 @@ class SegModel:
         image_ids = dataset_val.image_ids
 
         APs = []
+        IOUs = []
+        dice = []
         for image_id in image_ids:
             # Load image and ground truth data
             image, image_meta, gt_class_id, gt_bbox, gt_mask = modellib.load_image_gt(
@@ -448,7 +471,7 @@ class SegModel:
             if maskfilter:
                 r = maskfilter.predict(r)
             # Compute AP
-            AP, precisions, recalls, overlaps = utils.compute_ap(
+            AP, precisions, recalls, overlaps, _ious, dices = utils.compute_ap(
                 gt_bbox,
                 gt_class_id,
                 gt_mask,
@@ -458,13 +481,21 @@ class SegModel:
                 r["masks"],
             )
             APs.append(AP)
+            # IOUs.append(np.mean(overlaps))
+            IOUs.append(_ious)
+            dice.append(dices)
 
         mean_ap = np.mean(APs)
+        mean_iou = np.mean(IOUs)
+        mean_dice = np.mean(dice)
         print("evaluation done")
         print("mAP: ", mean_ap)
+        print("IOUUUUU: ", mean_iou)
+        print("dice: ", mean_dice)
 
-        return mean_ap
+        return mean_ap, mean_iou, mean_dice
 
+    # TODO: implement adaptive batch inference
     def detect_image(self, img, mold=True, verbose=1):
         """
         Args:
@@ -489,6 +520,18 @@ class SegModel:
             img = mold_image(img, self.inference_config)
         result = self.model.detect([img], verbose=verbose)
         return result[0]
+
+    def detect_batch(self, img_list, mold=True, verbose=1):
+        """
+        Args:
+            img_list:
+            mold:
+            verbose:
+        """
+        if mold:
+            img_list = mold_video(img_list, self.inference_config)
+        result = self.model.detect(img_list, verbose=verbose)
+        return result
 
     def detect_video(self, video, results_sink=None):
 
@@ -518,7 +561,15 @@ class SegModel:
             return results
 
 
-def evaluate_network(model_path, species, filter_masks=False, cv_folds=0):
+def evaluate_network(
+    model_path,
+    species,
+    filter_masks=False,
+    cv_folds=0,
+    pass_fold=None,
+    name=None,
+    fraction=None,
+):
     # load training and val data
     """
     Args:
@@ -528,41 +579,61 @@ def evaluate_network(model_path, species, filter_masks=False, cv_folds=0):
         cv_folds:
     """
     mean_aps = []
+    IOUs = []
+    dice = []
     for fold in range(cv_folds + 1):
+        if not fold == pass_fold:
+            continue
         dataset_train, dataset_val = get_segmentation_data(
-            species, cv_folds=cv_folds, fold=fold, fraction=1.0
+            species, cv_folds=cv_folds, fold=fold, fraction=1.0, name="mouse"
         )
         model = SegModel(species)
         model.set_inference(model_path=model_path)
         if filter_masks:
             maskfilter = MaskFilter()
             maskfilter.train(dataset_train)
-            mean_ap = model.evaluate(dataset_val, maskfilter=maskfilter)
+            mean_ap, mean_iou, mean_dice = model.evaluate(
+                dataset_val, maskfilter=maskfilter
+            )
         else:
-            mean_ap = model.evaluate(dataset_val)
+            mean_ap, mean_iou, mean_dice = model.evaluate(dataset_val)
         print("MEAN AP", mean_ap)
         mean_aps.append(mean_ap)
+        IOUs.append(mean_iou)
+        dice.append(mean_dice)
     print("overall aps", mean_aps)
     print("mAP: ", str(np.mean(np.array(mean_aps))))
+    print("IOUUUUU: ", str(np.mean(np.array(IOUs))))
+    print("dice: ", str(np.mean(np.array(dice))))
+
+    np.save(
+        "./" + name + "res.npy",
+        [np.mean(np.array(mean_aps)), np.mean(np.array(IOUs)), np.mean(np.array(dice))],
+    )
 
 
 # TODO: change cv folds to None default
-# TODO: make default species
+# TODO: seperate training from evaluation
 def train_on_data_once(
     model_path,
+    species,
+    config,
+    inference_config=None,
     cv_folds=0,
     frames_path=None,
+    load_model_path=None,
     annotations_path=None,
-    species=None,
+    base_folder=None,
     fold=0,
     fraction=None,
     perform_evaluation=True,
-    debug=0,
+    debug=1,
 ):
     """Performs training for the segmentation moduel of SIPEC (SIPEC:SegNet).
 
     Parameters
     ----------
+    inference_config
     model_path : str
         Path to model, can be either where a new model should be stored or a path to an existing model to be retrained.
     cv_folds : int
@@ -593,15 +664,18 @@ def train_on_data_once(
     dataset_train, dataset_val = get_segmentation_data(
         frames_path=frames_path,
         annotations_path=annotations_path,
+        base_folder=base_folder,
         name=species,
         cv_folds=cv_folds,
         fold=fold,
         fraction=fraction,
     )
     # initiate mouse model
-    model = SegModel(species)
+    model = SegModel(species, training_config=config)
     # initiate training
-    model.init_training(model_path=model_path, init_with="coco")
+    model.init_training(
+        model_path=model_path, load_model_path=load_model_path, init_with="imagenet"
+    )
     model.init_augmentation()
     # start training
     print("training on #NUM images : ", str(len(dataset_train.image_ids)))
@@ -609,30 +683,29 @@ def train_on_data_once(
     # evaluate model
     if perform_evaluation:
         model = SegModel(species)
+        model.inference_config = inference_config
+        model.inference_config.__init__()
         model_path = model.set_inference(model_path=model_path)
-        mean_ap = model.evaluate(dataset_val)
-
-    # if species == "primate" or species == "mouse":
-    #     debug = 1
+        mean_ap, mean_iou, mean_dice = model.evaluate(dataset_val)
     if debug:
-        helper = model_path.split("mask_rcnn_primate_0")
+        helper = model_path.split("mask_rcnn_" + species + "_0")
         epochs = [
-            "010",
-            "020",
             "030",
+            "050",
+            "095",
         ]
         print(helper)
-        print(helper[0] + "mask_rcnn_primate_0" + "001" + ".h5")
+        print(helper[0] + "mask_rcnn_" + species + "_0" + "001" + ".h5")
         for epoch in epochs:
-            model = SegModel("primate")
+            model = SegModel(species)
             model.set_inference(
-                model_path=helper[0] + "mask_rcnn_primate_0" + epoch + ".h5"
+                model_path=helper[0] + "mask_rcnn_" + species + "_0" + epoch + ".h5"
             )
             mean_ap = model.evaluate(dataset_val)
             print(epoch)
             print(mean_ap)
 
-    return model, mean_ap
+    return model, mean_ap, mean_iou, mean_dice
 
 
 def do_ablation(species, cv_folds, random_seed, fraction):
@@ -647,10 +720,10 @@ def do_ablation(species, cv_folds, random_seed, fraction):
 
     import os.path
 
-    results_path = "./segmentation_logs/" + species + "_" + experiment_name + "/"
+    results_path = "~/segmentation/" + species + "_" + experiment_name
     results_fname = (
         results_path
-        + "./results_array"
+        + "results_array"
         + "_"
         + str(random_seed)
         + "_"
@@ -691,63 +764,74 @@ def train_on_data(
         experiment:
         fold:
     """
+    experiment_name = "cv"
+    import os.path
+
+    # results_path = "./segmentation_logs_1st_review/" + species + "_" + experiment_name + "/"
+    base = "~/"
+    results_path = base + "segmentation/" + species + "_" + experiment
+
     model_path = (
-        "/media/nexus/storage5/swissknife_results/segmentation/"
-        + species
-        + "_"
-        + experiment
-        + "/"
+        results_path + str(fraction).replace(".", "_") + "_fold_" + str(fold) + "/"
     )
+
+    print(model_path)
+
+    start = time()
+
     model = None
     mean_aps = []
     if cv_folds > 0:
         if fold is not None:
             print("TRAINING on FOLD", str(fold))
-            model, mean_ap = train_on_data_once(
+            model, mean_ap, mean_iou, mean_dice = train_on_data_once(
                 model_path, species, cv_folds=cv_folds, fold=fold, fraction=fraction
             )
             mean_aps.append(mean_ap)
             gc.collect()
         else:
             for fold in range(cv_folds):
-                model, mean_ap = train_on_data_once(
+                model, mean_ap, mean_iou, mean_dice = train_on_data_once(
                     model_path, species, cv_folds=cv_folds, fold=fold, fraction=fraction
                 )
                 mean_aps.append(mean_ap)
                 gc.collect()
     else:
-        model, mean_ap = train_on_data_once(
+        model, mean_ap, mean_iou, mean_dice = train_on_data_once(
             model_path, species, cv_folds=cv_folds, fold=0, fraction=fraction
         )
         print("MEAN AP", mean_ap)
 
-    if to_file:
-        if fold is not None:
-            fold = str(fold)
-        else:
-            fold = ""
-        experiment_name = "cv"
-        import os.path
+    end = time() - start
 
-        results_path = "./segmentation_logs/" + species + "_" + experiment_name + "/"
+    print("time : " + str(end))
+
+    if to_file:
+
         results_fname = (
             results_path
-            + "./results_array"
+            + "results_array"
             + "_"
             + str(0)
             + "_"
             + str(fraction)
             + "_fold_"
-            + fold
+            + str(fold)
             + ".npy"
         )
         if os.path.isfile(results_fname):
             results = list(np.load(results_fname, allow_pickle=True))
         else:
             results = [["random_seed", "data_fraction", "MEAN_AP"]]
-        results.append([0, fraction, mean_aps])
-        check_folder(results_path)
+        results.append([0, fraction, mean_ap, mean_iou, mean_dice])
+        print("mean aps : " + str(mean_ap))
+        print("mean_iou : " + str(mean_iou))
+        print("mean_dice : " + str(mean_dice))
+
+        # check_folder(results_path)
         np.save(results_fname, results, allow_pickle=True)
+
+        np.save(results_path + "_" + str(fraction) + "_" + str(fold) + "_time.npy", end)
 
     return mean_aps
 
@@ -766,65 +850,44 @@ def main():
     gpu_name = args.gpu
     cv_folds = args.cv_folds
     model_path = args.model_path
+    load_model_path = args.load_model_path
     annotations = args.annotations
     frames = args.frames
     operation = args.operation
     fraction = args.fraction
     fold = args.fold
+    name = args.name
+    base_folder = args.base_folder
+    config = args.config
+    inference_config = args.inference_config
 
-    set_random_seed(42)
+    random_seed = 42
+    setGPU(gpu_name)
+    set_random_seed(random_seed)
 
-    if gpu_name is not None:
-        setGPU(gpu_name)
+    config = load_config("../configs/segmentation/" + config)
+    cfg = Config()
+    for key, value in config.items():
+        cfg.__dict__[key] = value
+    cfg.__init__()
 
-    # TODO: remove operations/replace with annot/frames and paths
-    # if operation == "train_primate":
-    #     # TODO: fix having random seed here as global argument
-    #     # TODO: shorten everything
-    #     set_random_seed(random_seed)
-    #     random.seed(random_seed)
-    #     train_on_data(
-    #         species="primate",
-    #         cv_folds=cv_folds,
-    #         to_file=True,
-    #         fold=fold,
-    #         fraction=fraction,
-    #     )
-    # if operation == "train_mouse":
-    #     set_random_seed(random_seed)
-    #     random.seed(random_seed)
-    #     train_on_data(
-    #         species="mouse",
-    #         cv_folds=cv_folds,
-    #         to_file=True,
-    #         fold=fold,
-    #         fraction=fraction,
-    #     )
-    # if operation == "mouse_ablation":
-    #     do_ablation(
-    #         species="mouse",
-    #         cv_folds=cv_folds,
-    #         random_seed=random_seed,
-    #         fraction=fraction,
-    #     )
-    # if operation == "ineichen":
-    #     train_on_data(species="ineichen")
-    # if operation == "jin":
-    #     train_on_data(species="jin")
-    # if operation == "inference_primate":
-    #     inference_on_multi_animal_videos(species="primate")
-    # if operation == "evaluate_network":
-    #     evaluate_network(model_path, "primate", cv_folds=5)
-    # # TODO: pass video
-    # if operation == "inference_mouse":
-    #     inference_for_single_mouse_videos()
+    inference_config = load_config("../configs/segmentation/" + inference_config)
+    inference_cfg = Config()
+    for key, value in inference_config.items():
+        inference_cfg.__dict__[key] = value
+    inference_cfg.__init__()
 
     train_on_data_once(
-        species="mouse",
+        species=operation,
         model_path=model_path,
+        config=cfg,
+        inference_config=inference_cfg,
+        load_model_path=load_model_path,
         annotations_path=annotations,
+        base_folder=base_folder,
         frames_path=frames,
         cv_folds=cv_folds,
+        debug=0,
     )
 
     print("done")
@@ -844,15 +907,31 @@ parser.add_argument(
     action="store",
     dest="operation",
     type=str,
-    default="train_primate",
+    default="default",
     help="deprecated - only for reproduction of SIPEC paper results",
+)
+parser.add_argument(
+    "--config",
+    action="store",
+    dest="config",
+    type=str,
+    default="training_default",
+    help="config to use",
+)
+parser.add_argument(
+    "--inference_config",
+    action="store",
+    dest="inference_config",
+    type=str,
+    default="inference_default",
+    help="inference config to use",
 )
 parser.add_argument(
     "--gpu",
     action="store",
     dest="gpu",
-    type=str,
-    default=None,
+    type=int,
+    default=0,
     help="filename of the video to be processed (has to be a segmented one)",
 )
 parser.add_argument(
@@ -863,13 +942,22 @@ parser.add_argument(
     default=None,
     help="fraction to use for training",
 )
+#TODO: add default path
 parser.add_argument(
     "--model_path",
     action="store",
     dest="model_path",
     type=str,
-    default="/home/user/results/",
-    help="model path for evaluation",
+    default=None,
+    help="model path for saving",
+)
+parser.add_argument(
+    "--load_model_path",
+    action="store",
+    dest="load_model_path",
+    type=str,
+    default=None,
+    help="model path for evaluation or training continuation",
 )
 parser.add_argument(
     "--fold",
@@ -894,6 +982,22 @@ parser.add_argument(
     type=str,
     default=None,
     help="path to folder with annotated frames",
+)
+parser.add_argument(
+    "--name",
+    action="store",
+    dest="name",
+    type=str,
+    default=None,
+    help="path to folder with annotated frames",
+)
+parser.add_argument(
+    "--base_folder",
+    action="store",
+    dest="base_folder",
+    type=str,
+    default=None,
+    help="path to folders with subfolders of annotated frames and json inside",
 )
 
 if __name__ == "__main__":
