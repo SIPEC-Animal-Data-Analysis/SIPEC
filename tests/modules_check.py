@@ -1,15 +1,17 @@
+import os
 import ast
 import glob
 from collections import defaultdict
 import importlib
 import sys
 
-sys.path.insert(1,'./SwissKnife/')
+sys.path.insert(1,os.path.join('/home/user/SIPEC/SwissKnife/'))
+sys.path.insert(1,os.path.join('/home/user/SIPEC/SwissKnife/mrcnn/'))
 
 def main():
     import_dict = []
     from_dict = []
-    for file in glob.glob("./SwissKnife/*.py"):
+    for file in glob.glob("/home/user/SIPEC/SwissKnife/*.py"):
     #for file in glob.glob("./test.py"):
         with open(file, "r") as source:
             tree = ast.parse(source.read())
@@ -33,11 +35,14 @@ def load_modules(import_list, dd):
         importlib.import_module(mod)
         print(f"Importing module: {mod}")
     for key, value in dd.items():
-        tmp_mod = importlib.import_module(key)
-        for i in value:
-            print("tmp_mod, i : {} {}".format(tmp_mod, i))
-            getattr(tmp_mod, i)
-            print(f"Importing: {i} from: {tmp_mod}")
+        if key == "SwissKnife.mrcnn":
+            pass
+        else:
+            tmp_mod = importlib.import_module(key)
+            for i in value:
+                print("tmp_mod, i : {} {}".format(tmp_mod, i))
+                getattr(tmp_mod, i)
+                print(f"Importing: {i} from: {tmp_mod}")
 
 class Analyzer(ast.NodeVisitor):
     def __init__(self):
@@ -57,5 +62,6 @@ class Analyzer(ast.NodeVisitor):
         return self.stats
 
 if __name__=="__main__":
+    print(os.getcwd())
     main()
 

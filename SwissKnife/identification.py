@@ -36,7 +36,6 @@ from SwissKnife.utils import (
     rescale_img,
     set_random_seed,
     setGPU,
-    mask_image,
 )
 
 video_train = [

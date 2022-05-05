@@ -23,7 +23,7 @@ from tqdm import tqdm
 
 from SwissKnife.dataloader import create_dataset
 from SwissKnife.mrcnn import utils
-from SwissKnife.segmentation import SegModel
+#from SwissKnife.segmentation import SegModel
 from SwissKnife.utils import (dilate_mask, heatmap_mask,
                               heatmaps_for_image_whole, heatmaps_for_images,
                               heatmaps_to_locs, loadVideo, setGPU)

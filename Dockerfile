@@ -65,15 +65,15 @@ RUN mkdir /home/user/data
 
 WORKDIR /home/user/data/
 
-RUN wget -O pretrained_networks.zip https://www.dropbox.com/s/38adfecf6741gm6/pretrained_networks.zip?dl=0 && unzip pretrained_networks.zip -x / -d pretrained_networks && rm pretrained_networks.zip
+RUN wget -O pretrained_networks.zip https://www.dropbox.com/s/whed8p1ovvuifrg/pretrained_networks.zip?dl=0 && unzip pretrained_networks.zip -x / -d pretrained_networks && rm pretrained_networks.zip
 
-RUN wget -O mouse_segmentation_4plex_merged.zip https://www.dropbox.com/s/0c4m60zg5kx3nqq/mouse_segmentation_4plex_merged.zip?dl=0 && unzip mouse_segmentation_4plex_merged.zip && rm mouse_segmentation_4plex_merged.zip
+RUN wget -O mouse_segmentation_4plex_merged.zip https://www.dropbox.com/s/f2dgpkuwn6mqs7i/mouse_segmentation_4plex_merged.zip?dl=0 && unzip mouse_segmentation_4plex_merged.zip && rm mouse_segmentation_4plex_merged.zip
 
-RUN wget -O full_inference_posenet_25_June.zip https://www.dropbox.com/s/o4brw49intljxdj/full_inference_posenet_25_June.zip?dl=0 && unzip full_inference_posenet_25_June.zip && rm full_inference_posenet_25_June.zip
+RUN wget -O full_inference_posenet_25_June.zip https://www.dropbox.com/s/20jpf2nc2ygodzy/full_inference_posenet_25_June.zip?dl=0 && unzip full_inference_posenet_25_June.zip && rm full_inference_posenet_25_June.zip
 
-RUN wget -O mouse_pose_estimation_dlc.zip https://www.dropbox.com/s/wrgb4n1tip8w5cg/mouse_pose_estimation_dlc.zip?dl=0 && unzip mouse_pose_estimation_dlc.zip && rm mouse_pose_estimation_dlc.zip
+RUN wget -O mouse_pose_estimation_dlc.zip https://www.dropbox.com/s/44dgqo5oo0s035w/mouse_pose_estimation_dlc.zip?dl=0 && unzip mouse_pose_estimation_dlc.zip && rm mouse_pose_estimation_dlc.zip
 
-RUN wget -O mouse_classification_comparison.zip https://www.dropbox.com/s/7dlacoxqwugvbrk/mouse_classification_comparison.zip?dl=0 && unzip mouse_classification_comparison.zip && rm mouse_classification_comparison.zip
+RUN wget -O mouse_classification_comparison.zip https://www.dropbox.com/s/z74lf6r9snxior5/mouse_classification_comparison.zip?dl=0 && unzip mouse_classification_comparison.zip && rm mouse_classification_comparison.zip
 
 ENTRYPOINT ["python"]
 
