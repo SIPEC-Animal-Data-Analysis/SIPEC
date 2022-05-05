@@ -1,6 +1,8 @@
-# SIPEC
-# MARKUS MARKS
-# Behavioral Classification
+"""
+SIPEC
+MARKUS MARKS
+Behavioral Classification
+"""
 
 import random
 from argparse import ArgumentParser
@@ -13,19 +15,17 @@ from sklearn.externals._pilutil import imresize
 from sklearn.model_selection import StratifiedKFold
 from tqdm import tqdm
 
-from SwissKnife.architectures import (
-    pretrained_recognition,
-)
-from SwissKnife.dataloader import Dataloader, DataGenerator
+from SwissKnife.architectures import pretrained_recognition
+from SwissKnife.dataloader import DataGenerator, Dataloader
 from SwissKnife.model import Model
 from SwissKnife.utils import (
-    setGPU,
     Metrics,
+    callbacks_learningRate_plateau,
+    check_directory,
+    load_config,
     load_vgg_labels,
     loadVideo,
-    load_config,
-    check_directory,
-    callbacks_learningRate_plateau,
+    setGPU,
 )
 
 
@@ -37,6 +37,7 @@ def train_behavior(
     class_weights=None,
     # results_sink=results_sink,
 ):
+    """TODO: Fill in description"""
     print("data prepared!")
 
     our_model = Model()
@@ -93,8 +94,8 @@ def train_behavior(
         print(config)
 
     res = our_model.predict(dataloader.x_test, model="recognition")
-    np.save('predictions_recognition.npy', res)
-    print('safed predictions')
+    np.save("predictions_recognition.npy", res)
+    print("safed predictions")
 
     if config["train_sequential_model"]:
         if dataloader.config["use_generator"]:
@@ -175,7 +176,7 @@ def train_behavior(
                 test_gt.append(dataloader.y_test[new_idx])
             eval_batch = np.asarray(eval_batch)
             prediction = our_model.predict(eval_batch, model="recognition")
-        for idx, el in enumerate(prediction):
+        for _, el in enumerate(prediction):
             res.append(el)
 
     res = np.argmax(res, axis=-1).astype(int)
@@ -195,6 +196,8 @@ def train_behavior(
 
 
 def train_primate(config, results_sink, shuffle):
+    """TODO: Fill in description"""
+    # TODO: Remove the hardcoded paths
     basepath = "/media/nexus/storage5/swissknife_data/primate/behavior/"
 
     vids = [
@@ -282,7 +285,6 @@ def train_primate(config, results_sink, shuffle):
     X = np.expand_dims(X, axis=-1)
 
     results = []
-    reports = []
 
     for split in range(0, num_splits):
 
@@ -377,6 +379,7 @@ def train_primate(config, results_sink, shuffle):
             print("data ready")
 
             # if operation == "train":
+            # TODO: Check tuple unpacking
             res, report = train_behavior(
                 dataloader,
                 config,
@@ -402,12 +405,10 @@ def main():
     operation = args.operation
     gpu_name = args.gpu
     config_name = args.config_name
-    network = args.network
     shuffle = args.shuffle
     annotations = args.annotations
     video = args.video
     results_sink = args.results_sink
-    only_flow = args.only_flow
 
     setGPU(gpu_name)
     check_directory(results_sink)

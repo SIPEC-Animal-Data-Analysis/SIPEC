@@ -1,43 +1,44 @@
-# SIPEC
-# MARKUS MARKS
-# POSE ESTIMATION
-import matplotlib.pyplot as plt
-import pandas as pd
-import skimage.io
+"""
+SIPEC
+MARKUS MARKS
+POSE ESTIMATION
+"""
 import json
-import numpy as np
-from tqdm import tqdm
+import os
 from argparse import ArgumentParser
 from glob import glob
-import os
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import skimage.io
 import tensorflow as tf
-from tensorflow.keras import backend as K
 from tensorflow import keras as keras
+from tensorflow.keras import backend as K
+from tqdm import tqdm
 
 from SwissKnife.architectures import posenet as posenet_architecture
-from SwissKnife.augmentations import primate_poseestimation, mouse_poseestimation
+from SwissKnife.augmentations import mouse_poseestimation, primate_poseestimation
 from SwissKnife.dataprep import (
-    get_primate_pose_data,
+    get_mouse_dlc_data,
     get_mouse_pose_data,
     get_mouse_pose_dlc_comparison_data,
-    get_mouse_dlc_data,
+    get_primate_pose_data,
 )
-from SwissKnife.segmentation import mold_video, mold_image, SegModel
 from SwissKnife.mrcnn.utils import resize
-
+from SwissKnife.segmentation import SegModel, mold_image, mold_video
 from SwissKnife.utils import (
-    setGPU,
-    load_config,
-    set_random_seed,
-    check_directory,
-    heatmap_to_scatter,
-    masks_to_coms,
     apply_all_masks,
     callbacks_tf_logging,
+    heatmap_to_scatter,
     heatmaps_for_images,
+    load_config,
     mask_to_original_image,
+    masks_to_coms,
+    set_random_seed,
+    setGPU,
 )
+
 
 # adapted from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 class DataGenerator(keras.utils.Sequence):
@@ -93,12 +94,12 @@ class DataGenerator(keras.utils.Sequence):
         y = []
 
         # Generate data
-        for i, ID in enumerate(list_IDs_temp):
+        for _, ID in enumerate(list_IDs_temp):
             image = self.imgs[ID]
             # segmaps = self.masks[ID].astype("bool")
             segmaps = self.masks[ID]
 
-            maps_augment = []
+            # maps_augment = []
             seq_det = self.augmentation.to_deterministic()
 
             # segmaps = np.moveaxis(segmaps,2,0)
@@ -147,7 +148,7 @@ def calculate_rmse(pred, true):
     """
     rmses = []
 
-    for idx, el in enumerate(pred):
+    for idx, _ in enumerate(pred):
         point_pred = pred[idx]
         point_gt = true[idx]
         if point_gt[0] == 0:
@@ -158,13 +159,17 @@ def calculate_rmse(pred, true):
 
 
 class rmse_metric(keras.callbacks.Callback):
+    """TODO: Fill in description"""
     def setModel(self, model):
+        """TODO: Fill in description"""
         self.model = model
 
     def on_train_begin(self, logs={}):
+        """TODO: Fill in description"""
         self._data = []
 
     def on_epoch_end(self, batch, logs={}):
+        """TODO: Fill in description"""
         X_val, y_val = self.validation_data[0], self.validation_data[1]
 
         rmses = []
@@ -184,18 +189,23 @@ class rmse_metric(keras.callbacks.Callback):
         return
 
     def get_data(self):
+        """TODO: Fill in description"""
         return self._data
 
 
 class Metrics(keras.callbacks.Callback):
+    """TODO: Fill in description"""
     def __init__(self, writer=None, unmold=None):
+        """TODO: Fill in description"""
         super(Metrics, self).__init__()
         self.writer = writer
 
     def setModel(self, model):
+        """TODO: Fill in description"""
         self.model = model
 
-    def on_train_begin(self, logs={}):
+    def on_train_begin(self, logs=None):
+        """TODO: Fill in description"""
         self._data = []
 
     def on_epoch_end(self, batch, logs={}):
@@ -221,9 +231,9 @@ class Metrics(keras.callbacks.Callback):
         self._data.append(rmse_mean)
         print("rmse ::: ", rmse_mean)
         if self.writer is not None:
-            rmse_summary = tf.compat.v1.summary.scalar(
-                "rmses", tf.convert_to_tensor(value=rmse_mean)
-            )
+            #rmse_summary = tf.compat.v1.summary.scalar(
+            #    "rmses", tf.convert_to_tensor(value=rmse_mean)
+            #)
             # rmse_summary = tf.compat.v1.summary.scalar(
             #     "rmses", tf.convert_to_tensor(self._data)
             # )
@@ -234,10 +244,12 @@ class Metrics(keras.callbacks.Callback):
         return
 
     def get_data(self):
+        """TODO: Fill in description"""
         return self._data
 
 
 def custom_binary_crossentropy(y_true, y_pred, from_logits=False, label_smoothing=0):
+    """TODO: Fill in description"""
     y_pred = tf.constant(y_pred) if not tf.is_tensor(y_pred) else y_pred
     y_true = tf.cast(y_true, y_pred.dtype)
 
@@ -247,13 +259,17 @@ def custom_binary_crossentropy(y_true, y_pred, from_logits=False, label_smoothin
 
 
 class callbacks_viz_poseestimation(keras.callbacks.Callback):
+    """TODO: Fill in description"""
     def setModel(self, model):
+        """TODO: Fill in description"""
         self.model = model
 
-    def on_train_begin(self, logs={}):
+    def on_train_begin(self, logs=None):
+        """TODO: Fill in description"""
         self._data = []
 
-    def on_epoch_end(self, batch, logs={}):
+    def on_epoch_end(self, batch, logs=None):
+        """TODO: Fill in description"""
         X_val, y_val = self.validation_data[0], self.validation_data[1]
 
         for id in range(1, 3):
@@ -268,7 +284,7 @@ class callbacks_viz_poseestimation(keras.callbacks.Callback):
             coords_predict = heatmap_to_scatter(y_predict)[:-1]
             ax.imshow(X_val[id][:, :, 0], cmap="Greys_r")
             for map_id, map in enumerate(coords_predict):
-                true = coords_gt[map_id]
+                #true = coords_gt[map_id]
                 # plt.scatter(map[1], map[0], c="red")
                 ax.scatter(map[1], map[0], s=50)
                 # plt.scatter(true[1], true[0], c="blue")
@@ -280,6 +296,7 @@ class callbacks_viz_poseestimation(keras.callbacks.Callback):
 
 
 def read_DLC_data(dlc_path, folder, label_file_path, exclude_labels=[], as_gray=False):
+    """TODO: Fill in description"""
     frame = pd.read_csv(label_file_path, header=[1, 2])
 
     # on oliver's dataset exclude arena keypoints for DLC comparison
@@ -308,9 +325,9 @@ def read_DLC_data(dlc_path, folder, label_file_path, exclude_labels=[], as_gray=
         #         continue
 
         all_pts = []
-        for keypoint_id, keypoint in enumerate(keypoints):
+        for _, keypoint in enumerate(keypoints):
             kps = []
-            for coord_id, coord in enumerate(coords):
+            for _, coord in enumerate(coords):
                 try:
                     kps.append(frame_part[keypoint][coord])
                 except KeyError:
@@ -332,6 +349,7 @@ def read_DLC_data(dlc_path, folder, label_file_path, exclude_labels=[], as_gray=
 
 
 def read_dlc_labels_from_folder(dlc_path, exclude_labels=[]):
+    """TODO: Fill in description"""
     folders = os.walk(dlc_path)
     folders = folders.__next__()[1]
     asgrey = False
@@ -357,7 +375,7 @@ def read_dlc_labels_from_folder(dlc_path, exclude_labels=[]):
 
 
 def segment_images_and_masks(X, y, SegNet, asgrey=False, mask_size=64):
-    ### mold images
+    """mold images"""
     mold_dimension = 1024
     if asgrey:
         X = np.expand_dims(X, axis=-1)
@@ -388,6 +406,7 @@ def segment_images_and_masks(X, y, SegNet, asgrey=False, mask_size=64):
 
 
 def vis_locs(X, y):
+    """TODO: Fill in description"""
     plt.imshow(X)
     for i in range(y.shape[1]):
         plt.scatter(y[i, 0], y[i, 1])
@@ -395,6 +414,7 @@ def vis_locs(X, y):
 
 
 def vis_maps(X, y):
+    """TODO: Fill in description"""
     plt.imshow(X[0])
     for i in range(y.shape[-1]):
         plt.imshow(y[0][:, :, i], alpha=0.1)
@@ -402,6 +422,7 @@ def vis_maps(X, y):
 
 
 def revert_mold(img, padding, scale, dtype="uint8"):
+    """TODO: Fill in description"""
     unpad = img[padding[0][0] : -padding[0][1], :, :]
     rec = resize(
         unpad, (unpad.shape[0] // scale, unpad.shape[1] // scale), preserve_range=True
@@ -418,6 +439,7 @@ def evaluate_pose_estimation(
     x_test_orig=None,
     coms_test=None,
 ):
+    """TODO: Fill in description"""
     rmses = []
     for idx, test_img in tqdm(enumerate(x_test)):
         heatmaps = posenet.predict(np.expand_dims(test_img, axis=0))

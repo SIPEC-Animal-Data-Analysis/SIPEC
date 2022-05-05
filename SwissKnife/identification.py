@@ -1,42 +1,43 @@
-# SIPEC
-# MARKUS MARKS
-# IDENTIFICATION
+"""
+SIPEC
+MARKUS MARKS
+IDENTIFICATION
+"""
+
 import json
-import os
+import pickle
 import random
-import sys
-
-import skvideo
-from joblib import Parallel, delayed
-
 from argparse import ArgumentParser
-import imageio
-import numpy as np
-from tensorflow.keras import backend as K
-from skimage.transform import rescale
-import tensorflow as tf
 from datetime import datetime
 
-from SwissKnife.augmentations import primate_identification, mouse_identification
+import imageio
+import matplotlib.pyplot as plt
+import numpy as np
+import skvideo
+from joblib import Parallel, delayed
+from skimage.transform import rescale
+from sklearn import metrics
+from tensorflow.keras import backend as K
+
 from SwissKnife.architectures import idtracker_ai
+from SwissKnife.augmentations import mouse_identification, primate_identification
+from SwissKnife.dataloader import Dataloader
+from SwissKnife.dataprep import (
+    generate_individual_mouse_data,
+    get_primate_identification_data,
+)
+from SwissKnife.model import Model
+from SwissKnife.segmentation import mold_image
 from SwissKnife.utils import (
     Metrics,
-    setGPU,
-    get_callbacks,
     check_directory,
-    set_random_seed,
+    get_callbacks,
     load_config,
-    loadVideo,
+    rescale_img,
+    set_random_seed,
+    setGPU,
+    mask_image,
 )
-from SwissKnife.dataprep import (
-    get_primate_identification_data,
-    generate_individual_mouse_data,
-)
-from SwissKnife.segmentation import mold_image
-from SwissKnife.dataloader import Dataloader
-from SwissKnife.model import Model
-from sklearn import metrics
-
 
 video_train = [
     "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_1.npy",
@@ -106,7 +107,6 @@ def evaluate_on_data(
         our_model = Model()
         our_model.load_recognition_model(network)
         res = our_model.predict(dataloader.x_test)
-        import matplotlib.pyplot as plt
 
         plt.imshow(dataloader.x_test[10, :, :, 0])
         plt.show()
@@ -129,14 +129,10 @@ def evaluate_on_data(
         print("before ,", str(len(X[0])))
 
         if exclude_hard:
-            import pickle
-
             hard_list = "/media/nexus/storage5/swissknife_data/primate/identification_inputs/hard_list.pkl"
             with open(hard_list, "rb") as handle:
                 excludes = pickle.load(handle)
             print(excludes)
-            X_new = []
-            y_new = []
             for vid_idx, elements in enumerate(excludes):
                 X[vid_idx] = X[vid_idx][elements]
                 y[vid_idx] = y[vid_idx][elements]
@@ -271,8 +267,6 @@ def train_on_data(
         )
 
         dataloader = Dataloader(x_train, y_train, x_test, y_test, config=config)
-
-        import matplotlib.pyplot as plt
 
         plt.imshow(dataloader.x_test[5, :, :])
         plt.show()
@@ -429,7 +423,7 @@ def train_on_data(
             ]
 
             CB_es, CB_lr = get_callbacks()
-            CB_train = [CB_lr, CB_es]
+            # CB_train = [CB_lr, CB_es]
             # our_model.add_callbacks(CB_train)
 
             our_model.train_sequential_network(dataloader=dataloader)
@@ -457,7 +451,7 @@ def train_on_data(
             #     results_sink + "IDnet_" + video + "_sequentialNet" + ".h5"
             # )
 
-    if network == "idtracker" or network == "both":
+    if network in ("idtracker", "both"):
         dataloader.categorize_data(num_classes=num_classes)
 
         our_model = Model()
@@ -498,7 +492,6 @@ def train_on_data(
         )
 
     if network == "shuffle":
-        import random
 
         res = list(dataloader.y_test)
         random.shuffle(res)
@@ -615,7 +608,7 @@ def idresults_to_training_recurrent(
             #         multi_imgs_y.append(int(idresults[el]['results'][ids][0])-1)
 
             # TODO: fixme
-            if el == 2220 or el == 2395 or el == 9601:
+            if el in (2220, 2395, 9601):
                 print(el)
                 skipped += 1
                 continue
@@ -683,7 +676,7 @@ def idresults_to_training_recurrent(
                             img = img.astype("uint8")
 
                             #             break
-                            if not img.shape == (
+                            if img.shape != (
                                 int(2 * mask_size),
                                 int(2 * mask_size),
                                 3,
@@ -726,7 +719,7 @@ def idresults_to_training_recurrent(
                             img = img.astype("uint8")
 
                             #             break
-                            if not img.shape == (
+                            if img.shape != (
                                 int(2 * mask_size),
                                 int(2 * mask_size),
                                 3,
@@ -767,6 +760,7 @@ def load_vid(basepath, vid, idx, batch_size=10000):
 def vid_to_xy(video):
     video = video.split("/")[-1].split("IDresults_")[-1].split(".np")[0]
     vid = video.split(".npy")[0][:-2]
+    #TODO: Check, vidlist is not defined!
     vidlist.append(vid)
     idx = int(video.split(".npy")[0][-1:])
     idx -= 1
@@ -805,6 +799,7 @@ def main():
     set_random_seed(config["random_seed"])
     setGPU(gpu_name=gpu_name)
 
+    # TODO: Get rid of hardcoded paths 
     if operation == "train_primate_cv":
         results_sink = (
             "/media/nexus/storage5/swissknife_results/identification/"
@@ -919,7 +914,7 @@ parser.add_argument(
     action="store",
     dest="config",
     type=str,
-    default='identification_config',
+    default="identification_config",
     help="config for specifying training params",
 )
 parser.add_argument(

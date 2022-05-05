@@ -8,37 +8,27 @@ segmentation.py
 # SEGMENTATION PART
 # This code is optimized from the Mask RCNN (Waleed Abdulla, (c) 2017 Matterport, Inc.) repository
 
-import sys
+import gc
 import os
-
+import os.path
+import random
 import warnings
+from argparse import ArgumentParser
 from time import time
 
-warnings.filterwarnings("ignore")
-
-import gc
-import random
+import imgaug.augmenters as iaa
+import numpy as np
 from joblib import Parallel, delayed
 
-from argparse import ArgumentParser
-import os
-import numpy as np
-
-import imgaug.augmenters as iaa
-
+import SwissKnife.mrcnn.model as modellib
+from SwissKnife.dataprep import get_segmentation_data
+from SwissKnife.mrcnn import utils
 ## adapted from matterport Mask_RCNN implementation
 from SwissKnife.mrcnn.config import Config
-import SwissKnife.mrcnn.model as modellib
-from SwissKnife.mrcnn import utils
+from SwissKnife.utils import (check_folder, load_config, save_dict,
+                              set_random_seed, setGPU)
 
-from SwissKnife.dataprep import get_segmentation_data
-from SwissKnife.utils import (
-    setGPU,
-    check_folder,
-    save_dict,
-    set_random_seed, load_config,
-)
-
+warnings.filterwarnings("ignore")
 
 # TODO: fix this import bug here
 # from dataprep import get_segmentation_data
@@ -79,8 +69,7 @@ def mold_image(img, config=None, dimension=None, min_dimension=None, return_all=
         return NotImplementedError
     if return_all:
         return image, window, scale, padding, crop
-    else:
-        return image
+    return image
 
 
 def mold_video(video, config=None, dimension=None, n_jobs=40, min_dimension=None):
@@ -103,6 +92,7 @@ def mold_video(video, config=None, dimension=None, n_jobs=40, min_dimension=None
 
 # TODO: batch size in inference
 class PrimateConfig(Config):
+    """TODO: Fill in description"""
     NAME = "primate"
     GPU_COUNT = 1
     IMAGES_PER_GPU = 2
@@ -129,6 +119,7 @@ class PrimateConfig(Config):
 
 
 class InferenceConfigPrimate(PrimateConfig):
+    """TODO: Fill in description"""
     IMAGE_RESIZE_MODE = "square"
     IMAGES_PER_GPU = 1
     BATCH_SIZE = 1
@@ -144,6 +135,7 @@ class InferenceConfigPrimate(PrimateConfig):
 
 
 class MouseConfig(Config):
+    """TODO: Fill in description"""
     NAME = "mouse"
     BACKBONE = "resnet101"
     IMAGES_PER_GPU = 1
@@ -169,6 +161,7 @@ class MouseConfig(Config):
 
 
 class SmallConfig(Config):
+    """TODO: Fill in description"""
     NAME = "small"
     BACKBONE = "resnet101"
     IMAGES_PER_GPU = 1
@@ -194,6 +187,7 @@ class SmallConfig(Config):
 
 
 class InferenceConfigSmall(MouseConfig):
+    """TODO: Fill in description"""
     # TODO: test / anpassen
     DETECTION_MIN_CONFIDENCE = 0.9
     IMAGES_PER_GPU = 1
@@ -201,6 +195,7 @@ class InferenceConfigSmall(MouseConfig):
 
 
 class InferenceConfigMouse(MouseConfig):
+    """TODO: Fill in description"""
     # TODO: test / anpassen
     DETECTION_MIN_CONFIDENCE = 0.9
     IMAGES_PER_GPU = 1
@@ -208,6 +203,7 @@ class InferenceConfigMouse(MouseConfig):
 
 
 class IneichenConfig(Config):
+    """TODO: Fill in description"""
     NAME = "mouse"
     BATCH_SIZE = 1
     IMAGES_PER_GPU = 1
@@ -224,15 +220,19 @@ class IneichenConfig(Config):
 
 
 class InferencIneichenConfig(IneichenConfig):
+    """TODO: Fill in description"""
     DETECTION_MIN_CONFIDENCE = 0.99
     IMAGES_PER_GPU = 1
     BATCH_SIZE = 1
 
+
 class IneichenConfigSmall(IneichenConfig):
+    """TODO: Fill in description"""
     IMAGE_MIN_DIM = 320
     IMAGE_MAX_DIM = 320
     IMAGE_SHAPE = [320, 320, 3]
     MINI_MASK_SHAPE = (56, 56)
+
 
 class MaskFilter:
     """
@@ -247,13 +247,16 @@ class MaskFilter:
         pass
 
     def train(self):
+        """TODO: Fill in description"""
         pass
 
     def predict(self):
+        """TODO: Fill in description"""
         pass
 
 
 class SegModel:
+    """TODO: Fill in description"""
     # TODO: give confidence as argument
     def __init__(self, species, training_config=None, inference_config=None):
         """Main class for a segmentation model used for training and inference.
@@ -268,8 +271,6 @@ class SegModel:
         self.augmentation = None
         self.model = None
 
-        pass
-
     def train(self, dataset_train, dataset_val):
         """Train the segmentation network.
         Args:
@@ -278,7 +279,7 @@ class SegModel:
         """
 
         # TODO:modulefy me
-        if self.config.NAME == 'test':
+        if self.config.NAME == "test":
             training_params_dict = [
                 [5, "heads", 1.0],
             ]
@@ -328,12 +329,13 @@ class SegModel:
             )
 
     def init_augmentation(self):
-        """Initializes the augmentation for segmentation network training, different default levels are available.
+        """Initializes the augmentation for segmentation network training,
+        different default levels are available.
         Args:
             dataset_train:
             dataset_val:
         """
-        if self.species == "mouse" or self.species == "ineichen":
+        if self.species in ("mouse", "ineichen"):
             sometimes = lambda aug: iaa.Sometimes(0.5, aug)
             self.augmentation = iaa.Sequential(
                 [
@@ -366,7 +368,7 @@ class SegModel:
                 random_order=True,
             )
 
-        if self.species == "primate" or self.species == "jin":
+        if self.species == ("primate", "jin"):
             sometimes = lambda aug: iaa.Sometimes(0.2, aug)  # latest run 0.2
 
             self.augmentation = iaa.Sequential(
@@ -464,14 +466,14 @@ class SegModel:
         dice = []
         for image_id in image_ids:
             # Load image and ground truth data
-            image, image_meta, gt_class_id, gt_bbox, gt_mask = modellib.load_image_gt(
+            image, _, gt_class_id, gt_bbox, gt_mask = modellib.load_image_gt(
                 dataset_val, self.inference_config, image_id, use_mini_mask=False
             )
             r = self.detect_image_original(image, verbose=0)
             if maskfilter:
                 r = maskfilter.predict(r)
             # Compute AP
-            AP, precisions, recalls, overlaps, _ious, dices = utils.compute_ap(
+            AP, _, _, _, _ious, dices = utils.compute_ap(
                 gt_bbox,
                 gt_class_id,
                 gt_mask,
@@ -545,9 +547,8 @@ class SegModel:
         results = []
         batch_size = self.inference_config.BATCH_SIZE
         batches = int(len(videodata) / batch_size)
-        from time import time
 
-        for idx, batch in enumerate(range(batches)):
+        for idx, _ in enumerate(range(batches)):
             start = time()
             data = videodata[idx * batch_size : (idx + 1) * batch_size]
             vid_results = self.model.detect(data, verbose=1)
@@ -635,7 +636,8 @@ def train_on_data_once(
     ----------
     inference_config
     model_path : str
-        Path to model, can be either where a new model should be stored or a path to an existing model to be retrained.
+        Path to model, can be either where a new model should be stored or 
+        a path to an existing model to be retrained.
     cv_folds : int
         Number of cross_validation folds, use 0 for a normal train/test split.
     frames_path : str
@@ -643,7 +645,8 @@ def train_on_data_once(
     annotations_path : str
         Path to the annotations used for training.
     species : str
-        Species to perform segmentation on (can be any species, but "mouse" or "primate" have more specialised parameters). If your species is neither "mouse" nor "primate", use "default".
+        Species to perform segmentation on (can be any species, but "mouse" or "primate" have more specialised parameters). 
+        If your species is neither "mouse" nor "primate", use "default".
     fold : int
         If cv_folds > 1, fold is the number of fold to be tested on.
     fraction : float
@@ -718,8 +721,6 @@ def do_ablation(species, cv_folds, random_seed, fraction):
     """
     experiment_name = "ablation"
 
-    import os.path
-
     results_path = "~/segmentation/" + species + "_" + experiment_name
     results_fname = (
         results_path
@@ -764,9 +765,7 @@ def train_on_data(
         experiment:
         fold:
     """
-    experiment_name = "cv"
-    import os.path
-
+    #experiment_name = "cv"
     # results_path = "./segmentation_logs_1st_review/" + species + "_" + experiment_name + "/"
     base = "~/"
     results_path = base + "segmentation/" + species + "_" + experiment
@@ -779,25 +778,25 @@ def train_on_data(
 
     start = time()
 
-    model = None
+    #model = None
     mean_aps = []
     if cv_folds > 0:
         if fold is not None:
             print("TRAINING on FOLD", str(fold))
-            model, mean_ap, mean_iou, mean_dice = train_on_data_once(
+            _, mean_ap, mean_iou, mean_dice = train_on_data_once(
                 model_path, species, cv_folds=cv_folds, fold=fold, fraction=fraction
             )
             mean_aps.append(mean_ap)
             gc.collect()
         else:
             for fold in range(cv_folds):
-                model, mean_ap, mean_iou, mean_dice = train_on_data_once(
+                _, mean_ap, mean_iou, mean_dice = train_on_data_once(
                     model_path, species, cv_folds=cv_folds, fold=fold, fraction=fraction
                 )
                 mean_aps.append(mean_ap)
                 gc.collect()
     else:
-        model, mean_ap, mean_iou, mean_dice = train_on_data_once(
+        _, mean_ap, mean_iou, mean_dice = train_on_data_once(
             model_path, species, cv_folds=cv_folds, fold=0, fraction=fraction
         )
         print("MEAN AP", mean_ap)
@@ -846,6 +845,7 @@ def train_on_data_path(annotations, frames):
 
 
 def main():
+    """TODO: Fill in description"""
     args = parser.parse_args()
     gpu_name = args.gpu
     cv_folds = args.cv_folds
@@ -854,9 +854,9 @@ def main():
     annotations = args.annotations
     frames = args.frames
     operation = args.operation
-    fraction = args.fraction
-    fold = args.fold
-    name = args.name
+    #fraction = args.fraction
+    #fold = args.fold
+    #name = args.name
     base_folder = args.base_folder
     config = args.config
     inference_config = args.inference_config
@@ -942,7 +942,7 @@ parser.add_argument(
     default=None,
     help="fraction to use for training",
 )
-#TODO: add default path
+# TODO: add default path
 parser.add_argument(
     "--model_path",
     action="store",

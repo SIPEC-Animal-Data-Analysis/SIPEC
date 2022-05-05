@@ -1,13 +1,13 @@
-# SIPEC
-# MARKUS MARKS
-# UNSUPERVISED ANALYSIS
+"""
+SIPEC
+MARKUS MARKS
+UNSUPERVISED ANALYSIS
+"""
+import numpy as np
+from PIL import Image
 from sklearn import decomposition
 from sklearn.manifold import TSNE
-from PIL import Image
-
-import numpy as np
 from tqdm import tqdm
-
 
 results_path = "/media/nexus/storage4/swissknife_results/full_inference/mouse_test/"
 results = np.load(results_path + "inference_results.npy", allow_pickle=True)

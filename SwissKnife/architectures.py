@@ -2,45 +2,37 @@
 # MARKUS MARKS
 # MODEL ARCHITECTURES
 import tensorflow as tf
-from tensorflow.keras import regularizers, Model
+from tensorflow.keras import Model, regularizers
 from tensorflow.keras.applications import (
     DenseNet121,
-    DenseNet201,
-    ResNet50,
-    ResNet101,
-    InceptionResNetV2,
-    Xception,
-    NASNetLarge,
-    InceptionV3,
-    EfficientNetB2,
     EfficientNetB3,
     EfficientNetB4,
     EfficientNetB5,
-    EfficientNetB6,
     EfficientNetB7,
+    InceptionResNetV2,
+    InceptionV3,
+    ResNet50,
+    Xception,
 )
 from tensorflow.keras.layers import (
-    Conv2D,
+    GRU,
+    LSTM,
+    Activation,
     BatchNormalization,
-    Flatten,
+    Bidirectional,
+    Conv1D,
+    Conv2D,
+    Conv2DTranspose,
     Dense,
     Dropout,
-    Activation,
-    TimeDistributed,
-    LSTM,
-    GRU,
+    Flatten,
+    GaussianNoise,
     Input,
-    Bidirectional,
+    LeakyReLU,
     MaxPooling2D,
-    Conv1D,
-    SpatialDropout1D,
+    TimeDistributed,
     ZeroPadding2D,
     concatenate,
-    GaussianNoise,
-    Conv2DTranspose,
-    UpSampling2D,
-    Reshape,
-    LeakyReLU,
 )
 from tensorflow.keras.models import Sequential
 from tensorflow.python.keras.applications.efficientnet import EfficientNetB1
@@ -115,7 +107,7 @@ def posenet(
     x = Conv2D(3, kernel_size=(1, 1), strides=(1, 1))(new_input)
     x = recognition_model(x)
 
-    for i in range(4):
+    for _ in range(4):
         x = Conv2DTranspose(
             features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias
         )(x)
@@ -146,7 +138,6 @@ def classification_scratch(input_shape):
     Args:
         input_shape:
     """
-    activation = "tanh"
     dropout = 0.3
     # conv model
 
@@ -214,7 +205,6 @@ def classification_large(input_shape, num_classes):
     Args:
         input_shape:
     """
-    activation = "tanh"
     dropout = 0.1
     # conv model
 
@@ -509,7 +499,7 @@ def recurrent_model_tcn(
     # TODO: config me!
     filters = 64
     kernel_size = 2
-    dout = 0.1
+    # dout = 0.1
     alpha = 0.3
     act_fcn = "relu"
     k = Conv1D(
@@ -650,7 +640,9 @@ def recurrent_model_lstm(
 
 
 # TODO: adaptiv size
-def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True, skip_layers=False):
+def pretrained_recognition(
+    model_name, input_shape, num_classes, fix_layers=True, skip_layers=False
+):
     """This returns the model architecture for a model that operates on images and is pretrained with imagenet weights.
     This architecture is used for IdNet and BehaviorNet as backbone in SIPEC and is referred to as RecognitionNet.
 
@@ -829,8 +821,7 @@ def idtracker_ai(input_shape, classes):
         idtracker.ai identification module
     """
 
-    activation = "tanh"
-    dropout = 0.2
+    # dropout = 0.2
     # conv model
 
     model = Sequential()

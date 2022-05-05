@@ -1,17 +1,18 @@
 # SIPEC
 # MARKUS MARKS
 # Dataloader
-from skimage.registration import optical_flow_tvl1
-from tensorflow import keras
+import multiprocessing
+import pickle
+
 import numpy as np
 from imblearn.under_sampling import RandomUnderSampler
+from joblib import Parallel, delayed
+from skimage.registration import optical_flow_tvl1
 from sklearn import preprocessing
 from sklearn.externals._pilutil import imresize
 from sklearn.utils import class_weight
+from tensorflow import keras
 from tqdm import tqdm
-from joblib import Parallel, delayed
-import multiprocessing
-import pickle
 
 
 # adapted from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
@@ -73,14 +74,14 @@ class DataGenerator(keras.utils.Sequence):
         y = []
 
         # Generate data
-        for i, ID in enumerate(list_IDs_temp):
+        for _, ID in enumerate(list_IDs_temp):
             if self.type == "recognition":
                 X.append(self.x_train[ID])
             else:
                 if self.temporal_causal:
-                    X.append(self.x_train[ID - (2 * self.look_back): ID])
+                    X.append(self.x_train[ID - (2 * self.look_back) : ID])
                 else:
-                    X.append(self.x_train[ID - self.look_back: ID + self.look_back])
+                    X.append(self.x_train[ID - self.look_back : ID + self.look_back])
 
             y.append(self.y_train[ID])
             # _y = self.y_train[ID - self.look_back: ID + self.look_back]
@@ -358,7 +359,7 @@ class Dataloader:
             self.dlc_train = self.dlc_train[random_idxs]
             self.dlc_train_flat = self.dlc_train_flat[random_idxs]
             # self.y_train = self.y_train[random_idxs]
-        if hasattr(self, 'dlc_train_recurrent'):
+        if hasattr(self, "dlc_train_recurrent"):
             self.dlc_train_recurrent = self.dlc_train_recurrent[random_idxs]
             self.dlc_train_recurrent_flat = self.dlc_train_recurrent_flat[random_idxs]
             # self.y_train_recurrent = self.y_train_recurrent[random_idxs]
@@ -465,14 +466,13 @@ class Dataloader:
                 img_rows, img_cols = self.x_train.shape[2], self.x_train.shape[3]
                 input_shape = (img_rows, img_cols, self.x_train.shape[4])
                 return input_shape
-            elif len(self.x_train.shape) == 4:
+            if len(self.x_train.shape) == 4:
                 img_rows, img_cols = self.x_train.shape[1], self.x_train.shape[2]
                 input_shape = (img_rows, img_cols, self.x_train.shape[3])
                 return input_shape
-            else:
-                raise NotImplementedError
+            raise NotImplementedError
 
-    # TODO: parallelizs
+    # TODO: parallelize
     def downscale_frames(self, factor=0.5):
         im_re = []
         for el in tqdm(self.x_train):
