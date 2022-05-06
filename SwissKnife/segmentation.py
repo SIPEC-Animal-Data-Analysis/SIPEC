@@ -119,6 +119,7 @@ class PrimateConfig(Config):
     GRADIENT_CLIP_NORM = 1.0
 
 
+# TODO: remove unused code
 class InferenceConfigPrimate(PrimateConfig):
     """TODO: Fill in description"""
     IMAGE_RESIZE_MODE = "square"
@@ -161,6 +162,7 @@ class MouseConfig(Config):
     GRADIENT_CLIP_NORM = 1.0
 
 
+# TODO: remove unused code
 class SmallConfig(Config):
     """TODO: Fill in description"""
     NAME = "small"
@@ -187,6 +189,7 @@ class SmallConfig(Config):
     GRADIENT_CLIP_NORM = 1.0
 
 
+# TODO: remove unused code
 class InferenceConfigSmall(MouseConfig):
     """TODO: Fill in description"""
     # TODO: test / anpassen
@@ -195,6 +198,7 @@ class InferenceConfigSmall(MouseConfig):
     BATCH_SIZE = 1
 
 
+# TODO: remove unused code
 class InferenceConfigMouse(MouseConfig):
     """TODO: Fill in description"""
     # TODO: test / anpassen
@@ -203,6 +207,7 @@ class InferenceConfigMouse(MouseConfig):
     BATCH_SIZE = 1
 
 
+# TODO: remove unused code
 class IneichenConfig(Config):
     """TODO: Fill in description"""
     NAME = "mouse"
@@ -220,6 +225,7 @@ class IneichenConfig(Config):
     MINI_MASK_SHAPE = (56, 56)
 
 
+# TODO: remove unused code
 class InferencIneichenConfig(IneichenConfig):
     """TODO: Fill in description"""
     DETECTION_MIN_CONFIDENCE = 0.99
@@ -227,6 +233,7 @@ class InferencIneichenConfig(IneichenConfig):
     BATCH_SIZE = 1
 
 
+# TODO: remove unused code
 class IneichenConfigSmall(IneichenConfig):
     """TODO: Fill in description"""
     IMAGE_MIN_DIM = 320
@@ -524,6 +531,7 @@ class SegModel:
         result = self.model.detect([img], verbose=verbose)
         return result[0]
 
+    # TODO: remove unused code
     def detect_batch(self, img_list, mold=True, verbose=1):
         """
         Args:
@@ -536,6 +544,7 @@ class SegModel:
         result = self.model.detect(img_list, verbose=verbose)
         return result
 
+    # TODO: remove unused code
     def detect_video(self, video, results_sink=None):
 
         """
@@ -563,6 +572,7 @@ class SegModel:
             return results
 
 
+# TODO: remove unused code
 def evaluate_network(
     model_path,
     species,
@@ -712,6 +722,7 @@ def train_on_data_once(
     return model, mean_ap, mean_iou, mean_dice
 
 
+# TODO: remove unused code
 def do_ablation(species, cv_folds, random_seed, fraction):
     """
     Args:
@@ -836,6 +847,7 @@ def train_on_data(
     return mean_aps
 
 
+# TODO: remove unused code
 def train_on_data_path(annotations, frames):
     """
     Args:

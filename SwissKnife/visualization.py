@@ -84,6 +84,7 @@ def visualize_labels_on_video_cv(
     cv2.destroyAllWindows()
 
 
+# TODO: remove unused code
 def visualize_labels_on_video_skimage_array(
     video, labels, framerate_video, out_path, num_frames=None, predictions=None
 ):
@@ -157,6 +158,7 @@ def visualize_labels_on_video_skimage_array(
     # cv2.destroyAllWindows()
 
 
+# TODO: remove unused code
 def visualize_labels_on_video(video_path, labels_path, outpath):
     """TODO: Fill in description"""
     vid = loadVideo(video_path, greyscale=False)
@@ -173,6 +175,7 @@ def visualize_labels_on_video(video_path, labels_path, outpath):
     visualize_labels_on_video_cv(video_path, labels, framerate_video, outpath)
 
 
+# TODO: remove unused code
 def multiply_list(input_list, mul):
     """Mutilpy each element of a list by another object"""
     return [el * mul for el in input_list]

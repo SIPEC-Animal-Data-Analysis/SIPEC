@@ -197,10 +197,12 @@ class Model:
         predictions = np.asarray(predictions)
         return np.argmax(predictions, axis=-1)
 
+    # TODO: remove unused code
     def export_training_details(self):
         """TODO: Fill in description"""
         raise NotImplementedError
 
+    # TODO: remove unused code
     def save_model(self, path):
         """TODO: Fill in description"""
         self.recognition_model.save(path + "_recognition")

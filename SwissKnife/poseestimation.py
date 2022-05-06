@@ -158,6 +158,7 @@ def calculate_rmse(pred, true):
     return np.nanmean(np.array(rmses))
 
 
+# TODO: remove unused code
 class rmse_metric(keras.callbacks.Callback):
     """TODO: Fill in description"""
     def setModel(self, model):
@@ -405,6 +406,7 @@ def segment_images_and_masks(X, y, SegNet, asgrey=False, mask_size=64):
     return X, y, meta_coms
 
 
+# TODO: remove unused code
 def vis_locs(X, y):
     """TODO: Fill in description"""
     plt.imshow(X)
@@ -413,6 +415,7 @@ def vis_locs(X, y):
     plt.show()
 
 
+# TODO: remove unused code
 def vis_maps(X, y):
     """TODO: Fill in description"""
     plt.imshow(X[0])
@@ -483,6 +486,7 @@ def evaluate_pose_estimation(
     return res
 
 
+# TODO: remove unused code
 def treshold_maps(y, threshold=0.9):
     y[y > threshold] = 1
     y[y <= threshold] = 0

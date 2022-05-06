@@ -375,7 +375,7 @@ def dlc_model_sturman(input_shape, num_classes):
 
     return model
 
-
+# TODO: remove unused code
 def dlc_model(input_shape, num_classes):
     """Model for classification on top of pose estimation.
 
@@ -420,6 +420,7 @@ def dlc_model(input_shape, num_classes):
     return model
 
 
+# TODO: remove unused code
 def recurrent_model_old(
     recognition_model, recurrent_input_shape, classes=4, recurrent_dropout=None
 ):
@@ -888,6 +889,7 @@ def idtracker_ai(input_shape, classes):
     return model
 
 
+# TODO: remove unused code
 def SkipConNet(x_train, dropout):
     """
     Args:

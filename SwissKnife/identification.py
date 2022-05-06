@@ -738,6 +738,7 @@ def idresults_to_training_recurrent(
     return X, y
 
 
+# TODO: remove unused code
 def load_vid(basepath, vid, idx, batch_size=10000):
     videodata = skvideo.io.vread(basepath + vid + ".mp4", as_grey=False)
     videodata = videodata[idx * batch_size : (idx + 1) * batch_size]
@@ -751,6 +752,7 @@ def load_vid(basepath, vid, idx, batch_size=10000):
     return results
 
 
+# TODO: remove unused code
 def vid_to_xy(video):
     video = video.split("/")[-1].split("IDresults_")[-1].split(".np")[0]
     vid = video.split(".npy")[0][:-2]

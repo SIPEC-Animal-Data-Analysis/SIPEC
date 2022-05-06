@@ -124,6 +124,7 @@ class Dataset(utils.Dataset):
         super(self.__class__, self).image_reference(image_id)
 
 
+# TODO: remove unused code
 def merge_annotations(path1, path2, save_path):
     with open(path1) as fh:
         annotations_1 = json.load(fh)
@@ -201,6 +202,7 @@ def prepareData(
     return dataset_train, dataset_val
 
 
+# TODO: remove unused code
 def get_SIPEC_reproduction_data(name, cv_folds=0):
 
     #TODO: Remove hardcoded paths
@@ -698,6 +700,7 @@ def get_primate_identification_data(scaled=True):
     return X, y, vidlist
 
 
+# TODO: remove unused code
 def get_individual_mouse_data():
     x_train = np.load(
         "/media/nexus/storage5/swissknife_data/mouse/identification_inputs/"

@@ -30,8 +30,9 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tqdm import tqdm
+# from tensorflow.keras.utils import multi_gpu_model
 
-
+# TODO: remove unused code
 def preprocess_imagenet(X):
     """TODO: Fill in description"""
     X = X.astype("float")
@@ -47,9 +48,7 @@ def preprocess_imagenet(X):
     return X
 
 
-# from tensorflow.keras.utils import multi_gpu_model
-
-
+# TODO: remove unused code
 def mask_image_to_individuals(mask_image):
     """TODO: Fill in description"""
     mask = mask_image[:, :, 0]
@@ -104,6 +103,7 @@ def heatmap_mask(maps, mask):
     return ret
 
 
+# TODO: remove unused code
 def heatmaps_for_image(labels, window=100, sigma=3):
     """TODO: Fill in description"""
     heatmaps = []
@@ -139,6 +139,7 @@ def heatmaps_for_image_whole(labels, img_shape, sigma=3, threshold=None):
     return heatmaps
 
 
+# TODO: remove unused code
 def keypoints_in_mask(mask, keypoints):
     """TODO: Fill in description"""
     for point in keypoints:
@@ -174,6 +175,7 @@ def dilate_mask(mask, factor=20):
     return new_mask
 
 
+# TODO: remove unused code
 def bbox_mask(model, img, verbose=0):
     """TODO: Fill in description"""
     image, _, _, _, _ = utils.resize_image(
@@ -216,9 +218,8 @@ def coords_to_masks(coords, dim=2048):
     return masks
 
 
-"""TODO: Check this function"""
-
-
+# TODO: Check this function
+# TODO: remove unused code
 def saveModel(model):
     """TODO: Fill in description"""
     json_model = model_tt.model.to_json()
@@ -226,12 +227,14 @@ def saveModel(model):
     model_tt.model.save_weights("model_weights.h5", overwrite=True)
 
 
+# TODO: remove unused code
 def clearMemory(model, backend):
     """TODO: Fill in description"""
     del model
     backend.clear_session()
 
 
+# TODO: remove unused code
 def fix_layers(network, with_backbone=True):
     """TODO: Fill in description"""
     for layer in network.layers:
@@ -243,6 +246,7 @@ def fix_layers(network, with_backbone=True):
     return network
 
 
+# TODO: remove unused code
 # helper class to keep track of results from different methods
 class ResultsTracker:
     """write results as comma seperated lines in a single file"""
@@ -312,11 +316,13 @@ def load_vgg_labels(annotations, video_length, framerate_video, behavior=None):
     return labels
 
 
+# TODO: remove unused code
 def distance(x, y, x_prev, y_prev):
     """TODO: Fill in description"""
     return np.sqrt((x - x_prev) ** 2 + (y - y_prev) ** 2)
 
 
+# TODO: remove unused code
 def calculate_speed(distances):
     """TODO: Fill in description"""
     x = range(0, len(distances))
@@ -328,6 +334,7 @@ def calculate_speed(distances):
     return d
 
 
+# TODO: remove unused code
 # crop png images for segmentation inputs
 def crop_pngs():
     """TODO: Fill in description"""
@@ -428,6 +435,7 @@ def apply_all_masks(masks, coms, img, mask_size=128):
 
 # functions for data processing
 
+# TODO: remove unused code
 ### BEHAVIOR PREPROCESSING ###
 def startend(df_entry, ms, df):
     """TODO: Fill in description"""
@@ -442,6 +450,7 @@ def startend(df_entry, ms, df):
 #### manual segmentation ###
 
 
+# TODO: remove unused code
 def extractCOM(image, threshold):
     """TODO: Fill in description"""
     try:
@@ -459,7 +468,7 @@ def extractCOM(image, threshold):
 
     return center_of_mass, weighted_center_of_mass
 
-
+# TODO: remove unused code
 # TODO: fixme / streamline
 def extractCOM_only(image):
     """TODO: Fill in description"""
@@ -531,7 +540,7 @@ def maskedImg(
 ### DL Utils
 # TODO: own file for DL utils
 
-
+# TODO: remove unused code
 def plotHistory(history, measure):
     """This function plots the 'measure/metric' as a function of epochs"""
     plt.plot(history.history[measure])
@@ -601,6 +610,7 @@ def f1(y_true, y_pred):
     return K.mean(f1)
 
 
+# TODO: remove unused code
 def f1_loss(y_true, y_pred):
     """TODO: Fill in description"""
     tp = K.sum(K.cast(y_true * y_pred, "float"), axis=0)
@@ -616,6 +626,7 @@ def f1_loss(y_true, y_pred):
     return 1 - K.mean(f1)
 
 
+# TODO: remove unused code
 def balanced_acc(y_true, y_pred):
     """TODO: Fill in description"""
     with sess.as_default():
@@ -961,6 +972,7 @@ def check_directory(directory):
         )
 
 
+# TODO: remove unused code
 def get_ax(rows=1, cols=1, size=8):
     """Return a Matplotlib Axes array to be used in
     all visualizations in the notebook. Provide a
