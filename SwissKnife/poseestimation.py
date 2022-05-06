@@ -164,11 +164,11 @@ class rmse_metric(keras.callbacks.Callback):
         """TODO: Fill in description"""
         self.model = model
 
-    def on_train_begin(self, logs={}):
+    def on_train_begin(self, logs=None):
         """TODO: Fill in description"""
         self._data = []
 
-    def on_epoch_end(self, batch, logs={}):
+    def on_epoch_end(self, batch, logs=None):
         """TODO: Fill in description"""
         X_val, y_val = self.validation_data[0], self.validation_data[1]
 
@@ -208,7 +208,7 @@ class Metrics(keras.callbacks.Callback):
         """TODO: Fill in description"""
         self._data = []
 
-    def on_epoch_end(self, batch, logs={}):
+    def on_epoch_end(self, batch, logs=None):
         X_val, y_val = self.validation_data[0], self.validation_data[1]
         rmses = []
 

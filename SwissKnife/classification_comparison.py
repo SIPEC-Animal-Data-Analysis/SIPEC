@@ -27,7 +27,6 @@ from tqdm import tqdm
 
 from SwissKnife.architectures import (
     classification_small,
-    dlc_model,
     dlc_model_sturman,
     pretrained_recognition,
     recurrent_model_tcn,
@@ -375,7 +374,6 @@ def run_experiment(
                     config["backbone"],
                     input_shape_recognition,
                     num_classes,
-                    fix_layers=False,
                 )
 
             # augmentation
@@ -641,7 +639,7 @@ def run_experiment(
             # if config['backbone'] == 'resnet':
             else:
                 recognition_model = pretrained_recognition(
-                    config["backbone"], input_shape, num_classes, fix_layers=False
+                    config["backbone"], input_shape, num_classes
                 )
 
             # augmentation

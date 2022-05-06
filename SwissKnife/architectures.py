@@ -1,7 +1,8 @@
-# SIPEC
-# MARKUS MARKS
-# MODEL ARCHITECTURES
-import tensorflow as tf
+"""
+SIPEC
+MARKUS MARKS
+MODEL ARCHITECTURES
+"""
 from tensorflow.keras import Model, regularizers
 from tensorflow.keras.applications import (
     DenseNet121,
@@ -336,9 +337,11 @@ def classification_small(input_shape, num_classes):
 
 
 def dlc_model_sturman(input_shape, num_classes):
-    """Model that implements behavioral classification based on Deeplabcut generated features as in Sturman et al.
+    """Model that implements behavioral classification based on
+    Deeplabcut generated features as in Sturman et al.
 
-    Reimplementation of the model used in the publication Sturman et al. that performs action recognition on top of pose estimation
+    Reimplementation of the model used in the publication Sturman et al.
+    that performs action recognition on top of pose estimation
 
     Parameters
     ----------
@@ -376,7 +379,8 @@ def dlc_model_sturman(input_shape, num_classes):
 def dlc_model(input_shape, num_classes):
     """Model for classification on top of pose estimation.
 
-    Classification model for behavior, operating on pose estimation. This model has more free parameters than Sturman et al.
+    Classification model for behavior, operating on pose estimation.
+    This model has more free parameters than Sturman et al.
 
     Parameters
     ----------
@@ -475,7 +479,8 @@ def recurrent_model_tcn(
     recurrent_input_shape,
     classes=4,
 ):
-    """Recurrent architecture for classification of temporal sequences of images based on temporal convolution architecture (TCN).
+    """Recurrent architecture for classification of temporal sequences
+    of images based on temporal convolution architecture (TCN).
     This architecture is used for BehaviorNet in SIPEC.
 
     Parameters
@@ -575,7 +580,8 @@ def recurrent_model_tcn(
 def recurrent_model_lstm(
     recognition_model, recurrent_input_shape, classes=4, recurrent_dropout=None
 ):
-    """Recurrent architecture for classification of temporal sequences of images based on LSTMs or GRUs.
+    """Recurrent architecture for classification of temporal sequences of
+    images based on LSTMs or GRUs.
     This architecture is used for IdNet in SIPEC.
 
     Parameters
@@ -641,7 +647,7 @@ def recurrent_model_lstm(
 
 # TODO: adaptiv size
 def pretrained_recognition(
-    model_name, input_shape, num_classes, fix_layers=True, skip_layers=False
+    model_name, input_shape, num_classes, skip_layers=False
 ):
     """This returns the model architecture for a model that operates on images and is pretrained with imagenet weights.
     This architecture is used for IdNet and BehaviorNet as backbone in SIPEC and is referred to as RecognitionNet.

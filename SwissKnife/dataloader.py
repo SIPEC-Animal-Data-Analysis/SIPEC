@@ -484,7 +484,7 @@ class Dataloader:
         self.x_test = np.asarray(im_re)
 
     def prepare_data(
-        self, downscale=0.5, remove_behaviors=[], flatten=False, use_generator=True
+        self, downscale=0.5, remove_behaviors=[], flatten=False
     ):
         print("preparing data")
         self.change_dtype()

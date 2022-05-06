@@ -560,7 +560,8 @@ def idresults_to_training_recurrent(
             #                 continue
             #             image = idresults[el]['frame']
             # if rescaling:
-            if False:
+            debug = False
+            if debug:
                 com = [
                     int(
                         (

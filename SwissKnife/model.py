@@ -78,7 +78,7 @@ class Model:
             "classification_large",
         ]:
             self.recognition_model = pretrained_recognition(
-                architecture, input_shape, num_classes, fix_layers=False
+                architecture, input_shape, num_classes
             )
         elif architecture == "idtracker":
             raise NotImplementedError

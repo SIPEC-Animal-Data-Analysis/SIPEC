@@ -5,8 +5,8 @@ from collections import defaultdict
 import importlib
 import sys
 
-sys.path.insert(1,os.path.join('/home/user/SIPEC/SwissKnife/'))
-sys.path.insert(1,os.path.join('/home/user/SIPEC/SwissKnife/mrcnn/'))
+sys.path.insert(1,os.path.join('./SwissKnife/'))
+sys.path.insert(1,os.path.join('./SwissKnife/mrcnn/'))
 
 def main():
     import_dict = []

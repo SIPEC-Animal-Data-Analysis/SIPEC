@@ -46,7 +46,6 @@ def train_behavior(
         config["backbone"],
         dataloader.get_input_shape(),
         num_classes,
-        fix_layers=False,
         skip_layers=True,
     )
 
