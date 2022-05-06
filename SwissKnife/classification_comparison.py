@@ -231,6 +231,7 @@ def run_experiment(
 
         dataloader.expand_dims()
 
+        #TODO:CHECK.commented due to use_flow missing in config
         if config["use_flow"]:
             dataloader.create_flow_data()
 
@@ -1045,7 +1046,7 @@ def main():
 
     # init stuff
 
-    base_path = "/home/nexus/mouse_classification_comparison/"
+    base_path = "/home/user/data/mouse_classification_comparison/"
     config = load_config("../configs/behavior/shared_config")
     exp_config = load_config("../configs/behavior/reproduce_configs/" + config_name)
 

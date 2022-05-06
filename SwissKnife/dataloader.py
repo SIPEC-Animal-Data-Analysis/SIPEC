@@ -532,7 +532,7 @@ class Dataloader:
         s = np.stack([u, v], axis=2)[:, :, :, 0]
         return v
 
-    def do_flow(self, videodata, num_cores=(multiprocessing.cpu_count()) * 2):
+    def do_flow(self, videodata, num_cores=(multiprocessing.cpu_count())):
 
         flow_data = Parallel(n_jobs=num_cores)(
             delayed(self.flow_single)(videodata[i], videodata[i - 1])

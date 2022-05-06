@@ -5,6 +5,7 @@ IDENTIFICATION
 """
 
 import json
+import multiprocessing as mp
 import pickle
 import random
 from argparse import ArgumentParser
@@ -20,23 +21,16 @@ from sklearn import metrics
 from tensorflow.keras import backend as K
 
 from SwissKnife.architectures import idtracker_ai
-from SwissKnife.augmentations import mouse_identification, primate_identification
+from SwissKnife.augmentations import (mouse_identification,
+                                      primate_identification)
 from SwissKnife.dataloader import Dataloader
-from SwissKnife.dataprep import (
-    generate_individual_mouse_data,
-    get_primate_identification_data,
-)
+from SwissKnife.dataprep import (generate_individual_mouse_data,
+                                 get_primate_identification_data)
 from SwissKnife.model import Model
 from SwissKnife.segmentation import mold_image
-from SwissKnife.utils import (
-    Metrics,
-    check_directory,
-    get_callbacks,
-    load_config,
-    rescale_img,
-    set_random_seed,
-    setGPU,
-)
+from SwissKnife.utils import (Metrics, check_directory, get_callbacks,
+                              load_config, rescale_img, set_random_seed,
+                              setGPU)
 
 video_train = [
     "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_1.npy",
@@ -748,7 +742,7 @@ def load_vid(basepath, vid, idx, batch_size=10000):
     videodata = skvideo.io.vread(basepath + vid + ".mp4", as_grey=False)
     videodata = videodata[idx * batch_size : (idx + 1) * batch_size]
     results_list = Parallel(
-        n_jobs=20, max_nbytes=None, backend="multiprocessing", verbose=40
+        n_jobs=mp.cpu_count(), max_nbytes=None, backend="multiprocessing", verbose=40
     )(delayed(mold_image)(image) for image in videodata)
     results = {}
     for idx, el in enumerate(results_list):

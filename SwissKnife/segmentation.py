@@ -9,6 +9,7 @@ segmentation.py
 # This code is optimized from the Mask RCNN (Waleed Abdulla, (c) 2017 Matterport, Inc.) repository
 
 import gc
+import multiprocessing as mp
 import os
 import os.path
 import random
@@ -72,7 +73,7 @@ def mold_image(img, config=None, dimension=None, min_dimension=None, return_all=
     return image
 
 
-def mold_video(video, config=None, dimension=None, n_jobs=40, min_dimension=None):
+def mold_video(video, config=None, dimension=None, n_jobs=mp.cpu_count(), min_dimension=None):
     """
     Args:
         video:
