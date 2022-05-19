@@ -441,10 +441,10 @@ def mask_to_original_image(orig_shape, mask, center_of_mass, mask_size):
 
     img = np.zeros((orig_shape, orig_shape))
 
-    x_min = np.max([0, int(center_of_mass[0] - mask_size)])
-    x_max = np.min([img.shape[0], int(center_of_mass[0] + mask_size)])
-    y_min = np.max([0, int(center_of_mass[1] - mask_size)])
-    y_max = np.min([img.shape[0], int(center_of_mass[1] + mask_size)])
+    x_min = np.max([0, int(center_of_mass[0] - mask_size//2)])
+    x_max = np.min([img.shape[0], int(center_of_mass[0] + mask_size//2)])
+    y_min = np.max([0, int(center_of_mass[1] - mask_size//2)])
+    y_max = np.min([img.shape[0], int(center_of_mass[1] + mask_size//2)])
 
     x_dim = x_max - x_min
     y_dim = y_max - y_min
