@@ -45,6 +45,7 @@ The docker image contains the environment, sample data and SIPEC scripts.
 
 If you do not want to use the docker container you can follow these installation instructions for **Linux**. 
 These instructions have been tested on Ubuntu 20.04 but would most likely also work on Ubuntu 18.
+Python **3.7** is required.
 
 #### Step 1: Install Cuda 11.0.3
 
@@ -63,12 +64,12 @@ https://developer.nvidia.com/cudnn-download-survey
 After you have successfully installed cuda and cuDNN:
 * clone the SIPEC repository
 * open a terminal and go to the cloned SIPEC directory: `cd PATH_TO_SIPEC_ON_YOUR_MACHINE`
-* run the following commands
+* have a look into `setup.sh`. The script will add the [deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) and install additional software (sudo permissions are needed)
+* add execution permissions to `setup.sh` and run it:
 ```
 chmod +x setup.sh
 ./setup.sh
 ```
-The script will ask you for the root password.
 
 #### Step 4:
 The script `setup.sh` has created a virtual environment named `env` in the repository folder.
