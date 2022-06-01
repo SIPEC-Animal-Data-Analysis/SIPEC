@@ -538,6 +538,7 @@ def train_on_data(
         input_shape,
         num_classes=y_train.shape[-1],
         backbone=config["poseestimation_model_backbone"],
+        features=config["poseestimation_model_features"],
     )
     posenet.compile(
         loss=["binary_crossentropy"],
