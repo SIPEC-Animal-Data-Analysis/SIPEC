@@ -673,8 +673,8 @@ def pretrained_recognition(
         #TODO: fixme generetic input shape adaptation
         recognition_model = Xception(
             include_top=False,
-            # input_shape=(76, 76, 3),
-            input_shape=(input_shape[0], input_shape[1], 3),
+            input_shape=(75, 75, 3),
+            # input_shape=(input_shape[0], input_shape[1], 3),
             pooling="avg",
             weights="imagenet",
         )
