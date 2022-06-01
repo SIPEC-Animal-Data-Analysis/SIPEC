@@ -1,12 +1,12 @@
 mold_dimension = 512
-mask_size = 64
+mask_size = 128
 lookback_matching = 100
 lookback_behavior = 25
 posenet_resize_factor = None
 use_flow = 0
 num_frames = 100
 id_matching = 0
-greyscale = 1
+greyscale = 0
 mask_matching = 1
 display_coms = 0
 downsample_factor = 0.5

@@ -108,8 +108,9 @@ def full_inference(
             masked_imgs, masked_masks = apply_all_masks(
                 masks, coms, molded_img, mask_size=mask_size
             )
-            masked_imgs = imresize(masked_imgs[0][:, :, 0], downsample_factor)
-            masked_imgs = np.expand_dims(masked_imgs, axis=-1)
+            #masked_imgs = imresize(masked_imgs[0][:, :, 0], downsample_factor)
+            masked_imgs = imresize(masked_imgs[0], downsample_factor)
+            #masked_imgs = np.expand_dims(masked_imgs, axis=-1)
 
             v, u = optical_flow_tvl1(
                 videodata[idx - 1, :, :, 0], videodata[idx, :, :, 0]
@@ -207,6 +208,7 @@ def full_inference(
 
         if "PoseNet" in networks.keys():
             maps = []
+            masked_imgs = np.expand_dims(masked_imgs, axis=0)
             for mask_id, img in enumerate(masked_imgs):
                 if posenet_resize_factor:
                     img = imresize(img, posenet_resize_factor).astype("uint8")

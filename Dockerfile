@@ -5,6 +5,7 @@ FROM nvidia/cuda:11.0.3-cudnn8-runtime-ubuntu20.04
 
 MAINTAINER tarun.chadha@id.ethz.com 
 
+RUN rm /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list
 RUN apt-get -y update && apt-get -y upgrade
 ENV TZ=Europe/Zurich
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
@@ -47,7 +48,7 @@ RUN git clone https://github.com/SIPEC-Animal-Data-Analysis/SIPEC.git
 
 WORKDIR /home/user/SIPEC
 
-RUN git checkout improved_inference
+RUN git checkout improvements
 
 ENV VIRTUAL_ENV=/home/user/SIPEC/env
 
