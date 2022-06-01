@@ -26,6 +26,7 @@ from SwissKnife.dataprep import (
     get_primate_pose_data,
 )
 from SwissKnife.mrcnn.utils import resize
+from SwissKnife.mrcnn.config import Config
 from SwissKnife.segmentation import SegModel, mold_image, mold_video
 from SwissKnife.utils import (
     apply_all_masks,
