@@ -641,7 +641,7 @@ def balanced_acc(y_true, y_pred):
 class Metrics(tf.keras.callbacks.Callback):
     """TODO: Fill in description"""
 
-    def __init__(self, validation_data):
+    def __init__(self, validation_data = None):
         self.validation_data = validation_data
 
     def setModel(self, model):
