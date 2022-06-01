@@ -38,6 +38,7 @@ from SwissKnife.utils import (
     eval_model,
     get_optimizer,
     get_tensorbaord_callback,
+    get_callbacks,
     load_config,
     load_dict,
     pathForFile,
