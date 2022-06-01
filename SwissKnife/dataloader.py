@@ -576,3 +576,6 @@ class Dataloader:
         self.y_test = None
         self.y_test_recurrent = None
         pickle.dump(self, open(path, "wb"))
+
+    def get_num_classes(self):
+        return self.num_classes
