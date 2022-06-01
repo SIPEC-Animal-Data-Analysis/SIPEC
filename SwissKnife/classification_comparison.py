@@ -1048,9 +1048,11 @@ def main():
     # init stuff
 
     base_path = "/home/user/data/mouse_classification_comparison/"
-    config = load_config("../configs/behavior/shared_config")
+    config = load_config("../configs/behavior/default")
+    shared_config = load_config("../configs/behavior/shared_config")
     exp_config = load_config("../configs/behavior/reproduce_configs/" + config_name)
 
+    config.update(shared_config)
     config.update(exp_config)
 
     setGPU(gpu_name)
