@@ -670,10 +670,11 @@ def pretrained_recognition(
         RecognitionNet
     """
     if model_name == "xception":
+        #TODO: fixme generetic input shape adaptation
         recognition_model = Xception(
             include_top=False,
-            input_shape=(76, 76, 3),
-            # input_shape=(input_shape[0], input_shape[1], 3),
+            # input_shape=(76, 76, 3),
+            input_shape=(input_shape[0], input_shape[1], 3),
             pooling="avg",
             weights="imagenet",
         )
@@ -773,7 +774,7 @@ def pretrained_recognition(
             or model_name == "inceptionv3"
             or model_name == "inceptionResnet"
         ):
-            if input_shape[1] >= 76:
+            if input_shape[1] >= 76 or input_shape[1] == 75:
                 pass
             else:
                 diff = 76 - input_shape[1]
