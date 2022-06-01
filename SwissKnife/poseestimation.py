@@ -510,8 +510,12 @@ def train_on_data(
     x_test_orig = None
     coms_test = None
     if segnet_path:
+        # TODO: remove hardcodes
         SegNet = SegModel(species="mouse")
-        SegNet.inference_config.DETECTION_MIN_CONFIDENCE = 0.001
+        SegNet.inference_config = Config()
+        SegNet.inference_config.NAME = "default"
+        SegNet.inference_config.DETECTION_MIN_CONFIDENCE = 0.5
+        SegNet.inference_config.__init__()
         SegNet.set_inference(model_path=segnet_path)
 
         mask_size = 64
