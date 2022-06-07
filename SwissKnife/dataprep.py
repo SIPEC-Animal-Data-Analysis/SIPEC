@@ -23,10 +23,17 @@ from tqdm import tqdm
 
 from SwissKnife.dataloader import create_dataset
 from SwissKnife.mrcnn import utils
-#from SwissKnife.segmentation import SegModel
-from SwissKnife.utils import (dilate_mask, heatmap_mask,
-                              heatmaps_for_image_whole, heatmaps_for_images,
-                              heatmaps_to_locs, loadVideo, setGPU)
+
+# from SwissKnife.segmentation import SegModel
+from SwissKnife.utils import (
+    dilate_mask,
+    heatmap_mask,
+    heatmaps_for_image_whole,
+    heatmaps_for_images,
+    heatmaps_to_locs,
+    loadVideo,
+    setGPU,
+)
 
 
 # adapted from mrcnn (Waleed Abdulla, (c) 2017 Matterport, Inc.)
@@ -205,7 +212,7 @@ def prepareData(
 # TODO: remove unused code
 def get_SIPEC_reproduction_data(name, cv_folds=0):
 
-    #TODO: Remove hardcoded paths
+    # TODO: Remove hardcoded paths
     if name == "mouse_merged":
         if cv_folds == 0:
             frames_path = "/media/nexus/storage5/swissknife_data/mouse/segmentation_inputs_merged/frames/"
@@ -1092,6 +1099,50 @@ def get_mouse_dlc_data():
     y_test = y[:split]
 
     return x_train, y_train, x_test, y_test
+
+
+def get_primate_paths():
+    video_train = [
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_2.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_3.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_4.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_5.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T115800-20180124T122800b_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T115800-20180124T122800b_%T1_2.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T113800-20180124T115800_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T113800-20180124T115800_%T1_2.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180115T150759-20180115T151259_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180131T135402-20180131T142501_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180131T135402-20180131T142501_%T1_2.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_2.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_3.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_4.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180115T150502-20180115T150902_%T1_1.npy",
+    ]
+
+    classes = {
+        "Charles": 0,
+        "Max": 1,
+        "Paul": 2,
+        "Alan": 3,
+    }
+
+    video_1 = [
+        "20180131T135402-20180131T142501_%T1_1",
+        "20180131T135402-20180131T142501_%T1_2",
+        "20180131T135402-20180131T142501_%T1_3",
+        "20180131T135402-20180131T142501_%T1_4",
+    ]
+
+    idresults_base = "/media/nexus/storage3/idtracking/idtracking_gui/results/"
+    fnames_base = "/media/nexus/storage1/swissknife_data/primate/inference/segmentation_highres_multi/"
+    vid_basepath = (
+        "/media/nexus/storage1/swissknife_data/primate/raw_videos/2018_merge/"
+    )
+
+    return video_train, classes, idresults_base, fnames_base, vid_basepath, video_1
 
 
 parser = ArgumentParser()
