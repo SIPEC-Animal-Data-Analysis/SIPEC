@@ -2,51 +2,59 @@
 # MARKUS MARKS
 # Behavioral Classification
 
-from tqdm import tqdm
-import pandas as pd
 import random
-from datetime import datetime
 from argparse import ArgumentParser
+from datetime import datetime
+
+import cv2
 import numpy as np
-
-from sklearn import metrics
+import pandas as pd
 from scipy.stats import pearsonr
-from sklearn.model_selection import StratifiedKFold
+from sklearn import metrics
 from sklearn.externals._pilutil import imresize
+from sklearn.model_selection import StratifiedKFold
+from tqdm import tqdm
 
-from SwissKnife.utils import (
-    setGPU,
-    Metrics,
-    get_callbacks,
-    load_vgg_labels,
-    loadVideo,
-    load_config,
-    check_directory, callbacks_learningRate_plateau,
+from SwissKnife.architectures import (
+    pretrained_recognition,
 )
 from SwissKnife.dataloader import Dataloader, DataGenerator
 from SwissKnife.model import Model
-from SwissKnife.architectures import classification_small
+from SwissKnife.utils import (
+    setGPU,
+    Metrics,
+    load_vgg_labels,
+    loadVideo,
+    load_config,
+    check_directory,
+    callbacks_learningRate_plateau,
+)
 
 
 def train_behavior(
-        dataloader,
-        config,
-        num_classes,
-        encode_labels=True,
-        class_weights=None,
-        # results_sink=results_sink,
+    dataloader,
+    config,
+    num_classes,
+    encode_labels=True,
+    class_weights=None,
+    # results_sink=results_sink,
 ):
     print("data prepared!")
 
     our_model = Model()
 
-    our_model.recognition_model = classification_small(
-        input_shape=dataloader.get_input_shape(), num_classes=num_classes
+    our_model.recognition_model = pretrained_recognition(
+        config["backbone"],
+        dataloader.get_input_shape(),
+        num_classes,
+        skip_layers=True,
     )
+
     our_model.set_class_weight(class_weights)
 
     our_model.set_optimizer(
-        config["recognition_model_optimizer"], lr=config["recognition_model_lr"],
+        config["recognition_model_optimizer"],
+        lr=config["recognition_model_lr"],
     )
     if config["recognition_model_use_scheduler"]:
         our_model.scheduler_lr = config["recognition_model_scheduler_lr"]
@@ -58,27 +66,47 @@ def train_behavior(
         our_model.add_callbacks([CB_es, CB_lr])
 
     # add sklearn metrics for tracking in training
-    my_metrics = Metrics()
+    my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
     my_metrics.setModel(our_model.recognition_model)
-    my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
     our_model.add_callbacks([my_metrics])
 
     if config["train_recognition_model"]:
         if dataloader.config["use_generator"]:
             dataloader.training_generator = DataGenerator(
-                x_train=dataloader.x_train, y_train=dataloader.y_train, look_back=dataloader.config["look_back"], batch_size=32,
-                type='recognition'
+                x_train=dataloader.x_train,
+                y_train=dataloader.y_train,
+                look_back=dataloader.config["look_back"],
+                batch_size=config["recognition_model_batch_size"],
+                type="recognition",
+            )
+            dataloader.validation_generator = DataGenerator(
+                x_train=dataloader.x_test,
+                y_train=dataloader.y_test,
+                look_back=dataloader.config["look_back"],
+                batch_size=config["recognition_model_batch_size"],
+                type="recognition",
             )
         our_model.recognition_model_epochs = config["recognition_model_epochs"]
         our_model.recognition_model_batch_size = config["recognition_model_batch_size"]
+        print()
         our_model.train_recognition_network(dataloader=dataloader)
         print(config)
 
     if config["train_sequential_model"]:
         if dataloader.config["use_generator"]:
             dataloader.training_generator = DataGenerator(
-                x_train=dataloader.x_train, y_train=dataloader.y_train, look_back=dataloader.config["look_back"], batch_size=32,
-                type='sequential'
+                x_train=dataloader.x_train,
+                y_train=dataloader.y_train,
+                look_back=dataloader.config["look_back"],
+                batch_size=32,
+                type="sequential",
+            )
+            dataloader.validation_generator = DataGenerator(
+                x_train=dataloader.x_test,
+                y_train=dataloader.y_test,
+                look_back=dataloader.config["look_back"],
+                batch_size=config["recognition_model_batch_size"],
+                type="sequential",
             )
         # if False:
         if config["recognition_model_fix"]:
@@ -91,10 +119,14 @@ def train_behavior(
             num_classes=num_classes,
         )
         my_metrics.setModel(our_model.sequential_model)
-        my_metrics.validation_data = (dataloader.x_test_recurrent, dataloader.y_test_recurrent)
+        my_metrics.validation_data = (
+            dataloader.x_test_recurrent,
+            dataloader.y_test_recurrent,
+        )
         our_model.add_callbacks([my_metrics])
         our_model.set_optimizer(
-            config["sequential_model_optimizer"], lr=config["sequential_model_lr"],
+            config["sequential_model_optimizer"],
+            lr=config["sequential_model_lr"],
         )
         if config["sequential_model_use_scheduler"]:
             our_model.scheduler_lr = config["sequential_model_scheduler_lr"]
@@ -108,47 +140,62 @@ def train_behavior(
 
     print(config)
 
-    print('evaluating')
+    print("evaluating")
     res = []
     batches = len(dataloader.x_test)
-    batches = int(batches/config["sequential_model_batch_size"])
+    batches = int(batches / config["sequential_model_batch_size"])
     test_gt = []
-    #TODO: fix -1 to really use all VAL data
-    for idx in tqdm(range(batches-1)):
+    # TODO: fix -1 to really use all VAL data
+    for idx in tqdm(range(batches - 1)):
         if config["train_sequential_model"]:
             eval_batch = []
             for i in range(config["sequential_model_batch_size"]):
-                new_idx = (idx*config["sequential_model_batch_size"]) + i + dataloader.look_back
-                data = dataloader.x_test[new_idx - dataloader.look_back: new_idx + dataloader.look_back]
+                new_idx = (
+                    (idx * config["sequential_model_batch_size"])
+                    + i
+                    + dataloader.look_back
+                )
+                data = dataloader.x_test[
+                    new_idx - dataloader.look_back : new_idx + dataloader.look_back
+                ]
                 eval_batch.append(data)
                 test_gt.append(dataloader.y_test[new_idx])
             eval_batch = np.asarray(eval_batch)
             prediction = our_model.predict(eval_batch, model="sequential")
         else:
             eval_batch = []
+            #TODO: double check batch behavior
             for i in range(config["recognition_model_batch_size"]):
-                new_idx = (idx*config["recognition_model_batch_size"]) + i
+                new_idx = (idx * config["recognition_model_batch_size"]) + i
                 data = dataloader.x_test[new_idx]
                 eval_batch.append(data)
                 test_gt.append(dataloader.y_test[new_idx])
             eval_batch = np.asarray(eval_batch)
-            prediction = our_model.predict(eval_batch, model="recognition")
-        for idx, el in enumerate(prediction):
-            res.append(el)
+            predictions, predicted_labels = our_model.predict(eval_batch, model="recognition")
+            #res.append(np.argmax(predictions, axis=-1))
+            # concatenate results
+            res = np.concatenate(
+                (res, np.argmax(predictions, axis=-1)), axis=-1
+            )
 
-    res = np.asarray(res)
     test_gt = np.asarray(test_gt)
 
     acc = metrics.balanced_accuracy_score(res, np.argmax(test_gt, axis=-1))
     f1 = metrics.f1_score(res, np.argmax(test_gt, axis=-1), average="macro")
     #
     corr = pearsonr(res, np.argmax(test_gt, axis=-1))[0]
-    report = metrics.classification_report(res, np.argmax(test_gt, axis=-1), )
+    report = metrics.classification_report(
+        res,
+        np.argmax(test_gt, axis=-1),
+    )
 
     print(report)
     return our_model, [acc, f1, corr], report
 
+
 def train_primate(config, results_sink, shuffle):
+    """TODO: Fill in description"""
+    # TODO: Remove the hardcoded paths
     basepath = "/media/nexus/storage5/swissknife_data/primate/behavior/"
 
     vids = [
@@ -204,11 +251,11 @@ def train_primate(config, results_sink, shuffle):
     global groups
 
     groups = (
-            [0] * len(labels_idxs[0])
-            + [0] * len(labels_idxs[1])
-            + [3] * len(labels_idxs[2])
-            + [4] * len(labels_idxs[3])
-            + [4] * len(labels_idxs[4])
+        [0] * len(labels_idxs[0])
+        + [0] * len(labels_idxs[1])
+        + [3] * len(labels_idxs[2])
+        + [4] * len(labels_idxs[3])
+        + [4] * len(labels_idxs[4])
     )
 
     groups = groups
@@ -255,9 +302,7 @@ def train_primate(config, results_sink, shuffle):
         x_train = vid[tr_idx]
         x_test = vid[tt_idx]
 
-        dataloader = Dataloader(
-            x_train, y_train, x_test, y_test, config=config
-        )
+        dataloader = Dataloader(x_train, y_train, x_test, y_test, config=config)
 
         # config_name = 'primate_' + str(1)
         #
@@ -305,7 +350,10 @@ def train_primate(config, results_sink, shuffle):
                     ),
                 ]
             )
-            report = metrics.classification_report(res, dataloader.y_test,)
+            report = metrics.classification_report(
+                res,
+                dataloader.y_test,
+            )
 
             print(results)
         else:
@@ -344,11 +392,78 @@ def train_primate(config, results_sink, shuffle):
         print("DONE")
         print(report)
         np.save(
-            results_sink + "results.npy", res,
+            results_sink + "results.npy",
+            res,
         )
         np.save(
-            results_sink + "reports.npy", report,
+            results_sink + "reports.npy",
+            report,
         )
+
+
+def sec2frame(seconds, fps=30):
+    return int((seconds * fps))
+
+
+def load_multi_labels(path, video_path):
+    times = pd.read_json(path)
+    print(times)
+
+    # behaviors = {}
+    # for i in range(1):
+    #     i = str(i)
+    #     behaviors[i] = times['attribute'][i]['aname']
+    videos = {}
+    for i in times["project"]["vid_list"]:
+        i = str(i)
+        videos[i] = times["file"][i]["fname"]
+
+    fps_dict = {}
+    loaded_labels = {}
+    for video in videos.values():
+        vidpath = video_path + video
+        cap = cv2.VideoCapture(vidpath)
+        length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        loaded_labels[video] = ["none"] * length
+        cam = cv2.VideoCapture(vidpath)
+        fps = cam.get(cv2.CAP_PROP_FPS)
+        fps_dict[video] = int(fps)
+
+    label_video = {}
+    # myvids = []
+    # mylabels = []
+    for i in times.iterrows():
+        meta = i[1]["metadata"]
+        try:
+            video = meta["vid"]
+            print(video)
+            video = videos[video]
+            fps = fps_dict[video]
+            behavior = meta["av"]
+            # TODO: allow for multiple behaviors at the same time
+            behavior = list(behavior.values())[0]
+            times = meta["z"]
+            print(times)
+            labs = loaded_labels[video]
+            labs[sec2frame(times[0], fps=fps) : sec2frame(times[1], fps=fps)] = [
+                behavior
+            ] * int(sec2frame(times[1], fps=fps) - sec2frame(times[0], fps=fps))
+            # mylabels.append(labs)
+            # myvids.append(video)
+            label_video[video] = labs
+            if "vid" in meta.keys():
+                print(meta)
+        except (AttributeError, TypeError, KeyError):
+            continue
+
+    return list(label_video.values()), list(label_video.keys())
+
+
+def downscale_vid(video, factor):
+    new_vid = []
+    for el in tqdm(video):
+        new_vid.append(imresize(el, factor))
+    return np.asarray(new_vid)
 
 
 def main():
@@ -361,49 +476,107 @@ def main():
     annotations = args.annotations
     video = args.video
     results_sink = args.results_sink
+    only_flow = args.only_flow
+
+    results_sink = (
+        results_sink
+        + "/"
+        + config_name
+        + "/"
+        + network
+        + "/"
+        + datetime.now().strftime("%Y-%m-%d-%H_%M")
+        + "/"
+    )
 
     setGPU(gpu_name)
     check_directory(results_sink)
 
-    if annotations:
-        myvid = loadVideo(video, greyscale=False)
-        annotation = pd.read_csv(annotations, error_bad_lines=False, header=9)
-        annotation = load_vgg_labels(
-            annotation, video_length=len(myvid), framerate_video=25
+
+
+    labels, videos = load_multi_labels(
+        path=annotations,
+        video_path=video,
+    )
+
+    #TODO: fix these
+    basepath = video
+    greyscale = False
+    downscale_factor = 0.1
+    testvid = videos[-1]
+
+
+    all_labels = []
+    all_vids = []
+    for vid_idx, vid in tqdm(enumerate(videos)):
+        if vid == testvid:
+            testivdeo = downscale_vid(
+                loadVideo(basepath + vid, greyscale=greyscale), downscale_factor
+            )
+            test_labels = labels[vid_idx]
+        else:
+            myvid = downscale_vid(
+                loadVideo(basepath + vid, greyscale=greyscale), downscale_factor
+            )
+            all_labels.append(labels[vid_idx])
+            all_vids.append(myvid)
+    vid = np.vstack(all_vids)
+    labels = np.hstack(all_labels)
+
+    x_train = vid
+    y_train = labels
+    x_test = testivdeo
+    y_test = test_labels
+
+    config = load_config("../configs/behavior/shared_config")
+    beh_config = load_config("../configs/behavior/default")
+    config.update(beh_config)
+
+    dataloader = Dataloader(x_train, y_train, x_test, y_test, config=config)
+    # dataloader.prepare_data()
+    num_classes = len(np.unique(y_train))
+    config["num_classes"] = num_classes
+    print("dataloader prepared")
+
+    dataloader.change_dtype()
+    print("dtype changed")
+
+    if config["normalize_data"]:
+        dataloader.normalize_data()
+    if config["encode_labels"]:
+        dataloader.encode_labels()
+    print("labels encoded")
+
+    class_weights = None
+    if config["use_class_weights"]:
+        print("calc class weights")
+        from sklearn.utils import class_weight
+
+        class_weights = class_weight.compute_class_weight(
+            "balanced", np.unique(dataloader.y_train), dataloader.y_train
         )
 
-        # Train test split
-        split = int(len(myvid) * 0.8)
-        x_train, x_test, y_train, y_test = (
-            myvid[:split],
-            myvid[split:],
-            annotation[:split],
-            annotation[split:],
-        )
+    if config["undersample_data"]:
+        dataloader.undersample_data()
+        print("undersampling data")
 
-        # load cfg
-        config = load_config("../configs/behavior/shared_config")
-        beh_config = load_config(
-            "../configs/behavior/default"
-        )
-        config.update(beh_config)
-        print(config)
+    print("preparing recurrent data")
+    # dataloader.create_recurrent_data()
+    print("preparing flattened data")
+    # dataloader.create_flattened_data()
 
-        num_classes = len(np.unique(annotation))
-        dataloader = Dataloader(
-            x_train, y_train, x_test, y_test, config
-        )
-        dataloader.prepare_data()
-        train_behavior(dataloader=dataloader, num_classes=num_classes, config=config)
+    print("categorize data")
+    dataloader.categorize_data(num_classes, recurrent=False)
 
-    elif operation == "train_primate":
-        config_name = "primate_final"
-        config = load_config("../configs/behavior/primate/" + config_name)
-        train_primate(config=config, results_sink=results_sink, shuffle=shuffle)
-    else:
-        config = load_config(config_name)
-        train_behavior(config=config, results_sink=results_sink)
+    print("data ready")
 
+    # if operation == "train":
+    res = train_behavior(
+        dataloader,
+        config,
+        num_classes=config["num_classes"],
+        class_weights=class_weights,
+    )
 
 parser = ArgumentParser()
 
@@ -439,7 +612,7 @@ parser.add_argument(
     default="ours",
     help="which network used for training",
 )
-#TODO: check if folder and then load all files in folder, similar for vid files
+# TODO: check if folder and then load all files in folder, similar for vid files
 parser.add_argument(
     "--annotations",
     action="store",
@@ -461,11 +634,23 @@ parser.add_argument(
     action="store",
     dest="results_sink",
     type=str,
-    default='./results/behavior5/',
+    default="./results/behavior/",
     help="path to results",
 )
 parser.add_argument(
-    "--shuffle", action="store", dest="shuffle", type=bool, default=False,
+    "--only_flow",
+    action="store",
+    dest="only_flow",
+    type=str,
+    default=None,
+    help="use_only_flow",
+)
+parser.add_argument(
+    "--shuffle",
+    action="store",
+    dest="shuffle",
+    type=bool,
+    default=False,
 )
 
 # example usage

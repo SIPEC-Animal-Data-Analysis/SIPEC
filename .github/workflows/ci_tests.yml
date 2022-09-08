@@ -1,0 +1,45 @@
+name: GitHub Actions Demo
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches:
+      - '*'         # matches every branch that doesn't contain a '/'
+      - '*/*'       # matches every branch containing a single '/'
+      - '**'        # matches every branch
+  pull_request:
+    branches:
+      - '*'         # matches every branch that doesn't contain a '/'
+      - '*/*'       # matches every branch containing a single '/'
+      - '**'        # matches every branch
+jobs:
+  Explore-GitHub-Actions:
+    #runs-on: [self-hosted, linux, X64]
+    #runs-on: [ubuntu-18.04]
+    #runs-on: [ubuntu18]
+    runs-on: [deepNeuro]
+    container:
+      image: sipec/sipec:latest
+      #image: node:13.5.0-alpine3.10
+      #image: sipec:sipec
+      options: --runtime=nvidia
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.ref }}
+      - name: Branch name
+        run: echo running on branch ${GITHUB_REF##*/}
+        #- run: git checkout ci_testing
+      - name: Check GPU availibility
+        run: python ./tests/gpu.py
+      - name: Loading modules
+        run: python ./tests/modules_check.py
+      - name: download data
+        run: wget -O animal1234_day1.avi https://www.dropbox.com/s/cwg6ffb03szqepa/animal1234_day1.avi?dl=0 && wget -O mask_rcnn_mouse_0095.h5 https://www.dropbox.com/s/a9vbd02s2pml8l8/mask_rcnn_mouse_0095.h5?dl=0 && wget -O posenet_mouse.h5 https://www.dropbox.com/s/gj9zmgoidk5vcu7/posenet_mouse.h5?dl=0 && wget -O full_inference_posenet_25_June.zip https://www.dropbox.com/s/20jpf2nc2ygodzy/full_inference_posenet_25_June.zip?dl=0 && unzip full_inference_posenet_25_June.zip && rm full_inference_posenet_25_June.zip && wget -O mouse_segmentation_4plex_merged.zip https://www.dropbox.com/s/f2dgpkuwn6mqs7i/mouse_segmentation_4plex_merged.zip?dl=0 && unzip mouse_segmentation_4plex_merged.zip && rm mouse_segmentation_4plex_merged.zip
+      - name: testing full_inference in docker
+        run: python ./SwissKnife/full_inference.py --gpu 0 --species mouse --video ./animal1234_day1.avi --posenet_path ./posenet_mouse.h5  --segnet_path ./mask_rcnn_mouse_0095.h5 --max_ids 4 --results_sink ./test/ --config test 
+      - name: testing poseestimation in docker
+        run: python ./SwissKnife/poseestimation.py --gpu 0 --results_sink ./test --dlc_path ./mouse_pose/OFT/labeled-data/ --segnet_path ./mask_rcnn_mouse_0095.h5 --config poseestimation_config_test
+      - name: testing Segmentation in docker
+        run: python ./SwissKnife/segmentation.py --cv_folds 10 --gpu 0 --frames ./full_inference_posenet_25_June/frames --annotations ./full_inference_posenet_25_June/merged.json --config test --model_path /home/user/tests/model --inference_config test 

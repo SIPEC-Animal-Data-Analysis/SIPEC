@@ -1,26 +1,27 @@
-# SIPEC
-# MARKUS MARKS
-# MODEL CLASS
+"""
+SIPEC
+MARKUS MARKS
+MODEL CLASS
+"""
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 
 from SwissKnife.architectures import (
     pretrained_recognition,
-    recurrent_model_tcn,
     recurrent_model_lstm,
+    recurrent_model_tcn,
 )
-from SwissKnife.classification_comparison import remove_layers
-from SwissKnife.utils import get_optimizer
 
 # TODO: import these DL utils into this class
-from SwissKnife.utils import train_model
+from SwissKnife.utils import get_optimizer, train_model
 
 
 # TODO: presets for parameters
 # TODO: make sure modulization is correct -> rather have for each task one inheretance model
 # TODO: make param list dict?
 class Model:
+    """TODO: Fill in description"""
     def __init__(self, config=None):
         """Initialize model with default parameters, which can be updated
         through config.
@@ -77,7 +78,7 @@ class Model:
             "classification_large",
         ]:
             self.recognition_model = pretrained_recognition(
-                architecture, input_shape, num_classes, fix_layers=False
+                architecture, input_shape, num_classes
             )
         elif architecture == "idtracker":
             raise NotImplementedError
@@ -165,20 +166,19 @@ class Model:
 
         if threshold is None:
             return prediction, np.argmax(prediction).astype(int)
-        else:
-            prediction_idxs = list(range(len(prediction)))
-            non_default_predictions = (
-                prediction[:default_behavior] + prediction[default_behavior + 1 :]
-            )
-            non_default_prediction_idxs = (
-                prediction_idxs[:default_behavior]
-                + prediction_idxs[default_behavior + 1 :]
-            )
+        prediction_idxs = list(range(len(prediction)))
+        non_default_predictions = (
+            prediction[:default_behavior] + prediction[default_behavior + 1 :]
+        )
+        non_default_prediction_idxs = (
+            prediction_idxs[:default_behavior]
+            + prediction_idxs[default_behavior + 1 :]
+        )
 
-            if np.max(non_default_predictions) > threshold:
-                return prediction, np.argmax(non_default_prediction_idxs).astype(int)
-            else:
-                return prediction, default_behavior
+        if np.max(non_default_predictions) > threshold:
+            return prediction, np.argmax(non_default_prediction_idxs).astype(int)
+        # TODO: fixme: not always behavior but also identification
+        return prediction, default_behavior
 
     def predict_sequential(self, data):
         # TODO: implement recognition vs sequential
@@ -189,23 +189,27 @@ class Model:
         if len(data.shape) == 3:
             prediction = self.sequential_model.predict(np.expand_dims(data, axis=0))
             return np.argmax(prediction)
-        else:
-            # TODO: implement batches
-            predictions = []
-            for dat in data:
-                prediction = self.sequential_model.predict(np.expand_dims(dat, axis=0))
-                predictions.append(prediction)
-            predictions = np.asarray(predictions)
-            return np.argmax(predictions, axis=-1)
+        # TODO: implement batches
+        predictions = []
+        for dat in data:
+            prediction = self.sequential_model.predict(np.expand_dims(dat, axis=0))
+            predictions.append(prediction)
+        predictions = np.asarray(predictions)
+        return np.argmax(predictions, axis=-1)
 
+    # TODO: remove unused code
     def export_training_details(self):
+        """TODO: Fill in description"""
         raise NotImplementedError
 
+    # TODO: remove unused code
     def save_model(self, path):
+        """TODO: Fill in description"""
         self.recognition_model.save(path + "_recognition")
         self.sequential_model.save(path + "_sequential")
 
     def load_model(self, recognition_path=None, sequential_path=None):
+        """TODO: Fill in description"""
         if recognition_path is not None:
             self.recognition_model = load_model(recognition_path)
         if sequential_path is not None:
@@ -224,6 +228,7 @@ class Model:
                 layer.trainable = False
 
     def remove_classification_layers(self):
+        """TODO: Fill in description"""
         self.recognition_model.layers.pop()
         self.recognition_model.layers.pop()
 
@@ -253,6 +258,7 @@ class Model:
         return new_lr
 
     def set_lr_scheduler(self):
+        """TODO: Fill in description"""
         lr_callback = tf.keras.callbacks.LearningRateScheduler(self.scheduler)
         self.callbacks.append(lr_callback)
 

@@ -1,45 +1,39 @@
-# SIPEC
-# MARKUS MARKS
-# MODEL ARCHITECTURES
-import tensorflow as tf
-from tensorflow.keras import regularizers, Model
+"""
+SIPEC
+MARKUS MARKS
+MODEL ARCHITECTURES
+"""
+from tensorflow.keras import Model, regularizers
 from tensorflow.keras.applications import (
     DenseNet121,
-    DenseNet201,
-    ResNet50,
-    ResNet101,
-    InceptionResNetV2,
-    Xception,
-    NASNetLarge,
-    InceptionV3,
-    EfficientNetB2,
     EfficientNetB3,
     EfficientNetB4,
     EfficientNetB5,
-    EfficientNetB6,
     EfficientNetB7,
+    InceptionResNetV2,
+    InceptionV3,
+    ResNet50,
+    Xception,
 )
 from tensorflow.keras.layers import (
-    Conv2D,
+    GRU,
+    LSTM,
+    Activation,
     BatchNormalization,
-    Flatten,
+    Bidirectional,
+    Conv1D,
+    Conv2D,
+    Conv2DTranspose,
     Dense,
     Dropout,
-    Activation,
-    TimeDistributed,
-    LSTM,
+    Flatten,
+    GaussianNoise,
     Input,
-    Bidirectional,
+    LeakyReLU,
     MaxPooling2D,
-    Conv1D,
-    SpatialDropout1D,
+    TimeDistributed,
     ZeroPadding2D,
     concatenate,
-    GaussianNoise,
-    Conv2DTranspose,
-    UpSampling2D,
-    Reshape,
-    LeakyReLU,
 )
 from tensorflow.keras.models import Sequential
 from tensorflow.python.keras.applications.efficientnet import EfficientNetB1
@@ -114,7 +108,7 @@ def posenet(
     x = Conv2D(3, kernel_size=(1, 1), strides=(1, 1))(new_input)
     x = recognition_model(x)
 
-    for i in range(4):
+    for _ in range(4):
         x = Conv2DTranspose(
             features, kernel_size=(2, 2), strides=(2, 2), padding="valid", use_bias=bias
         )(x)
@@ -145,7 +139,6 @@ def classification_scratch(input_shape):
     Args:
         input_shape:
     """
-    activation = "tanh"
     dropout = 0.3
     # conv model
 
@@ -208,12 +201,11 @@ def classification_scratch(input_shape):
     return model
 
 
-def classification_large(input_shape):
+def classification_large(input_shape, num_classes):
     """
     Args:
         input_shape:
     """
-    activation = "tanh"
     dropout = 0.1
     # conv model
 
@@ -247,15 +239,15 @@ def classification_large(input_shape):
     model.add(Activation("relu"))
     model.add(Dropout(dropout))
 
-    model.add(Conv2D(512, kernel_size=(2, 2), strides=(2, 2), padding="valid"))
-    model.add(BatchNormalization())
-    model.add(Activation("relu"))
-    model.add(Dropout(dropout))
-
-    model.add(Conv2D(1024, kernel_size=(2, 2), strides=(2, 2), padding="valid"))
-    model.add(BatchNormalization())
-    model.add(Activation("relu"))
-    model.add(Dropout(dropout))
+    # model.add(Conv2D(512, kernel_size=(2, 2), strides=(2, 2), padding="valid"))
+    # model.add(BatchNormalization())
+    # model.add(Activation("relu"))
+    # model.add(Dropout(dropout))
+    #
+    # model.add(Conv2D(1024, kernel_size=(2, 2), strides=(2, 2), padding="valid"))
+    # model.add(BatchNormalization())
+    # model.add(Activation("relu"))
+    # model.add(Dropout(dropout))
 
     model.add(Flatten())
 
@@ -275,7 +267,7 @@ def classification_large(input_shape):
     model.add(Dropout(dropout))
 
     #     model.add(Flatten())
-    model.add(Dense(4))
+    model.add(Dense(num_classes))
     model.add(Activation("softmax"))
 
     return model
@@ -345,9 +337,11 @@ def classification_small(input_shape, num_classes):
 
 
 def dlc_model_sturman(input_shape, num_classes):
-    """Model that implements behavioral classification based on Deeplabcut generated features as in Sturman et al.
+    """Model that implements behavioral classification based on
+    Deeplabcut generated features as in Sturman et al.
 
-    Reimplementation of the model used in the publication Sturman et al. that performs action recognition on top of pose estimation
+    Reimplementation of the model used in the publication Sturman et al.
+    that performs action recognition on top of pose estimation
 
     Parameters
     ----------
@@ -381,11 +375,12 @@ def dlc_model_sturman(input_shape, num_classes):
 
     return model
 
-
+# TODO: remove unused code
 def dlc_model(input_shape, num_classes):
     """Model for classification on top of pose estimation.
 
-    Classification model for behavior, operating on pose estimation. This model has more free parameters than Sturman et al.
+    Classification model for behavior, operating on pose estimation.
+    This model has more free parameters than Sturman et al.
 
     Parameters
     ----------
@@ -425,6 +420,7 @@ def dlc_model(input_shape, num_classes):
     return model
 
 
+# TODO: remove unused code
 def recurrent_model_old(
     recognition_model, recurrent_input_shape, classes=4, recurrent_dropout=None
 ):
@@ -484,7 +480,8 @@ def recurrent_model_tcn(
     recurrent_input_shape,
     classes=4,
 ):
-    """Recurrent architecture for classification of temporal sequences of images based on temporal convolution architecture (TCN).
+    """Recurrent architecture for classification of temporal sequences
+    of images based on temporal convolution architecture (TCN).
     This architecture is used for BehaviorNet in SIPEC.
 
     Parameters
@@ -508,7 +505,8 @@ def recurrent_model_tcn(
     # TODO: config me!
     filters = 64
     kernel_size = 2
-    # dout = 0.01
+    # dout = 0.1
+    alpha = 0.3
     act_fcn = "relu"
     k = Conv1D(
         filters,
@@ -517,6 +515,7 @@ def recurrent_model_tcn(
         dilation_rate=1,
         kernel_initializer="he_normal",
     )(k)
+    # k_1 = Flatten(k)
     k = BatchNormalization()(k)
     # k = Activation(LeakyReLU(alpha=0.3))(k)
     # k = Activation(Activation('relu'))(k)
@@ -563,13 +562,13 @@ def recurrent_model_tcn(
     k = Flatten()(k)
 
     k = Dense(64)(k)
-    k = Activation(LeakyReLU(alpha=0.3))(k)
+    k = Activation(LeakyReLU(alpha=alpha))(k)
     # k = Dropout(dout)(k)
     k = Dense(32)(k)
-    k = Activation(LeakyReLU(alpha=0.3))(k)
+    k = Activation(LeakyReLU(alpha=alpha))(k)
     # k = Dropout(dout)(k)
     k = Dense(16)(k)
-    k = Activation(LeakyReLU(alpha=0.3))(k)
+    k = Activation(LeakyReLU(alpha=alpha))(k)
 
     k = Dense(classes)(k)
     k = Activation("softmax")(k)
@@ -582,7 +581,8 @@ def recurrent_model_tcn(
 def recurrent_model_lstm(
     recognition_model, recurrent_input_shape, classes=4, recurrent_dropout=None
 ):
-    """Recurrent architecture for classification of temporal sequences of images based on LSTMs or GRUs.
+    """Recurrent architecture for classification of temporal sequences of
+    images based on LSTMs or GRUs.
     This architecture is used for IdNet in SIPEC.
 
     Parameters
@@ -647,7 +647,9 @@ def recurrent_model_lstm(
 
 
 # TODO: adaptiv size
-def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True):
+def pretrained_recognition(
+    model_name, input_shape, num_classes, skip_layers=False
+):
     """This returns the model architecture for a model that operates on images and is pretrained with imagenet weights.
     This architecture is used for IdNet and BehaviorNet as backbone in SIPEC and is referred to as RecognitionNet.
 
@@ -668,6 +670,7 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
         RecognitionNet
     """
     if model_name == "xception":
+        #TODO: fixme generetic input shape adaptation
         recognition_model = Xception(
             include_top=False,
             input_shape=(75, 75, 3),
@@ -677,8 +680,31 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
         )
         # TODO: config me!
         # just if segmentation  mask is small (for 35)
-        # for i in range(0, 17):
-        #     recognition_model.layers.pop(0)
+        if skip_layers:
+            for i in range(0, 17):
+                recognition_model.layers.pop(0)
+
+    elif model_name == "efficientnet":
+        recognition_model = EfficientNetB7(
+            include_top=False,
+            input_shape=(input_shape[0], input_shape[1], 3),
+            pooling="avg",
+            weights="imagenet",
+        )
+    elif model_name == "efficientnet3":
+        recognition_model = EfficientNetB3(
+            include_top=False,
+            input_shape=(input_shape[0], input_shape[1], 3),
+            pooling="avg",
+            weights="imagenet",
+        )
+    elif model_name == "efficientnet4":
+        recognition_model = EfficientNetB4(
+            include_top=False,
+            input_shape=(input_shape[0], input_shape[1], 3),
+            pooling="avg",
+            weights="imagenet",
+        )
 
     elif model_name == "resnet":
         recognition_model = ResNet50(
@@ -710,7 +736,7 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
         recognition_model = classification_large(input_shape, num_classes)
 
     elif model_name == "densenet":
-        recognition_model = DenseNet201(
+        recognition_model = DenseNet121(
             include_top=False,
             input_shape=(input_shape[0], input_shape[1], 3),
             pooling="avg",
@@ -743,11 +769,24 @@ def pretrained_recognition(model_name, input_shape, num_classes, fix_layers=True
 
     else:
         x = Conv2D(3, kernel_size=(1, 1), strides=(1, 1))(new_input)
-        if model_name == "xception" or "inceptionv3":
-            x = ZeroPadding2D(padding=(2, 2))(x)
+        if (
+            model_name == "xception"
+            or model_name == "inceptionv3"
+            or model_name == "inceptionResnet"
+        ):
+            if input_shape[1] >= 76 or input_shape[1] == 75:
+                pass
+            else:
+                diff = 76 - input_shape[1]
+                diff = int(diff / 2)
+                x = ZeroPadding2D(padding=(diff, diff))(x)
         x = recognition_model(x)
         x = BatchNormalization()(x)
-        if model_name == "xception":
+        if (
+            model_name == "xception"
+            or model_name == "efficientnet"
+            or model_name == "efficientnet4"
+        ):
             dout = 0.25
             x = Dropout(dout)(x)
         if model_name == "densenet":
@@ -790,8 +829,7 @@ def idtracker_ai(input_shape, classes):
         idtracker.ai identification module
     """
 
-    activation = "tanh"
-    dropout = 0.2
+    # dropout = 0.2
     # conv model
 
     model = Sequential()
@@ -852,6 +890,7 @@ def idtracker_ai(input_shape, classes):
     return model
 
 
+# TODO: remove unused code
 def SkipConNet(x_train, dropout):
     """
     Args:

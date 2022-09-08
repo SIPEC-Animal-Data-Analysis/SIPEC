@@ -1,24 +1,26 @@
-# SIPEC
-# MARKUS MARKS
-# Extract cutout videos from multi animal videos
+"""
+SIPEC
+MARKUS MARKS
+Extract cutout videos from multi animal videos
+"""
 
-import numpy as np
-
-from tqdm import tqdm
 import os
 
-
-from SwissKnife.poseestimation import dilate_mask
+import numpy as np
+from joblib import Parallel, delayed
 from scipy.ndimage.measurements import center_of_mass
-from SwissKnife.utils import apply_to_mask
+from tqdm import tqdm
+
+from SwissKnife.utils import apply_to_mask, dilate_mask
 
 # from SwissKnife.segmentation import SegModel, mold_video
 
-from joblib import Parallel, delayed
-
 
 def detect_social(
-    mask_1, mask_2, threshold=10, dilation_factor=40,
+    mask_1,
+    mask_2,
+    threshold=10,
+    dilation_factor=40,
 ):
     mask_1 = dilate_mask(mask_1, factor=dilation_factor)
     mask_2 = dilate_mask(mask_2, factor=dilation_factor)
@@ -28,8 +30,7 @@ def detect_social(
 
     if multi_event.sum() > threshold:
         return 1
-    else:
-        return 0
+    return 0
 
 
 def detect_social_parallel(frame, masks):

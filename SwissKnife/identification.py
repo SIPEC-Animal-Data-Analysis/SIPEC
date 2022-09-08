@@ -12,7 +12,7 @@ from joblib import Parallel, delayed
 from argparse import ArgumentParser
 import imageio
 import numpy as np
-from keras import backend as K
+from tensorflow.keras import backend as K
 from skimage.transform import rescale
 import tensorflow as tf
 from datetime import datetime
@@ -22,7 +22,7 @@ from SwissKnife.architectures import idtracker_ai
 from SwissKnife.utils import (
     Metrics,
     setGPU,
-    callbacks_learningRate_plateau,
+    get_callbacks,
     check_directory,
     set_random_seed,
     load_config,
@@ -36,45 +36,7 @@ from SwissKnife.segmentation import mold_image
 from SwissKnife.dataloader import Dataloader
 from SwissKnife.model import Model
 from sklearn import metrics
-
-
-video_train = [
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_1.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_2.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_3.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_4.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_5.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T115800-20180124T122800b_%T1_1.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T115800-20180124T122800b_%T1_2.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T113800-20180124T115800_%T1_1.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T113800-20180124T115800_%T1_2.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180115T150759-20180115T151259_%T1_1.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180131T135402-20180131T142501_%T1_1.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180131T135402-20180131T142501_%T1_2.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_1.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_2.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_3.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_4.npy",
-    "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180115T150502-20180115T150902_%T1_1.npy",
-]
-
-classes = {
-    "Charles": 0,
-    "Max": 1,
-    "Paul": 2,
-    "Alan": 3,
-}
-
-video_1 = [
-    "20180131T135402-20180131T142501_%T1_1",
-    "20180131T135402-20180131T142501_%T1_2",
-    "20180131T135402-20180131T142501_%T1_3",
-    "20180131T135402-20180131T142501_%T1_4",
-]
-
-idresults_base = "/media/nexus/storage3/idtracking/idtracking_gui/results/"
-fnames_base = "/media/nexus/storage1/swissknife_data/primate/inference/segmentation_highres_multi/"
-vid_basepath = "/media/nexus/storage1/swissknife_data/primate/raw_videos/2018_merge/"
+from SwissKnife.dataprep import get_primate_paths
 
 
 def evaluate_on_data(
@@ -88,7 +50,7 @@ def evaluate_on_data(
         )
 
         dataloader = Dataloader(
-            x_train, y_train, x_test, y_test, look_back=config["look_back"]
+            x_train, y_train, x_test, y_test, config
         )
 
         # FIXME: remove?
@@ -106,12 +68,7 @@ def evaluate_on_data(
         our_model = Model()
         our_model.load_recognition_model(network)
         res = our_model.predict(dataloader.x_test)
-        import matplotlib.pyplot as plt
 
-        plt.imshow(dataloader.x_test[10, :, :, 0])
-        plt.show()
-        # print('max', max(dataloader.x_test[10,:,:,0]).flatten())
-        # print('min', min(dataloader.x_test[10, :, :, 0]).flatten())
         metric = metrics.balanced_accuracy_score(
             # res, np.argmax(dataloader.y_test, axis=-1)
             res,
@@ -120,6 +77,15 @@ def evaluate_on_data(
         print("Result", str(metric))
 
     if species == "primate":
+
+        (
+            video_train,
+            classes,
+            idresults_base,
+            fnames_base,
+            vid_basepath,
+            video_1,
+        ) = get_primate_paths()
 
         print(video_train)
         print("preparing data")
@@ -169,7 +135,10 @@ def evaluate_on_data(
             y_test = np.hstack(y_test)
 
             dataloader = Dataloader(
-                x_train[:, 4, :, :, :], y_train, x_test[:, 4, :, :, :], y_test,
+                x_train[:, 4, :, :, :],
+                y_train,
+                x_test[:, 4, :, :, :],
+                y_test,
             )
 
             dataloader.categorize_data(num_classes=num_classes)
@@ -204,6 +173,7 @@ def train_on_data(
     network,
     config,
     results_sink,
+    dataloader=None,
     video=None,
     fraction=None,
     cv_folds=None,
@@ -212,9 +182,10 @@ def train_on_data(
 ):
     results = []
 
-    if species == "primate":
+    if species == "primate" and dataloader is None:
         print("preparing data")
         X, y, vidlist = get_primate_identification_data(scaled=True)
+        print(vidlist)
         results = []
         _results_sink = results_sink
 
@@ -239,7 +210,11 @@ def train_on_data(
         y_test = np.hstack(y_test)
 
         dataloader = Dataloader(
-            x_train[:, 4, :, :, :], y_train, x_test[:, 4, :, :, :], y_test,
+            x_train[:, 4, :, :, :],
+            y_train,
+            x_test[:, 4, :, :, :],
+            y_test,
+            config=config,
         )
 
         dataloader.x_train_recurrent = x_train
@@ -248,11 +223,12 @@ def train_on_data(
         dataloader.y_test_recurrent = y_test
 
         # TODO: doesn't work here
-        # dataloader.change_dtype()
+        dataloader.downscale_frames()
+        dataloader.change_dtype()
 
         print("data preparation done")
 
-    if species == "mouse":
+    elif species == "mouse" and dataloader is None:
         num_classes = 8
 
         # x_train, y_train, x_test, y_test = get_individual_mouse_data()
@@ -261,14 +237,7 @@ def train_on_data(
             animal_lim=num_classes, cv_folds=cv_folds, fold=fold, masking=masking
         )
 
-        dataloader = Dataloader(
-            x_train, y_train, x_test, y_test, look_back=config["look_back"]
-        )
-
-        import matplotlib.pyplot as plt
-
-        plt.imshow(dataloader.x_test[5, :, :])
-        plt.show()
+        dataloader = Dataloader(x_train, y_train, x_test, y_test, config=config)
 
         # FIXME: remove?
         dataloader.change_dtype()
@@ -305,10 +274,10 @@ def train_on_data(
             # dataloader.undersample_data()
             dataloader.decimate_labels(percentage=0.33)
 
-        dataloader.categorize_data(num_classes=num_classes)
+        dataloader.categorize_data(num_classes=dataloader.get_num_classes())
 
         # todo: change pos
-        if species == "mouse":
+        if species == "mouse" and dataloader is None:
             dataloader.create_recurrent_data()
             dataloader.create_flattened_data()
 
@@ -320,12 +289,13 @@ def train_on_data(
         our_model.set_recognition_model(
             architecture=config["recognition_backbone"],
             input_shape=dataloader.get_input_shape(),
-            num_classes=num_classes,
+            num_classes=dataloader.get_num_classes(),
         )
 
         # set optimizer
         our_model.set_optimizer(
-            config["recognition_model_optimizer"], lr=config["recognition_model_lr"],
+            config["recognition_model_optimizer"],
+            lr=config["recognition_model_lr"],
         )
 
         ## Define callbacks
@@ -336,11 +306,11 @@ def train_on_data(
             our_model.set_lr_scheduler()
         else:
             # use standard training callback
-            CB_es, CB_lr = callbacks_learningRate_plateau()
+            CB_es, CB_lr = get_callbacks()
             our_model.add_callbacks([CB_es, CB_lr])
 
         # add sklearn metrics for tracking in training
-        my_metrics = Metrics()
+        my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
         my_metrics.setModel(our_model.recognition_model)
         our_model.add_callbacks([my_metrics])
 
@@ -349,12 +319,13 @@ def train_on_data(
         elif species == "mouse":
             augmentation = mouse_identification(level=config["augmentation_level"])
         else:
-            raise NotImplementedError
+            # TODO: add more species/generic augmentation
+            augmentation = primate_identification(level=config["augmentation_level"])
         if config["recognition_model_augmentation"]:
             our_model.set_augmentation(augmentation)
 
-        our_model.recognition_model_epochs = config["recognition_model_epochs"]
         our_model.recognition_model_batch_size = config["recognition_model_batch_size"]
+        our_model.recognition_model_epochs = config["recognition_model_epochs"]
 
         if config["train_recognition_model"]:
             # start training of recognition network
@@ -365,18 +336,23 @@ def train_on_data(
             )
 
             res = our_model.predict(dataloader.x_test)
+            res = np.argmax(res[0], axis=-1)
             results.append(
                 [
                     "SIPEC_recognition",
                     video,
+                    fraction,
                     metrics.balanced_accuracy_score(
                         res, np.argmax(dataloader.y_test, axis=-1)
                     ),
                     metrics.f1_score(
-                        res, np.argmax(dataloader.y_test, axis=-1), average="macro",
+                        res,
+                        np.argmax(dataloader.y_test, axis=-1),
+                        average="macro",
                     ),
                 ]
             )
+            print(results[-1])
 
         if config["train_sequential_model"]:
             our_model.fix_recognition_layers()
@@ -396,9 +372,14 @@ def train_on_data(
                 num_classes=num_classes,
             )
             my_metrics.setModel(our_model.sequential_model)
+            my_metrics.validation_data = (
+                dataloader.x_test_recurrent,
+                dataloader.y_test_recurrent,
+            )
             our_model.add_callbacks([my_metrics])
             our_model.set_optimizer(
-                config["sequential_model_optimizer"], lr=config["sequential_model_lr"],
+                config["sequential_model_optimizer"],
+                lr=config["sequential_model_lr"],
             )
             if config["sequential_model_use_scheduler"]:
                 our_model.scheduler_lr = config["sequential_model_scheduler_lr"]
@@ -410,7 +391,7 @@ def train_on_data(
                 "sequential_model_batch_size"
             ]
 
-            CB_es, CB_lr = callbacks_learningRate_plateau()
+            CB_es, CB_lr = get_callbacks()
             CB_train = [CB_lr, CB_es]
             # our_model.add_callbacks(CB_train)
 
@@ -418,10 +399,12 @@ def train_on_data(
             print(our_model.sequential_model.summary())
 
             res = our_model.predict_sequential(dataloader.x_test_recurrent)
+            res = np.argmax(res[0], axis=-1)
             results.append(
                 [
                     "SIPEC_sequential",
                     video,
+                    fraction,
                     metrics.balanced_accuracy_score(
                         res, np.argmax(dataloader.y_test_recurrent, axis=-1)
                     ),
@@ -432,6 +415,7 @@ def train_on_data(
                     ),
                 ]
             )
+            print(results[-1])
             # our_model.sequential_model.sample_weights(
             #     results_sink + "IDnet_" + video + "_sequentialNet" + ".h5"
             # )
@@ -446,13 +430,17 @@ def train_on_data(
 
         # Supplementary
         # optimizer default SGD, but also adam, test both
-        our_model.set_optimizer("sgd", lr=0.001)
+        our_model.set_optimizer("sgd", lr=0.0001)
 
         our_model.recognition_model_epochs = 100
-        our_model.recognition_model_batch_size = 16
+        our_model.recognition_model_batch_size = 64
+
+        CB_es = get_callbacks(patience=10, min_delta=0.05, reduce=False)
+        our_model.add_callbacks([CB_es])
 
         my_metrics = Metrics()
         my_metrics.setModel(our_model.recognition_model)
+        my_metrics.validation_data = (dataloader.x_test, dataloader.y_test)
         our_model.add_callbacks([my_metrics])
 
         our_model.train_recognition_network(dataloader=dataloader)
@@ -462,6 +450,7 @@ def train_on_data(
             [
                 "IdTracker",
                 video,
+                fraction,
                 metrics.balanced_accuracy_score(
                     res, np.argmax(dataloader.y_test, axis=-1)
                 ),
@@ -481,6 +470,7 @@ def train_on_data(
             [
                 "shuffle",
                 video,
+                fraction,
                 metrics.balanced_accuracy_score(
                     # res, np.argmax(dataloader.y_test, axis=-1)
                     res,
@@ -498,7 +488,9 @@ def train_on_data(
         print(results)
 
     np.save(
-        results_sink + "results_df", results, allow_pickle=True,
+        results_sink + "results_df",
+        results,
+        allow_pickle=True,
     )
 
 
@@ -726,7 +718,7 @@ def load_vid(basepath, vid, idx, batch_size=10000):
     videodata = skvideo.io.vread(basepath + vid + ".mp4", as_grey=False)
     videodata = videodata[idx * batch_size : (idx + 1) * batch_size]
     results_list = Parallel(
-        n_jobs=20, max_nbytes=None, backend="multiprocessing", verbose=40
+        n_jobs=-1, max_nbytes=None, backend="multiprocessing", verbose=40
     )(delayed(mold_image)(image) for image in videodata)
     results = {}
     for idx, el in enumerate(results_list):
@@ -758,6 +750,7 @@ def vid_to_xy(video):
 
 
 def main():
+    # TODO: replace
     args = parser.parse_args()
     operation = args.operation
     network = args.network
@@ -768,25 +761,111 @@ def main():
     cv_folds = args.cv_folds
     fold = args.fold
     nw_path = args.nw_path
-
-    if gpu_name is not None:
-        print("setting gpu")
-        setGPU(K, gpu_name)
+    images = args.images
+    annotations = args.annotations
+    results_sink = args.results_sink
+    training_data = args.training_data
 
     config = load_config("../configs/identification/" + config_name)
+    # TODO: fix and remove
+    config["use_generator"] = False
 
-    random_seed = config["random_seed"]
-    os.environ["PYTHONHASHSEED"] = str(random_seed)
-    random.seed(random_seed)
-    my_rnd_seed = np.random.seed(random_seed)
-    tf.set_random_seed(random_seed)
-    tf.random.set_random_seed(random_seed)
+    set_random_seed(config["random_seed"])
+    setGPU(gpu_name=gpu_name)
 
-    keras_config = tf.ConfigProto()
-    keras_config.gpu_options.allow_growth = True
-    keras_config.gpu_options.visible_device_list = str(gpu_name)
-    sess = tf.Session(graph=tf.get_default_graph(), config=keras_config)
-    K.set_session(sess)
+    x_train = []
+    y_train = []
+    x_test = []
+    y_test = []
+
+    if training_data is not None:
+        training_folders = training_data + "train/"
+        testing_folders = training_data + "val/"
+
+        # go through each subfolder in testing_folder
+        for training_folder in os.listdir(training_folders):
+            animal_id = training_folder[-1]
+            # load every image file in testing_folder
+            training_images = [
+                imageio.imread(training_folders + training_folder + "/" + f)
+                for f in os.listdir(training_folders + training_folder)
+            ]
+            # labels for each folder with the same id and length as the number of images
+            training_labels = [animal_id] * len(training_images)
+            # append to x_train and y_train
+            x_train.extend(training_images)
+            y_train.extend(training_labels)
+
+        # convert to numpy arrays
+        x_train = np.array(x_train)
+        y_train = np.array(y_train)
+
+        # go through each subfolder in testing_folder
+        for testing_folder in os.listdir(testing_folders):
+            animal_id = testing_folder[-1]
+            # load every image file in testing_folder
+            testing_images = [
+                imageio.imread(testing_folders + testing_folder + "/" + f)
+                for f in os.listdir(testing_folders + testing_folder)
+            ]
+            # labels for each folder with the same id and length as the number of images
+            testing_labels = [animal_id] * len(testing_images)
+            # append to x_test and y_test
+            x_test.extend(testing_images)
+            y_test.extend(testing_labels)
+
+        # convert to numpy arrays
+        x_test = np.array(x_test)
+        y_test = np.array(y_test)
+
+    results_sink = (
+        results_sink
+        + "/"
+        + config_name
+        + "/"
+        + network
+        + "/"
+        + datetime.now().strftime("%Y-%m-%d-%H_%M")
+        + "/"
+    )
+
+    ### dataprep
+    # TODO: fcn
+    # prepare crossval
+
+    dataloader = Dataloader(x_train, y_train, x_test, y_test, config=config)
+
+    # TODO: use config for all preproc steps
+    # FIXME: remove?
+    dataloader.change_dtype()
+
+    # dataloader.normalize_data()
+
+    # preproc labels
+    print("encoding")
+    dataloader.encode_labels()
+
+    # dataloader.expand_dims()
+
+    video = "mouse"
+
+    # TODO: implement recurrent dataloader
+    if config["train_sequential_model"]:
+        dataloader.create_recurrent_data()
+
+    # dataloader.undersample_data()
+
+    train_on_data(
+        species="mouse",
+        network=network,
+        config=config,
+        results_sink=results_sink,
+        dataloader=dataloader,
+        fraction=fraction,
+        cv_folds=cv_folds,
+        fold=fold,
+        masking=config["masking"],
+    )
 
     if operation == "train_primate_cv":
         results_sink = (
@@ -838,6 +917,7 @@ def main():
             results_sink=results_sink,
             video=video,
             fraction=fraction,
+            masking=config["masking"],
         )
     if operation == "train_mouse":
         results_sink = (
@@ -901,6 +981,7 @@ parser.add_argument(
     action="store",
     dest="config",
     type=str,
+    default="identification_config",
     help="config for specifying training params",
 )
 parser.add_argument(
@@ -932,7 +1013,7 @@ parser.add_argument(
     action="store",
     dest="gpu",
     type=str,
-    default=None,
+    default="0",
     help="filename of the video to be processed (has to be a segmented one)",
 )
 
@@ -970,6 +1051,56 @@ parser.add_argument(
     type=str,
     default=None,
     help="network used for evaluation",
+)
+parser.add_argument(
+    "--videos_path",
+    action="store",
+    dest="videos_path",
+    type=str,
+    default=None,
+    help="path with folder of video files of different animals",
+)
+parser.add_argument(
+    "--npy_path",
+    action="store",
+    dest="npy_path",
+    type=str,
+    default=None,
+    help="path with folder of npy files of different animals",
+)
+
+parser.add_argument(
+    "--images",
+    action="store",
+    dest="images",
+    type=str,
+    default=None,
+    help="path with folder images of different animals",
+)
+
+parser.add_argument(
+    "--annotations",
+    action="store",
+    dest="annotations",
+    type=str,
+    default=None,
+    help="path with folder annotations of different animals",
+)
+parser.add_argument(
+    "--training_data",
+    action="store",
+    dest="training_data",
+    type=str,
+    default=None,
+    help="path to folder with images of different animals split into train and test folders and individual folders for each animal",
+)
+parser.add_argument(
+    "--results_sink",
+    action="store",
+    dest="results_sink",
+    type=str,
+    default="./results/identification/",
+    help="path to results",
 )
 
 if __name__ == "__main__":

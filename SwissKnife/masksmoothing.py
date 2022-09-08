@@ -1,18 +1,16 @@
 # SIPEC
 # JIN QIUHAN, MARKUS MARKS
 # SCRIPT FOR SMOOTHING SEGMENTATION RESULTS OVER TIME
-import sys
-
 import pickle
 import time
-import numpy as np
 
 import cv2
-
+import numpy as np
 from shapely.geometry import Polygon
+from tensorflow.keras import backend as K
 
-from SwissKnife.segmentation import InferenceConfigPrimate, SegModel
-from SwissKnife.utils import setGPU, rescale_img, detect_primate, masks_to_coms
+from SwissKnife.segmentation import SegModel
+from SwissKnife.utils import masks_to_coms, setGPU
 
 
 class MaskMatcher:
@@ -24,6 +22,7 @@ class MaskMatcher:
     def __init__(self, max_ids=4):
         self.ids = None
         self.max_ids = max_ids
+        self.hist_length = 0
         pass
 
     def bbox_to_polygon(self, bbox):
@@ -52,14 +51,14 @@ class MaskMatcher:
         c = p1.area + p2.area
         if c == 0:
             return 0
-        else:
-            return a / c
+        return a / c
 
     def bbox_match(self, bboxes_cur, bboxes_pre):
         """Bounding box greedy matching algorithm.
 
         Find all current bboxes which are identical to any in the previous frame.
-        Condition: a bbox_cur intersects with one and only bbox_pre && it doesn't intersect with any other bbox_cur.
+        Condition: a bbox_cur intersects with one and only bbox_pre &&
+        it doesn't intersect with any other bbox_cur.
 
         Parameters
         ----------
@@ -113,21 +112,63 @@ class MaskMatcher:
                 ids_list_cur[pair[0]] = ids_list_pre[pair[1]]
         return ids_list_cur
 
+    def euclidean_dist(self, com1, com2):
+        """TODO: Fill in description"""
+        res = 0
+        for i,_ in enumerate(com1):
+            el1 = com1[i]
+            el2 = com2[i]
+            res += np.square(el1 - el2)
+        return np.sqrt(res)
+
     def match_masks(self, bboxes_cur, bboxes_pre):
+        """TODO: Fill in description"""
 
-        ids_list_cur = [0] * len(bboxes_cur)
-        mapping = self.bbox_match(bboxes_cur, bboxes_pre)
+        mapping_matrix = np.zeros((self.max_ids, self.max_ids))
+        for idx_cur, el_cur in enumerate(bboxes_cur):
+            for prev_boxes_idxs, prev_boxes_els in enumerate(reversed(bboxes_pre)):
+                for idx_prev, el_prev in enumerate(prev_boxes_els["boxes"]):
+                    overlap = self.iou(el_cur, el_prev)
+                    mapping_matrix[idx_prev][idx_cur] += overlap**2 / (
+                        prev_boxes_idxs**1.5 + 1
+                    )
+        for i in range(self.max_ids):
+            mx = np.max(mapping_matrix)
+            coords = np.where(mapping_matrix == mx)
+            if mx == 0:
+                # two masks merge and one leftover ids arises, pick only max
+                for col in range(len(mapping_matrix)):
+                    if np.sum(mapping_matrix[:, col]) == 0:
+                        for row in range(len(mapping_matrix)):
+                            if np.sum(mapping_matrix[row, :]) == 0:
+                                mapping_matrix[row, col] = -1
+            else:
+                # set rows and cols away from the max value to 0
+                for row in range(len(mapping_matrix)):
+                    if not row == coords[0][0]:
+                        mapping_matrix[row, coords[1][0]] = 0
+                for col in range(len(mapping_matrix)):
+                    if not col == coords[1][0]:
+                        mapping_matrix[coords[0][0], col] = 0
+                mapping_matrix[coords[0][0], coords[1][0]] = -mapping_matrix[
+                    coords[0][0], coords[1][0]
+                ]
+        mapping_matrix = -mapping_matrix
 
-        # TODO: shorten
-        delkeys = []
-        for key in mapping.keys():
-            if mapping[key] == [0, 0]:
-                delkeys.append(key)
-        for key in delkeys:
-            del mapping[key]
-        return mapping
+        mapp = {}
+        for i in range(len(mapping_matrix)):
+            col = mapping_matrix[:, i]
+            ma = np.max(col)
+            if ma == 0:
+                continue
+            mapp[i] = [
+                mapping_matrix[np.argmax(col), i] / np.max(mapping_matrix),
+                np.argmax(col),
+            ]
+        return mapp
 
     def match_ids(self, mapping, nums):
+        """TODO: Fill in description"""
         if self.ids is None or len(mapping) == 0:
             self.ids = np.zeros((self.max_ids,)).astype("int")
         else:
@@ -160,6 +201,7 @@ class MaskMatcher:
         return self.ids
 
     def map(self, mapping, arr):
+        """TODO: Fill in description"""
 
         inverse_mapping = {}
         for map in mapping:
@@ -170,7 +212,7 @@ class MaskMatcher:
         leftovers_new = list(
             range(0, max(max(inverse_mapping.keys()) + 1, max(leftovers)))
         )
-        for el in inverse_mapping:
+        for el,_ in inverse_mapping.items():
             try:
                 new_arr[el] = arr[inverse_mapping[el]]
                 leftovers.remove(inverse_mapping[el])
@@ -204,14 +246,13 @@ class MaskMatcher:
 
 
 def main():
+    """TODO: Fill in description"""
     start_time = time.process_time()
-
-    from keras import backend as K
 
     # Config 1: GPU config
     setGPU(K, "0")
     # Config 2: inference config
-    config = InferenceConfigPrimate()
+    # config = InferenceConfigPrimate()
 
     species = "mouse"
     SegNet = SegModel(species=species)
@@ -220,14 +261,6 @@ def main():
     )
     # IdNet = load_model("./IDnet_20180124T115800-20180124T122800b_%T1_recognitionNet.h5")
     maskmatcher = MaskMatcher()
-
-    # set classes
-    classes = {
-        "Charles": 0,
-        "Max": 1,
-        "Paul": 2,
-        "Alan": 3,
-    }
 
     print("Load models:", time.process_time() - start_time, "seconds")
 
@@ -251,7 +284,7 @@ def main():
     img_pre, masks_pre, bboxes_pre = SegNet.detect_image(frame_pre, verbose=0)
     if len(masks_pre.shape) == 2:
         masks_pre = np.expand_dims(masks_pre, axis=-1)
-    coms_pre = masks_to_coms(masks_pre)
+    #coms_pre = masks_to_coms(masks_pre)
 
     print("First frame:", time.process_time() - start_time, "seconds")
     start_time = time.process_time()
@@ -277,7 +310,7 @@ def main():
                 single_coms[_id[0]].append(coms_cur[_idx])
         # bboxes and ids are looped
         bboxes_pre = bboxes_cur.copy()
-        ids_pre = ids_cur.copy()
+        #ids_pre = ids_cur.copy()
         if count == 300:  # test 10 sec
             break
 

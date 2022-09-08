@@ -16,3 +16,4 @@ poseestimation_model_epochs = 400,100,400
 poseestimation_model_learning_rates = 0.00075,0.0001,0.00001
 poseestimation_model_steps_per_epochs = 25,50,50
 poseestimation_model_backbone = efficientnetb7
+poseestimation_model_features = 256

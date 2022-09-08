@@ -1,4 +1,4 @@
-mold_dimension = 1920
+mold_dimension = 1024
 mask_size = 128
 lookback_matching = 100
 lookback_behavior = 25
@@ -6,9 +6,9 @@ posenet_resize_factor = None
 use_flow = 0
 num_frames = None
 id_matching = 0
-greyscale = 1
+greyscale = 0
 mask_matching = 1
 display_coms = 0
 downsample_factor = 0.5
-segnet_detection_confidence = 0.5
+segnet_detection_confidence = 0.7
 behavenet_detection_confidence = 0.5
