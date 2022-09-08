@@ -1,9 +1,12 @@
-# SIPEC
-# MARKUS MARKS
-# JOB RUNNER
+"""
+SIPEC
+MARKUS MARKS
+JOB RUNNER
+"""
+
 import subprocess
-from argparse import ArgumentParser
 import sys
+from argparse import ArgumentParser
 
 sys.path.append("../")
 

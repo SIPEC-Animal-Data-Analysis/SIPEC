@@ -1,17 +1,18 @@
-# SIPEC
-# MARKUS MARKS
-# AUGMENTATIONS
+"""
+SIPEC
+MARKUS MARKS
+AUGMENTATIONS
+"""
 
 import imgaug as ia
 from imgaug import augmenters as iaa
 
 
 def primate_poseestimation():
+    """TODO: Fill in description"""
     sometimes = lambda aug: iaa.Sometimes(0.4, aug)
 
     often = lambda aug: iaa.Sometimes(1.0, aug)
-    medium = lambda aug: iaa.Sometimes(0.4, aug)
-    rare = lambda aug: iaa.Sometimes(0.4, aug)
     augmentation_image = iaa.Sequential(
         [
             often(
@@ -37,11 +38,10 @@ def primate_poseestimation():
 
 
 def mouse_poseestimation():
+    """TODO: Fill in description"""
     sometimes = lambda aug: iaa.Sometimes(0.5, aug)
 
     often = lambda aug: iaa.Sometimes(0.95, aug)
-    medium = lambda aug: iaa.Sometimes(0.05, aug)
-    rare = lambda aug: iaa.Sometimes(0.05, aug)
     augmentation_image = iaa.Sequential(
         [
             often(
@@ -71,7 +71,9 @@ def mouse_poseestimation():
 def primate_identification(level=2):
     """Augmentation for primate identification.
 
-    This functions returns an imgaug augmentation object according, where the strength can be controlled by some integers values called level. This augmentaiton object is directly usable with one of SIPEC's networks during training.
+    This functions returns an imgaug augmentation object according,
+    where the strength can be controlled by some integers values called level.
+    This augmentaiton object is directly usable with one of SIPEC's networks during training.
 
     Parameters
     ----------
@@ -247,7 +249,9 @@ def primate_identification(level=2):
 def mouse_identification(level=2):
     """Augmentation for mouse identification.
 
-    This functions returns an imgaug augmentation object according, where the strength can be controlled by some integers values called level. This augmentaiton object is directly usable with one of SIPEC's networks during training.
+    This functions returns an imgaug augmentation object according,
+    where the strength can be controlled by some integers values called level.
+    This augmentaiton object is directly usable with one of SIPEC's networks during training.
 
     Parameters
     ----------
