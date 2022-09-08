@@ -943,10 +943,9 @@ parser.add_argument(
     "--gpu",
     action="store",
     dest="gpu",
-    type=int,
-    default=0,
-    help="filename of the video to be processed (has to be a segmented one)",
-)
+    type=str,
+    default=None,
+    help="number of the gpu to use (can be used to run multiple training processes on the same machine)",
 parser.add_argument(
     "--fraction",
     action="store",
