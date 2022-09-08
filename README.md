@@ -1,6 +1,7 @@
 # SIPEC
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![DOI](https://zenodo.org/badge/303665945.svg)](https://zenodo.org/badge/latestdoi/303665945)
 
 SIPEC: the deep-learning Swiss knife for behavioral data analysis
 
@@ -142,10 +143,10 @@ https://zenodo.org/record/3608658
 The corresponding labels can be accessed here.
 https://github.com/ETHZ-INS/DLCAnalyzer/tree/master/data/OFT/Labels
 
-##### Primate, Mouse data for different SIPEC modules (incomplete, being updated at the moment)
+##### Mouse data for different SIPEC modules (being updated at the moment)
 https://www.dropbox.com/sh/dpkswv0j3l3j38r/AABwHUdL6XYvrhDLDSlyPFzZa?dl=0
 
-##### Pretrained Networks
+##### Pretrained Networks Mouse, Primate (being updated at the moment)
 https://www.dropbox.com/sh/y387kik9mwuszl3/AABBVWALEimW-hrbXvdfjHQSa?dl=0
 
 ## Cite

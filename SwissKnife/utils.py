@@ -1,37 +1,40 @@
-# SIPEC
-# MARKUS MARKS
-# UTILITY FUNCTIONS
+"""
+SIPEC
+MARKUS MARKS
+UTILITY FUNCTIONS
+"""
+import ast
 import datetime
-import random
-import sys
-from glob import glob
-import pandas as pd
 import os
-import pickle
-from distutils.version import LooseVersion
 import os.path
+import pickle
+import random
+from distutils.version import LooseVersion
+from glob import glob
 
-from scipy.ndimage import center_of_mass, binary_dilation
-from skimage.filters import threshold_minimum
-from skimage.measure import regionprops
-from skimage.transform import rescale
-
+import cv2
 import numpy as np
+import pandas as pd
 import skimage
 import skvideo
 import skvideo.io
 import tensorflow as tf
-from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
-from skimage.filters import gaussian
-import cv2
-from tqdm import tqdm
-
-from tensorflow.keras import backend as K
 import tensorflow.keras as keras
+from matplotlib import pyplot as plt
+from scipy.ndimage import binary_dilation, center_of_mass
+from skimage.filters import gaussian, threshold_minimum
+from skimage.measure import regionprops
+from skimage.transform import rescale
+from sklearn.metrics import balanced_accuracy_score, classification_report, f1_score
+from tensorflow.keras import backend as K
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tqdm import tqdm
+# from tensorflow.keras.utils import multi_gpu_model
 
-
+# TODO: remove unused code
 def preprocess_imagenet(X):
+    """TODO: Fill in description"""
     X = X.astype("float")
     # mean and std adjustments with imagenet weights
     X[:, :, :, 0] -= 0.485
@@ -45,10 +48,9 @@ def preprocess_imagenet(X):
     return X
 
 
-# from tensorflow.keras.utils import multi_gpu_model
-
-
+# TODO: remove unused code
 def mask_image_to_individuals(mask_image):
+    """TODO: Fill in description"""
     mask = mask_image[:, :, 0]
     mask[mask == 255] = 0
     mask[mask > 0] = 1
@@ -63,6 +65,7 @@ def mask_image_to_individuals(mask_image):
 
 ### pose estimation utils
 def heatmaps_for_images(labels, img_shape, sigma=3, threshold=None):
+    """TODO: Fill in description"""
     heatmaps = []
     for el in labels:
         maps = heatmaps_for_image_whole(
@@ -75,6 +78,7 @@ def heatmaps_for_images(labels, img_shape, sigma=3, threshold=None):
 
 
 def heatmaps_to_locs(y):
+    """TODO: Fill in description"""
     locs = []
     for maps in y:
         map_locs = []
@@ -90,6 +94,7 @@ def heatmaps_to_locs(y):
 
 
 def heatmap_mask(maps, mask):
+    """TODO: Fill in description"""
     ret = False
     for mold in tqdm(maps):
         a = mold * mask
@@ -98,7 +103,9 @@ def heatmap_mask(maps, mask):
     return ret
 
 
+# TODO: remove unused code
 def heatmaps_for_image(labels, window=100, sigma=3):
+    """TODO: Fill in description"""
     heatmaps = []
     for label in labels:
         heatmap = np.zeros((window, window))
@@ -114,6 +121,7 @@ def heatmaps_for_image(labels, window=100, sigma=3):
 
 
 def heatmaps_for_image_whole(labels, img_shape, sigma=3, threshold=None):
+    """TODO: Fill in description"""
     heatmaps = []
     for label in labels:
         heatmap = np.zeros(img_shape)
@@ -131,17 +139,20 @@ def heatmaps_for_image_whole(labels, img_shape, sigma=3, threshold=None):
     return heatmaps
 
 
+# TODO: remove unused code
 def keypoints_in_mask(mask, keypoints):
+    """TODO: Fill in description"""
     for point in keypoints:
         keypoint = point.astype(int)
 
         res = mask[keypoint[1], keypoint[0]]
-        if res == False:
+        if res is False:
             return False
     return True
 
 
 def heatmap_to_scatter(heatmaps, threshold=0.6e-9):
+    """TODO: Fill in description"""
     coords = []
 
     for idx in range(0, heatmaps.shape[-1]):
@@ -158,13 +169,16 @@ def heatmap_to_scatter(heatmaps, threshold=0.6e-9):
 
 
 def dilate_mask(mask, factor=20):
+    """TODO: Fill in description"""
     new_mask = binary_dilation(mask, iterations=factor)
 
     return new_mask
 
 
+# TODO: remove unused code
 def bbox_mask(model, img, verbose=0):
-    image, window, scale, padding, crop = utils.resize_image(
+    """TODO: Fill in description"""
+    image, _, _, _, _ = utils.resize_image(
         img,
         # min_dim=config.IMAGE_MIN_DIM,
         # min_scale=config.IMAGE_MIN_SCALE,
@@ -188,6 +202,7 @@ def bbox_mask(model, img, verbose=0):
 
 
 def masks_to_coords(masks):
+    """TODO: Fill in description"""
     coords = []
     for i in range(masks.shape[-1]):
         coords.append(np.column_stack(np.where(masks[:, :, i] > 0)).astype("uint16"))
@@ -195,6 +210,7 @@ def masks_to_coords(masks):
 
 
 def coords_to_masks(coords, dim=2048):
+    """TODO: Fill in description"""
     masks = np.zeros((dim, dim, len(coords)), dtype="uint8")
     for coord_id, coord in enumerate(coords):
         for co in coord:
@@ -202,18 +218,25 @@ def coords_to_masks(coords, dim=2048):
     return masks
 
 
+# TODO: Check this function
+# TODO: remove unused code
 def saveModel(model):
+    """TODO: Fill in description"""
     json_model = model_tt.model.to_json()
     open("model_architecture.json", "w").write(json_model)
     model_tt.model.save_weights("model_weights.h5", overwrite=True)
 
 
+# TODO: remove unused code
 def clearMemory(model, backend):
+    """TODO: Fill in description"""
     del model
     backend.clear_session()
 
 
+# TODO: remove unused code
 def fix_layers(network, with_backbone=True):
+    """TODO: Fill in description"""
     for layer in network.layers:
         layer.trainable = True
         if with_backbone:
@@ -223,25 +246,29 @@ def fix_layers(network, with_backbone=True):
     return network
 
 
+# TODO: remove unused code
 # helper class to keep track of results from different methods
 class ResultsTracker:
-    # write results as comma seperated lines in a single file
+    """write results as comma seperated lines in a single file"""
+
     def __init__(self, path=None):
         self.path = path
 
     def add_result(self, results):
+        """TODO: Fill in description"""
         if os.path.exists(self.path):
             while not self.file_available():
                 pass
         self.write_results(results)
 
     def write_results(self, results):
+        """TODO: Fill in description"""
         for result in results:
-            hs = open(self.path, "a")
-            hs.write(result + "\n")
-            hs.close()
+            with open(self.path, "a") as hs:
+                hs.write(result + "\n")
 
     def file_available(self):
+        """TODO: Fill in description"""
         try:
             os.rename(self.path, self.path)
             print('Access on file "' + self.path + '" is available!')
@@ -252,12 +279,10 @@ class ResultsTracker:
             return 0
 
 
-import ast
-
-
 # TODO: include multi behavior
 def load_vgg_labels(annotations, video_length, framerate_video, behavior=None):
-    if type(annotations) == "str":
+    """TODO: Fill in description"""
+    if isinstance(annotations, str):
         annotations = pd.read_csv(annotations, error_bad_lines=False, header=1)
     labels = ["none"] * video_length
 
@@ -291,11 +316,15 @@ def load_vgg_labels(annotations, video_length, framerate_video, behavior=None):
     return labels
 
 
+# TODO: remove unused code
 def distance(x, y, x_prev, y_prev):
+    """TODO: Fill in description"""
     return np.sqrt((x - x_prev) ** 2 + (y - y_prev) ** 2)
 
 
+# TODO: remove unused code
 def calculate_speed(distances):
+    """TODO: Fill in description"""
     x = range(0, len(distances))
     y = distances
     dx = np.diff(x)
@@ -305,8 +334,11 @@ def calculate_speed(distances):
     return d
 
 
+# TODO: remove unused code
 # crop png images for segmentation inputs
 def crop_pngs():
+    """TODO: Fill in description"""
+    # TODO: Remove hardcoded paths
     basepath = "/media/nexus/storage1/swissknife_data/primate/segmentation_inputs/annotated_frames/"
     new_path = "/media/nexus/storage1/swissknife_data/primate/segmentation_inputs/annotated_frames_resized/"
     folders = ["train/", "val/"]
@@ -315,6 +347,7 @@ def crop_pngs():
         images = glob(path + "*.png")
         for image in images:
             helper = skimage.io.imread(image)
+            # TODO: plt is not defined
             plt.figure(figsize=(20, 10))
             plt.imshow(helper)
             new_img = helper[:1024, :, :]
@@ -323,6 +356,7 @@ def crop_pngs():
 
 
 def rescale_img(mask, frame, mask_size=256):
+    """TODO: Fill in description"""
     rectsize = [mask[3] - mask[1], mask[2] - mask[0]]
 
     rectsize = np.asarray(rectsize)
@@ -350,6 +384,7 @@ def rescale_img(mask, frame, mask_size=256):
 
 
 def set_random_seed(random_seed):
+    """This function sets Python and tensorflow random seeds"""
     os.environ["PYTHONHASHSEED"] = str(random_seed)
     random.seed(random_seed)
     tf.compat.v1.set_random_seed(random_seed)
@@ -357,6 +392,7 @@ def set_random_seed(random_seed):
 
 
 def detect_primate(_img, _model, classes, threshold):
+    """TODO: Fill in description"""
     prediction = _model.predict(np.expand_dims(_img, axis=0))
     if prediction.max() > threshold:
         return classes[np.argmax(prediction)], prediction.max()
@@ -365,7 +401,7 @@ def detect_primate(_img, _model, classes, threshold):
 
 
 def masks_to_coms(masks):
-    # calculate center of masses
+    """calculate center of masses"""
     coms = []
     for idx in range(0, masks.shape[-1]):
         mask = masks[:, :, idx]
@@ -377,6 +413,7 @@ def masks_to_coms(masks):
 
 
 def apply_to_mask(mask, img, com, mask_size):
+    """TODO: Fill in description"""
     masked_img = maskedImg(img, com, mask_size=mask_size)
     masked_mask = maskedImg(mask, com, mask_size=mask_size)
 
@@ -384,7 +421,7 @@ def apply_to_mask(mask, img, com, mask_size):
 
 
 def apply_all_masks(masks, coms, img, mask_size=128):
-    # mask images
+    """mask images"""
     masked_imgs = []
     masked_masks = []
     for idx, com in enumerate(coms):
@@ -398,8 +435,10 @@ def apply_all_masks(masks, coms, img, mask_size=128):
 
 # functions for data processing
 
+# TODO: remove unused code
 ### BEHAVIOR PREPROCESSING ###
 def startend(df_entry, ms, df):
+    """TODO: Fill in description"""
     start = float(df_entry["temporal_coordinates"][2:-2].split(",")[0]) / ms
     end = float(df_entry["temporal_coordinates"][2:-2].split(",")[1]) / ms
     label = df_entry["metadata"][2:-2].split(":")[-1][1:-1]
@@ -411,7 +450,9 @@ def startend(df_entry, ms, df):
 #### manual segmentation ###
 
 
+# TODO: remove unused code
 def extractCOM(image, threshold):
+    """TODO: Fill in description"""
     try:
         try:
             threshold = threshold_minimum(image, nbins=256)
@@ -427,9 +468,10 @@ def extractCOM(image, threshold):
 
     return center_of_mass, weighted_center_of_mass
 
-
+# TODO: remove unused code
 # TODO: fixme / streamline
 def extractCOM_only(image):
+    """TODO: Fill in description"""
     properties = regionprops(image)
     center_of_mass = properties[0].centroid
     weighted_center_of_mass = properties[0].weighted_centroid
@@ -438,13 +480,16 @@ def extractCOM_only(image):
 
 
 def mask_to_original_image(orig_shape, mask, center_of_mass, mask_size):
+    """TODO: Fill in description"""
 
     img = np.zeros((orig_shape, orig_shape))
+
 
     x_min = np.max([0, int(center_of_mass[0] - mask_size//2)])
     x_max = np.min([img.shape[0], int(center_of_mass[0] + mask_size//2)])
     y_min = np.max([0, int(center_of_mass[1] - mask_size//2)])
     y_max = np.min([img.shape[0], int(center_of_mass[1] + mask_size//2)])
+
 
     x_dim = x_max - x_min
     y_dim = y_max - y_min
@@ -471,6 +516,7 @@ def maskedImg(
     center_of_mass,
     mask_size=74,
 ):
+    """TODO: Fill in description"""
     if len(img.shape) == 2:
         ret = np.zeros((int(mask_size * 2), int(mask_size * 2)))
     else:
@@ -496,8 +542,9 @@ def maskedImg(
 ### DL Utils
 # TODO: own file for DL utils
 
-
+# TODO: remove unused code
 def plotHistory(history, measure):
+    """This function plots the 'measure/metric' as a function of epochs"""
     plt.plot(history.history[measure])
     plt.plot(history.history["val_" + measure])
     plt.title("model" + measure)
@@ -545,6 +592,7 @@ def categorical_focal_loss(gamma=2.0, alpha=0.25):
 
 
 def f1(y_true, y_pred):
+    """TODO: Fill in description"""
     y_true = K.cast(y_true, "float")
 
     #     y_pred = K.round(y_pred)
@@ -564,7 +612,9 @@ def f1(y_true, y_pred):
     return K.mean(f1)
 
 
+# TODO: remove unused code
 def f1_loss(y_true, y_pred):
+    """TODO: Fill in description"""
     tp = K.sum(K.cast(y_true * y_pred, "float"), axis=0)
     tn = K.sum(K.cast((1 - y_true) * (1 - y_pred), "float"), axis=0)
     fp = K.sum(K.cast((1 - y_true) * y_pred, "float"), axis=0)
@@ -578,16 +628,17 @@ def f1_loss(y_true, y_pred):
     return 1 - K.mean(f1)
 
 
+# TODO: remove unused code
 def balanced_acc(y_true, y_pred):
+    """TODO: Fill in description"""
     with sess.as_default():
         return balanced_accuracy_score(y_true.eval(), y_pred.eval())
 
 
-from sklearn.metrics import classification_report
-
-
 class Metrics(tf.keras.callbacks.Callback):
-    def __init__(self, validation_data):
+    """TODO: Fill in description"""
+
+    def __init__(self, validation_data = None):
         self.validation_data = validation_data
 
     def setModel(self, model):
@@ -621,6 +672,7 @@ class Metrics(tf.keras.callbacks.Callback):
 
 # TODO: maybe somewhere else?
 def get_optimizer(optim_name, lr=0.01):
+    """TODO: Fill in description"""
     optim = None
     if optim_name == "adam":
         optim = keras.optimizers.Adam(lr=lr, clipnorm=0.5)
@@ -665,8 +717,8 @@ def callbacks_learningRate_plateau():
 
 
 def get_callbacks(min_lr=1e-7, factor=0.1, patience=8, min_delta=0.0001, reduce=True):
-    #import tensorflow.keras as keras
-    from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
+    # import tensorflow.keras as keras
+
     CB_lr = ReduceLROnPlateau(
         monitor="val_loss",
         min_delta=min_delta,
@@ -706,6 +758,7 @@ def train_model(
     sequential=False,
 ):
     if num_gpus > 1:
+        # This would not work any longer. Update if parallelization over multiple GPUs is desired
         model = multi_gpu_model(model, gpus=num_gpus, cpu_merge=True)
     if loss == "crossentropy":
         # TODO: integrate number of GPUs in config
@@ -896,17 +949,20 @@ def eval_model(
 
 
 def save_dict(filename, dict):
+    """This function dumps a dict using the pickle library"""
     with open(filename, "wb") as handle:
         pickle.dump(dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def load_dict(filename):
+    """This function loads a pickled dict object"""
     with open(filename, "rb") as handle:
         file = pickle.load(handle)
     return file
 
 
 def check_directory(directory):
+    """Creates a folder if it does not exist and raises an exception if it exists"""
     if not os.path.exists(directory):
         print("Creating directory {}".format(directory))
         os.makedirs(directory)
@@ -918,6 +974,7 @@ def check_directory(directory):
         )
 
 
+# TODO: remove unused code
 def get_ax(rows=1, cols=1, size=8):
     """Return a Matplotlib Axes array to be used in
     all visualizations in the notebook. Provide a
@@ -930,6 +987,7 @@ def get_ax(rows=1, cols=1, size=8):
     return ax
 
 
+# TODO: Potential duplicate function, see function check_directory(:
 def check_folder(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -969,7 +1027,7 @@ def pathForFile(paths, filename):
 
 
 def loadVideo(path, num_frames=None, greyscale=True):
-    # load the video
+    """load the video"""
     if not num_frames is None:
         return skvideo.io.vread(path, as_grey=greyscale, num_frames=num_frames)
     else:

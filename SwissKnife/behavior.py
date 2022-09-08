@@ -4,7 +4,9 @@
 
 import random
 from argparse import ArgumentParser
+from datetime import datetime
 
+import cv2
 import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr
@@ -45,7 +47,6 @@ def train_behavior(
         config["backbone"],
         dataloader.get_input_shape(),
         num_classes,
-        fix_layers=False,
         skip_layers=True,
     )
 
@@ -65,8 +66,7 @@ def train_behavior(
         our_model.add_callbacks([CB_es, CB_lr])
 
     # add sklearn metrics for tracking in training
-    validation_data = (dataloader.x_test, dataloader.y_test)
-    my_metrics = Metrics(validation_data)
+    my_metrics = Metrics(validation_data=(dataloader.x_test, dataloader.y_test))
     my_metrics.setModel(our_model.recognition_model)
     our_model.add_callbacks([my_metrics])
 
@@ -91,10 +91,6 @@ def train_behavior(
         print()
         our_model.train_recognition_network(dataloader=dataloader)
         print(config)
-
-    res = our_model.predict(dataloader.x_test, model="recognition")
-    np.save('predictions_recognition.npy', res)
-    print('safed predictions')
 
     if config["train_sequential_model"]:
         if dataloader.config["use_generator"]:
@@ -168,17 +164,20 @@ def train_behavior(
             prediction = our_model.predict(eval_batch, model="sequential")
         else:
             eval_batch = []
+            #TODO: double check batch behavior
             for i in range(config["recognition_model_batch_size"]):
                 new_idx = (idx * config["recognition_model_batch_size"]) + i
                 data = dataloader.x_test[new_idx]
                 eval_batch.append(data)
                 test_gt.append(dataloader.y_test[new_idx])
             eval_batch = np.asarray(eval_batch)
-            prediction = our_model.predict(eval_batch, model="recognition")
-        for idx, el in enumerate(prediction):
-            res.append(el)
+            predictions, predicted_labels = our_model.predict(eval_batch, model="recognition")
+            #res.append(np.argmax(predictions, axis=-1))
+            # concatenate results
+            res = np.concatenate(
+                (res, np.argmax(predictions, axis=-1)), axis=-1
+            )
 
-    res = np.argmax(res, axis=-1).astype(int)
     test_gt = np.asarray(test_gt)
 
     acc = metrics.balanced_accuracy_score(res, np.argmax(test_gt, axis=-1))
@@ -195,6 +194,8 @@ def train_behavior(
 
 
 def train_primate(config, results_sink, shuffle):
+    """TODO: Fill in description"""
+    # TODO: Remove the hardcoded paths
     basepath = "/media/nexus/storage5/swissknife_data/primate/behavior/"
 
     vids = [
@@ -306,6 +307,9 @@ def train_primate(config, results_sink, shuffle):
         # config_name = 'primate_' + str(1)
         #
         # config = load_config("../configs/behavior/primate/" + config_name)
+        config["recognition_model_batch_size"] = 128
+        config["backbone"] = "imagenet"
+        config["encode_labels"] = True
         print(config)
 
         num_classes = config["num_classes"]
@@ -397,6 +401,71 @@ def train_primate(config, results_sink, shuffle):
         )
 
 
+def sec2frame(seconds, fps=30):
+    return int((seconds * fps))
+
+
+def load_multi_labels(path, video_path):
+    times = pd.read_json(path)
+    print(times)
+
+    # behaviors = {}
+    # for i in range(1):
+    #     i = str(i)
+    #     behaviors[i] = times['attribute'][i]['aname']
+    videos = {}
+    for i in times["project"]["vid_list"]:
+        i = str(i)
+        videos[i] = times["file"][i]["fname"]
+
+    fps_dict = {}
+    loaded_labels = {}
+    for video in videos.values():
+        vidpath = video_path + video
+        cap = cv2.VideoCapture(vidpath)
+        length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        loaded_labels[video] = ["none"] * length
+        cam = cv2.VideoCapture(vidpath)
+        fps = cam.get(cv2.CAP_PROP_FPS)
+        fps_dict[video] = int(fps)
+
+    label_video = {}
+    # myvids = []
+    # mylabels = []
+    for i in times.iterrows():
+        meta = i[1]["metadata"]
+        try:
+            video = meta["vid"]
+            print(video)
+            video = videos[video]
+            fps = fps_dict[video]
+            behavior = meta["av"]
+            # TODO: allow for multiple behaviors at the same time
+            behavior = list(behavior.values())[0]
+            times = meta["z"]
+            print(times)
+            labs = loaded_labels[video]
+            labs[sec2frame(times[0], fps=fps) : sec2frame(times[1], fps=fps)] = [
+                behavior
+            ] * int(sec2frame(times[1], fps=fps) - sec2frame(times[0], fps=fps))
+            # mylabels.append(labs)
+            # myvids.append(video)
+            label_video[video] = labs
+            if "vid" in meta.keys():
+                print(meta)
+        except (AttributeError, TypeError, KeyError):
+            continue
+
+    return list(label_video.values()), list(label_video.keys())
+
+
+def downscale_vid(video, factor):
+    new_vid = []
+    for el in tqdm(video):
+        new_vid.append(imresize(el, factor))
+    return np.asarray(new_vid)
+
+
 def main():
     args = parser.parse_args()
     operation = args.operation
@@ -409,47 +478,105 @@ def main():
     results_sink = args.results_sink
     only_flow = args.only_flow
 
+    results_sink = (
+        results_sink
+        + "/"
+        + config_name
+        + "/"
+        + network
+        + "/"
+        + datetime.now().strftime("%Y-%m-%d-%H_%M")
+        + "/"
+    )
+
     setGPU(gpu_name)
     check_directory(results_sink)
 
-    if annotations:
-        myvid = loadVideo(video, greyscale=False)
-        annotation = pd.read_csv(annotations, error_bad_lines=False, header=9)
-        annotation = load_vgg_labels(
-            annotation, video_length=len(myvid), framerate_video=25
+
+
+    labels, videos = load_multi_labels(
+        path=annotations,
+        video_path=video,
+    )
+
+    #TODO: fix these
+    basepath = video
+    greyscale = False
+    downscale_factor = 0.1
+    testvid = videos[-1]
+
+
+    all_labels = []
+    all_vids = []
+    for vid_idx, vid in tqdm(enumerate(videos)):
+        if vid == testvid:
+            testivdeo = downscale_vid(
+                loadVideo(basepath + vid, greyscale=greyscale), downscale_factor
+            )
+            test_labels = labels[vid_idx]
+        else:
+            myvid = downscale_vid(
+                loadVideo(basepath + vid, greyscale=greyscale), downscale_factor
+            )
+            all_labels.append(labels[vid_idx])
+            all_vids.append(myvid)
+    vid = np.vstack(all_vids)
+    labels = np.hstack(all_labels)
+
+    x_train = vid
+    y_train = labels
+    x_test = testivdeo
+    y_test = test_labels
+
+    config = load_config("../configs/behavior/shared_config")
+    beh_config = load_config("../configs/behavior/default")
+    config.update(beh_config)
+
+    dataloader = Dataloader(x_train, y_train, x_test, y_test, config=config)
+    # dataloader.prepare_data()
+    num_classes = len(np.unique(y_train))
+    config["num_classes"] = num_classes
+    print("dataloader prepared")
+
+    dataloader.change_dtype()
+    print("dtype changed")
+
+    if config["normalize_data"]:
+        dataloader.normalize_data()
+    if config["encode_labels"]:
+        dataloader.encode_labels()
+    print("labels encoded")
+
+    class_weights = None
+    if config["use_class_weights"]:
+        print("calc class weights")
+        from sklearn.utils import class_weight
+
+        class_weights = class_weight.compute_class_weight(
+            "balanced", np.unique(dataloader.y_train), dataloader.y_train
         )
 
-        # Train test split
-        split = int(len(myvid) * 0.8)
-        x_train, x_test, y_train, y_test = (
-            myvid[:split],
-            myvid[split:],
-            annotation[:split],
-            annotation[split:],
-        )
+    if config["undersample_data"]:
+        dataloader.undersample_data()
+        print("undersampling data")
 
-        # load cfg
-        config = load_config("../configs/behavior/shared_config")
-        beh_config = load_config("../configs/behavior/default")
-        config.update(beh_config)
-        print(config)
+    print("preparing recurrent data")
+    # dataloader.create_recurrent_data()
+    print("preparing flattened data")
+    # dataloader.create_flattened_data()
 
-        num_classes = len(np.unique(annotation))
-        dataloader = Dataloader(x_train, y_train, x_test, y_test, config)
-        dataloader.prepare_data()
-        train_behavior(dataloader=dataloader, num_classes=num_classes, config=config)
+    print("categorize data")
+    dataloader.categorize_data(num_classes, recurrent=False)
 
-    elif operation == "train_primate":
-        config_name = "primate_final"
-        config = load_config("../configs/behavior/primate/" + config_name)
-        beh_config = load_config("../configs/behavior/default")
-        config.update(beh_config)
-        print(config)
-        train_primate(config=config, results_sink=results_sink, shuffle=shuffle)
-    else:
-        config = load_config(config_name)
-        train_behavior(config=config, results_sink=results_sink)
+    print("data ready")
 
+    # if operation == "train":
+    res = train_behavior(
+        dataloader,
+        config,
+        num_classes=config["num_classes"],
+        class_weights=class_weights,
+    )
 
 parser = ArgumentParser()
 
@@ -507,7 +634,7 @@ parser.add_argument(
     action="store",
     dest="results_sink",
     type=str,
-    default=None,
+    default="./results/behavior/",
     help="path to results",
 )
 parser.add_argument(

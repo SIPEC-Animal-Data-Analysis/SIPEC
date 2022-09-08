@@ -1,34 +1,39 @@
-# SIPEC
-# MARKUS MARKS
-# DATA PREPARATION FOR DATA USED IN SIPEC PAPER
+"""
+SIPEC
+MARKUS MARKS
+DATA PREPARATION FOR DATA USED IN SIPEC PAPER
+"""
 import json
-import random
 import os
+import pickle
+import random
 from argparse import ArgumentParser
+from glob import glob
+
+import numpy as np
+import pandas as pd
 import skimage
 import skimage.io
-import numpy as np
-import pickle
-from glob import glob
-from scipy.ndimage import center_of_mass
-from tqdm import tqdm
-import pandas as pd
 from scipy import misc
-from tensorflow.keras import backend as K
+from scipy.ndimage import center_of_mass
+from skimage import color
 from sklearn.externals._pilutil import imresize
+from tensorflow.keras import backend as K
+from tqdm import tqdm
 
 from SwissKnife.dataloader import create_dataset
-from SwissKnife.utils import (
-    heatmaps_for_image_whole,
-    bbox_mask,
-    heatmaps_to_locs,
-    heatmaps_for_images,
-    heatmap_mask,
-    dilate_mask,
-    setGPU,
-    loadVideo
-)
 from SwissKnife.mrcnn import utils
+
+# from SwissKnife.segmentation import SegModel
+from SwissKnife.utils import (
+    dilate_mask,
+    heatmap_mask,
+    heatmaps_for_image_whole,
+    heatmaps_for_images,
+    heatmaps_to_locs,
+    loadVideo,
+    setGPU,
+)
 
 
 # adapted from mrcnn (Waleed Abdulla, (c) 2017 Matterport, Inc.)
@@ -95,7 +100,7 @@ class Dataset(utils.Dataset):
          class_ids: a 1D array of class IDs of the instance masks.
         """
         # If not a balloon dataset image, delegate to parent class.
-        image_info = self.image_info[image_id]
+        # image_info = self.image_info[image_id]
         #         if image_info["source"] != "mouse":
         #             return super(self.__class__, self).load_mask(image_id)
 
@@ -111,7 +116,7 @@ class Dataset(utils.Dataset):
                 rr, cc = skimage.draw.polygon(p["all_points_y"], p["all_points_x"])
                 mask[rr, cc, i] = 1
             except (IndexError, KeyError):
-                print('ERROR skipping image {}'.format(image_id))
+                print("ERROR skipping image {}".format(image_id))
                 pass
 
         # Return mask, and array of class IDs of each instance. Since we have
@@ -123,13 +128,15 @@ class Dataset(utils.Dataset):
         info = self.image_info[image_id]
         if info["source"] == self.species:
             return info["path"]
-        else:
-            super(self.__class__, self).image_reference(image_id)
+        super(self.__class__, self).image_reference(image_id)
 
 
+# TODO: remove unused code
 def merge_annotations(path1, path2, save_path):
-    annotations_1 = json.load(open(path1))
-    annotations_2 = json.load(open(path2))
+    with open(path1) as fh:
+        annotations_1 = json.load(fh)
+    with open(path2) as fh:
+        annotations_2 = json.load(fh)
     annotations_1["_via_img_metadata"].update(annotations_2["_via_img_metadata"])
     with open(save_path, "w") as f:
         json.dump(annotations_1, f)
@@ -202,8 +209,10 @@ def prepareData(
     return dataset_train, dataset_val
 
 
+# TODO: remove unused code
 def get_SIPEC_reproduction_data(name, cv_folds=0):
 
+    # TODO: Remove hardcoded paths
     if name == "mouse_merged":
         if cv_folds == 0:
             frames_path = "/media/nexus/storage5/swissknife_data/mouse/segmentation_inputs_merged/frames/"
@@ -698,6 +707,7 @@ def get_primate_identification_data(scaled=True):
     return X, y, vidlist
 
 
+# TODO: remove unused code
 def get_individual_mouse_data():
     x_train = np.load(
         "/media/nexus/storage5/swissknife_data/mouse/identification_inputs/"
@@ -718,8 +728,6 @@ def get_individual_mouse_data():
 
     return x_train, y_train, x_test, y_test
 
-
-from skimage import color
 
 # mouse individual (60 mice)
 def generate_individual_mouse_data(
@@ -866,6 +874,7 @@ def generate_individual_mouse_data(
 
     return x_train, y_train, x_test, y_test
 
+
 def get_primate_pose_data():
     X = np.load(
         "/media/nexus/storage5/swissknife_data/primate/pose_inputs/"
@@ -884,9 +893,7 @@ def get_primate_pose_data():
     y_bac = heatmaps_to_locs(y)
     img_shape = (X.shape[1], X.shape[2])
     sigmas = [16.0, 6.0, 1.0, 1.0, 0.5]
-    y = heatmaps_for_images(
-        y_bac, img_shape=img_shape, sigma=sigmas[0], threshold=None
-    )
+    y = heatmaps_for_images(y_bac, img_shape=img_shape, sigma=sigmas[0], threshold=None)
 
     split = 25
     x_train = X[split:]
@@ -896,16 +903,11 @@ def get_primate_pose_data():
 
     return x_train, y_train, x_test, y_test
 
-def get_mouse_pose_data(fraction=1.0):
-    X = np.load(
-        "/home/markus/sipec_data/pose_inputs/"
-        "mouse_posedata_masked_X.npy"
-    )
 
-    y = np.load(
-        "/home/markus/sipec_data/pose_inputs/"
-        "mouse_posedata_masked_y.npy"
-    )
+def get_mouse_pose_data(fraction=1.0):
+    X = np.load("/home/markus/sipec_data/pose_inputs/" "mouse_posedata_masked_X.npy")
+
+    y = np.load("/home/markus/sipec_data/pose_inputs/" "mouse_posedata_masked_y.npy")
 
     new_X = []
     for el in X:
@@ -937,6 +939,7 @@ def get_mouse_pose_data(fraction=1.0):
 
     return x_train, y_train, x_test, y_test
 
+
 def get_mouse_pose_dlc_comparison_data(fold):
     asgrey = False
 
@@ -946,9 +949,9 @@ def get_mouse_pose_dlc_comparison_data(fold):
     folders = folders.__next__()[1]
 
     dlc_path = (
-            "/home/nexus/evaluation_results/evaluation-results/iteration-0/Blockcourse1May9-trainset"
-            + str(fold)
-            + "shuffle1/LabeledImages_DLC_resnet50_Blockcourse1May9shuffle1_1030000_snapshot-1030000/"
+        "/home/nexus/evaluation_results/evaluation-results/iteration-0/Blockcourse1May9-trainset"
+        + str(fold)
+        + "shuffle1/LabeledImages_DLC_resnet50_Blockcourse1May9shuffle1_1030000_snapshot-1030000/"
     )
     from glob import glob
 
@@ -968,9 +971,7 @@ def get_mouse_pose_dlc_comparison_data(fold):
     Xs = []
     ys = []
     for folder in folders:
-        path = (
-                base_path + "labeled-data/" + folder + "/CollectedData_BCstudent1.csv"
-        )
+        path = base_path + "labeled-data/" + folder + "/CollectedData_BCstudent1.csv"
         X, y = read_DLC_labels(
             base_path=base_path,
             label_file_path=path,
@@ -989,9 +990,7 @@ def get_mouse_pose_dlc_comparison_data(fold):
     folders = os.walk(base_path + "labeled-data/")
     folders = folders.__next__()[1]
     for folder in folders:
-        path = (
-                base_path + "labeled-data/" + folder + "/CollectedData_BCstudent1.csv"
-        )
+        path = base_path + "labeled-data/" + folder + "/CollectedData_BCstudent1.csv"
         X, y = read_DLC_labels(
             base_path=base_path,
             label_file_path=path,
@@ -1031,6 +1030,7 @@ def get_mouse_pose_dlc_comparison_data(fold):
 
     return x_train, y_train, x_test, y_test, img_shape
 
+
 def get_mouse_dlc_data():
     # base_path = '/media/nexus/storage5/swissknife_data/mouse/pose_estimation_comparison_data/OFT/'
     # path ='/media/nexus/storage5/swissknife_data/mouse/pose_estimation_comparison_data/OFT/labeled-data/1_01_A_190507114629/CollectedData_BCstudent1.csv',
@@ -1046,9 +1046,7 @@ def get_mouse_dlc_data():
     Xs = []
     ys = []
     for folder in folders:
-        path = (
-                base_path + "labeled-data/" + folder + "/CollectedData_BCstudent1.csv"
-        )
+        path = base_path + "labeled-data/" + folder + "/CollectedData_BCstudent1.csv"
         X, y = read_DLC_labels(
             base_path=base_path,
             label_file_path=path,
@@ -1101,6 +1099,50 @@ def get_mouse_dlc_data():
     y_test = y[:split]
 
     return x_train, y_train, x_test, y_test
+
+
+def get_primate_paths():
+    video_train = [
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_2.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_3.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_4.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T095000-20180124T103000_%T1_5.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T115800-20180124T122800b_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T115800-20180124T122800b_%T1_2.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T113800-20180124T115800_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180124T113800-20180124T115800_%T1_2.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180115T150759-20180115T151259_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180131T135402-20180131T142501_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180131T135402-20180131T142501_%T1_2.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_1.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_2.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_3.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180116T135000-20180116T142000_%T1_4.npy",
+        "/media/nexus/storage3/idtracking/idtracking_gui/results/IDresults_20180115T150502-20180115T150902_%T1_1.npy",
+    ]
+
+    classes = {
+        "Charles": 0,
+        "Max": 1,
+        "Paul": 2,
+        "Alan": 3,
+    }
+
+    video_1 = [
+        "20180131T135402-20180131T142501_%T1_1",
+        "20180131T135402-20180131T142501_%T1_2",
+        "20180131T135402-20180131T142501_%T1_3",
+        "20180131T135402-20180131T142501_%T1_4",
+    ]
+
+    idresults_base = "/media/nexus/storage3/idtracking/idtracking_gui/results/"
+    fnames_base = "/media/nexus/storage1/swissknife_data/primate/inference/segmentation_highres_multi/"
+    vid_basepath = (
+        "/media/nexus/storage1/swissknife_data/primate/raw_videos/2018_merge/"
+    )
+
+    return video_train, classes, idresults_base, fnames_base, vid_basepath, video_1
 
 
 parser = ArgumentParser()

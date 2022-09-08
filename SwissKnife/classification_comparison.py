@@ -1,52 +1,56 @@
-# SIPEC
-# MARKUS MARKS
-# COMPARISON OF DLC VS. END-TO-END
+"""
+SIPEC
+MARKUS MARKS
+COMPARISON OF DLC VS. END-TO-END
+"""
 
-
-import os
-from skimage.color import rgb2gray
-from skimage.util import img_as_uint
-from tqdm import tqdm
-from argparse import ArgumentParser
 import json
+import os
 import pickle
-import numpy as np
+from argparse import ArgumentParser
 from glob import glob
 from time import time
-import pandas as pd
-from imgaug import augmenters as iaa
 
+import numpy as np
+import pandas as pd
 import tensorflow as tf
-from tensorflow.keras import Input
-from tensorflow.keras.models import Sequential, Model
 import tensorflow.keras as keras
-from tensorflow.keras.layers import Concatenate, Dense, Activation
+from imgaug import augmenters as iaa
+from skimage.color import rgb2gray
+from skimage.util import img_as_uint
+from sklearn.utils import class_weight
+from tensorflow.keras import Input
+from tensorflow.keras.layers import Activation, Concatenate, Dense
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.layers import BatchNormalization
+from tqdm import tqdm
 
 from SwissKnife.architectures import (
-    dlc_model,
     classification_small,
-    recurrent_model_tcn,
-    pretrained_recognition,
     dlc_model_sturman,
+    pretrained_recognition,
+    recurrent_model_tcn,
 )
+from SwissKnife.dataloader import DataGenerator, Dataloader
 from SwissKnife.utils import (
     Metrics,
-    train_model,
-    eval_model,
-    pathForFile,
-    load_config,
     check_directory,
-    setGPU,
+    eval_model,
     get_optimizer,
-    callbacks_learningRate_plateau,
-    set_random_seed,
-    save_dict,
+    get_tensorbaord_callback,
+    get_callbacks,
+    load_config,
     load_dict,
+    pathForFile,
+    save_dict,
+    set_random_seed,
+    setGPU,
+    train_model,
 )
 
-from SwissKnife.dataloader import Dataloader, DataGenerator
 
 def remove_layers(model, num_layers):
+    """Removing last num_layers from a model"""
     model_reduced = Sequential()
     for layer in model.layers[:-num_layers]:
         model_reduced.add(layer)
@@ -56,6 +60,7 @@ def remove_layers(model, num_layers):
 def run_experiment(
     base_path, config, num_classes=4, results_sink="", continuation=0, fraction=None
 ):
+    """TODO: Fill in description"""
     # TODO: replace stuff
     # old path
     videos = glob(base_path + "/individual/*.npy")
@@ -199,7 +204,6 @@ def run_experiment(
         # FIXME: calculate these here or later?
         class_weights = None
         if config["use_class_weights"]:
-            from sklearn.utils import class_weight
 
             class_weights = class_weight.compute_class_weight(
                 "balanced", np.unique(y_train), y_train
@@ -228,6 +232,7 @@ def run_experiment(
 
         dataloader.expand_dims()
 
+        #TODO:CHECK.commented due to use_flow missing in config
         if config["use_flow"]:
             dataloader.create_flow_data()
 
@@ -285,9 +290,9 @@ def run_experiment(
         if config["train_dlc"]:
             optim = get_optimizer(config["dlc_model_optimizer"], config["dlc_model_lr"])
             # ### eval dlc model
-            my_dlc_model = dlc_model_sturman(
-                dataloader.dlc_train_flat.shape, num_classes
-            )
+            # my_dlc_model = dlc_model_sturman(
+            #     dataloader.dlc_train_flat.shape, num_classes
+            # )
 
             ### eval recurrent dlc model
             my_dlc_model_recurrent = dlc_model_sturman(
@@ -303,19 +308,11 @@ def run_experiment(
 
             cbs = [my_metrics]
 
-            from datetime import datetime
-            from SwissKnife.utils import (
-                get_tensorbaord_callback,
-            )
-            import os
-
             # logdir = os.path.join("./logs/classifciation_comparison/dlc/", datetime.now().strftime("%Y%m%d-%H%M%S"))
             # file_writer = tf.compat.v1.summary.FileWriter(logdir + "/metrics")
             # file_writer.set_as_desfault()
             # tf_callback = get_tensorbaord_callback(logdir)
-
             # cbs.append(tf_callback)
-
             # optim = get_optimizer("adam", lr=0.0001)
             # optim = get_optimizer("rmsprop", lr=0.0001)
             # optim = keras.optimizers.SGD(lr=0.0001, momentum=0.9)
@@ -331,7 +328,7 @@ def run_experiment(
                 dataloader.y_test_recurrent,
             )
 
-            my_dlc_model_recurrent, my_dlc_model_recurrent_history = train_model(
+            my_dlc_model_recurrent, _ = train_model(
                 my_dlc_model_recurrent,
                 optim,
                 config["dlc_model_recurrent_epochs"],
@@ -379,7 +376,6 @@ def run_experiment(
                     config["backbone"],
                     input_shape_recognition,
                     num_classes,
-                    fix_layers=False,
                 )
 
             # augmentation
@@ -645,7 +641,7 @@ def run_experiment(
             # if config['backbone'] == 'resnet':
             else:
                 recognition_model = pretrained_recognition(
-                    config["backbone"], input_shape, num_classes, fix_layers=False
+                    config["backbone"], input_shape, num_classes
                 )
 
             # augmentation
@@ -682,6 +678,8 @@ def run_experiment(
                 config["recognition_model_epochs"] = 2
 
             # TODO: externalize
+            # TODO: This function has been defined multiple times within if statements
+            # define it ouside and only call here
             def scheduler(epoch):
                 new_lr = config["recognition_model_scheduler_lr"] / np.power(
                     config["recognition_model_scheduler_factor"], epoch
@@ -881,8 +879,6 @@ def run_experiment(
             for layer in recognition_model.layers:
                 layer.trainable = False
 
-            from tensorflow.keras.layers import BatchNormalization
-
             ### combine boehaviornet and posenet
             dlc_model_input = Input(
                 shape=(dataloader.dlc_train_recurrent_flat.shape[1],)
@@ -1045,18 +1041,18 @@ def main():
     fraction = args.fraction
     output_path = args.output_path
 
-
-
     fraction_string = ""
     if fraction is not None:
         fraction_string = str(fraction)
 
     # init stuff
 
-    base_path = "/home/nexus/mouse_classification_comparison/"
-    config = load_config("../configs/behavior/shared_config")
+    base_path = "/home/user/data/mouse_classification_comparison/"
+    config = load_config("../configs/behavior/default")
+    shared_config = load_config("../configs/behavior/shared_config")
     exp_config = load_config("../configs/behavior/reproduce_configs/" + config_name)
 
+    config.update(shared_config)
     config.update(exp_config)
 
     setGPU(gpu_name)
@@ -1072,6 +1068,7 @@ def main():
     if config["reduced_behavior"]:
         num_classes = 2
 
+    # TODO: Remove hardcoded paths
     if config["train_dlc"]:
         results_sink = (
             "/media/nexus/storage4/swissknife_results/behavior/dlc_"
@@ -1188,7 +1185,7 @@ parser.add_argument(
     dest="output_path",
     type=str,
     default=None,
-    help="Path to the folder where the ouput should be written"
+    help="Path to the folder where the ouput should be written",
 )
 
 if __name__ == "__main__":

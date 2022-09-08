@@ -1,22 +1,23 @@
-# SIPEC
-# MARKUS MARKS
-# SCRIPT TO HELP VISUALIZE DATA AND RESULTS
+"""
+SIPEC
+MARKUS MARKS
+SCRIPT TO HELP VISUALIZE DATA AND RESULTS
+"""
 from argparse import ArgumentParser
+
 import cv2
 import numpy as np
+import skvideo.io
 from tqdm import tqdm
-from collections import Counter
-
-import sys
 
 from SwissKnife.segmentation import mold_video
-from SwissKnife.utils import loadVideo, load_vgg_labels, coords_to_masks, load_config
-import skvideo.io
+from SwissKnife.utils import coords_to_masks, load_config, load_vgg_labels, loadVideo
 
 
 def visualize_labels_on_video_cv(
     video, labels, framerate_video, out_path, num_frames=None, predictions=None
 ):
+    """TODO: Fill in description"""
     # TODO: change here to matplotlib?
     cap = cv2.VideoCapture(video)
 
@@ -83,6 +84,7 @@ def visualize_labels_on_video_cv(
     cv2.destroyAllWindows()
 
 
+# TODO: remove unused code
 def visualize_labels_on_video_skimage_array(
     video, labels, framerate_video, out_path, num_frames=None, predictions=None
 ):
@@ -93,7 +95,7 @@ def visualize_labels_on_video_skimage_array(
 
     results = []
     idx = 0
-    start_idx = 0
+    # start_idx = 0
     # while cap.isOpened():
     for idx in tqdm(range(0, len(video))):
         frame = video[idx]
@@ -108,8 +110,8 @@ def visualize_labels_on_video_skimage_array(
             if idx > num_frames:
                 break
         # if ret:
-        if idx == 0:
-            size = np.asarray(frame).shape
+        # if idx == 0:
+        #    size = np.asarray(frame).shape
         if predictions is None:
             cv2.putText(
                 frame,
@@ -156,7 +158,9 @@ def visualize_labels_on_video_skimage_array(
     # cv2.destroyAllWindows()
 
 
+# TODO: remove unused code
 def visualize_labels_on_video(video_path, labels_path, outpath):
+    """TODO: Fill in description"""
     vid = loadVideo(video_path, greyscale=False)
     framerate_video = 17
     behavior = "freezing"
@@ -170,10 +174,17 @@ def visualize_labels_on_video(video_path, labels_path, outpath):
 
     visualize_labels_on_video_cv(video_path, labels, framerate_video, outpath)
 
-def multiply_list(list, mul):
-    return [el*mul for el in list]
 
-def displayBoxes(frame, mask, color=(0, 0, 255), animal_id=None, mask_id=None, alpha=0.5):
+# TODO: remove unused code
+def multiply_list(input_list, mul):
+    """Mutilpy each element of a list by another object"""
+    return [el * mul for el in input_list]
+
+
+def displayBoxes(
+    frame, mask, color=(0, 0, 255), animal_id=None, mask_id=None, alpha=0.5
+):
+    """TODO: Fill in description"""
     mask_color_labeled = (0, 0, 255)
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_thickness = 1
@@ -196,7 +207,7 @@ def displayBoxes(frame, mask, color=(0, 0, 255), animal_id=None, mask_id=None, a
 
 
 def displayScatter(frame, coords, color=(0, 0, 255)):
-    # for coord in coords:
+    """TODO: Fill in description"""
     cv2.circle(frame, (int(coords[0]), int(coords[1])), 3, color, -1)
     return frame
 
@@ -258,8 +269,9 @@ def visualize_full_inference(
     display_coms=False,
     dimension=1024,
 ):
+    """TODO: Fill in description"""
     resulting_frames = []
-    prev_results = None
+    # prev_results = None
     for idx in tqdm(range(0, len(video))):
         frame = video[idx]
 
@@ -281,7 +293,7 @@ def visualize_full_inference(
 
         try:
             results[idx]["coms"]
-            prev_results = results[idx]
+            # prev_results = results[idx]
         except TypeError:
             resulting_frames.append(frame)
             continue
@@ -324,7 +336,7 @@ def visualize_full_inference(
             coms = results[idx]["coms"]
 
             # ids = np.zeros([0, 1, 2, 3]).astype("int")
-            ids = results[idx]["track_ids"]
+            # ids = results[idx]["track_ids"]
 
             boxes = results[idx]["boxes"]
             for box_id, box in enumerate(boxes):
@@ -357,7 +369,7 @@ def visualize_full_inference(
                             continue
 
         if "IdNet" in networks.keys():
-            offset = 100
+            # offset = 100
             name_ids = results[idx]["ids"]
             confidences = results[idx]["confidences"]
             mymasks = results[idx]["masked_masks"]
@@ -489,7 +501,7 @@ def visualize_full_inference(
                     continue
 
                 try:
-                    textsize= 0.5
+                    textsize = 0.5
                     if i < len(coms):
                         frame = cv2.putText(
                             frame,
@@ -583,12 +595,13 @@ def visualize_full_inference(
                             1,
                             cv2.LINE_AA,
                         )
-                except:
+                except Exception as e:
+                    print(e)
                     continue
 
         if "PoseNet" in networks.keys():
             # TODO: fix hack
-            for pose_id, poses in enumerate(results[idx]["pose_coordinates"]):
+            for _, poses in enumerate(results[idx]["pose_coordinates"]):
                 try:
                     for pose in poses[:-1]:
                         frame = displayScatter(frame, pose)
@@ -600,6 +613,7 @@ def visualize_full_inference(
 
 
 def main():
+    """The main function block"""
     args = parser.parse_args()
     output_video_name = args.output_video_name
     video = args.video
@@ -621,12 +635,12 @@ def main():
     molded_video = mold_video(videodata, dimension=viz_cfg["mold_dimension"])
     results = np.load(results_path, allow_pickle=True)
 
-    dir = ""
+    result_dir = ""
     for el in results_path.split("/")[:-1]:
-        dir += el + "/"
+        result_dir += el + "/"
 
     visualize_full_inference(
-        results_sink=dir,
+        results_sink=result_dir,
         networks=viz_cfg["networks"],
         video=molded_video,
         results=results,
