@@ -14,6 +14,7 @@ from tensorflow.keras.applications import (
     InceptionV3,
     ResNet50,
     Xception,
+    MobileNetV3Small,
 )
 from tensorflow.keras.layers import (
     GRU,
@@ -742,6 +743,13 @@ def pretrained_recognition(
             pooling="avg",
             weights="imagenet",
         )
+    elif model_name == "mobilenet":
+        recognition_model = MobileNetV3Small(
+            include_top=False,
+            input_shape=(input_shape[0], input_shape[1], 3),
+            pooling="avg",
+            weights="imagenet",
+        )
     elif model_name == "inceptionResnet":
         recognition_model = InceptionResNetV2(
             include_top=False,
@@ -777,9 +785,8 @@ def pretrained_recognition(
             if input_shape[1] >= 76 or input_shape[1] == 75:
                 pass
             else:
-                diff = 76 - input_shape[1]
-                diff = int(diff / 2)
-                x = ZeroPadding2D(padding=(diff, diff))(x)
+                # zero pad to 75 depending on input shape
+                x = ZeroPadding2D(padding=(11, 14))(x)
         x = recognition_model(x)
         x = BatchNormalization()(x)
         if (
