@@ -1,6 +1,9 @@
 # SIPEC
 # MARKUS MARKS
 # IDENTIFICATION
+
+import sys
+sys.path.append("../")
 import json
 import os
 import random
@@ -332,7 +335,7 @@ def train_on_data(
             our_model.recognition_model_loss = config["recognition_model_loss"]
             our_model.train_recognition_network(dataloader=dataloader)
             our_model.recognition_model.save(
-                results_sink + "IDnet_" + video + "_recognitionNet" + ".h5"
+                results_sink + "IDnet_"  + "_recognitionNet" + ".h5"
             )
 
             res = our_model.predict(dataloader.x_test)
@@ -765,6 +768,7 @@ def main():
     annotations = args.annotations
     results_sink = args.results_sink
     training_data = args.training_data
+    species = args.species
 
     config = load_config("../configs/identification/" + config_name)
     # TODO: fix and remove
@@ -856,7 +860,7 @@ def main():
     # dataloader.undersample_data()
 
     train_on_data(
-        species="mouse",
+        species=species,
         network=network,
         config=config,
         results_sink=results_sink,
@@ -977,6 +981,14 @@ def main():
 
 parser = ArgumentParser()
 parser.add_argument(
+    "--species",
+    action="store",
+    dest="species",
+    type=str,
+    default="mouse",
+    help="which species to train/infer on",
+)
+parser.add_argument(
     "--config",
     action="store",
     dest="config",
@@ -1005,7 +1017,7 @@ parser.add_argument(
     action="store",
     dest="operation",
     type=str,
-    default="train_primate",
+    default="",
     help="standard training options for SIPEC data",
 )
 parser.add_argument(
