@@ -76,6 +76,7 @@ class Model:
             "inceptionv3",
             "classification_small",
             "classification_large",
+            "mobilenet",
         ]:
             self.recognition_model = pretrained_recognition(
                 architecture, input_shape, num_classes
