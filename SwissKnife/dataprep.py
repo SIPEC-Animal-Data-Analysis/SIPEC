@@ -161,6 +161,26 @@ def prepareData(
     # annotations = annotations[:20]
     # TODO: make one/cv_fold
     if cv_folds == 0:
+
+        if not os.path.exists(os.path.join(frames_path, "train")):
+            # get all frames from folder
+            frames = glob(frames_path + "/*.png")
+            # number of frames
+            num_imgs = len(frames)
+            # split into train and val (0.8/0.2) randomly
+            num_train_imgs = int(num_imgs * 0.8)
+            train_frames = random.sample(frames, num_train_imgs)
+            val_frames = list(set(frames) - set(train_frames))
+
+            # make train and val folders
+            os.makedirs(os.path.join(frames_path, "train"), exist_ok=True)
+            os.makedirs(os.path.join(frames_path, "val"), exist_ok=True)
+            # move frames to folders
+            for frame in train_frames:
+                os.rename(frame, os.path.join(frames_path, "train", frame.split("/")[-1]))
+            for frame in val_frames:
+                os.rename(frame, os.path.join(frames_path, "val", frame.split("/")[-1]))
+
         #
         # Training dataset
         dataset_train = Dataset(species)
