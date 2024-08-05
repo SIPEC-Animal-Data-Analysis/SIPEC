@@ -946,6 +946,7 @@ parser.add_argument(
     type=str,
     default=None,
     help="number of the gpu to use (can be used to run multiple training processes on the same machine)",
+)
 parser.add_argument(
     "--fraction",
     action="store",
