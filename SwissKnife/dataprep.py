@@ -163,8 +163,11 @@ def prepareData(
     if cv_folds == 0:
 
         if not os.path.exists(os.path.join(frames_path, "train")):
-            # get all frames from folder
-            frames = glob(frames_path + "/*.png")
+            filetypes = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.tif", "*.tiff"]
+            for filetype in filetypes:
+                frames = glob(frames_path + "/" + filetype)
+                if frames:
+                    break
             # number of frames
             num_imgs = len(frames)
             # split into train and val (0.8/0.2) randomly
