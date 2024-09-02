@@ -57,7 +57,7 @@ class Dataset(utils.Dataset):
         non_cv_split = subset in ["train", "val"]
         if non_cv_split:
             dataset_dir = os.path.join(dataset_dir, subset)
-        frames = glob(dataset_dir + "/*.png")
+        frames = glob(dataset_dir + "/*.*")
         frames = [el.split("/")[-1] for el in frames]
 
         # Add images
@@ -158,6 +158,7 @@ def prepareData(
     else:
         annotations = list(annotations.values())
 
+    print('d')
     # annotations = annotations[:20]
     # TODO: make one/cv_fold
     if cv_folds == 0:
